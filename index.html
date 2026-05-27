@@ -134,35 +134,37 @@ input,select,button{font-family:inherit;}
   </div>
   <div class="sbar-wrap" id="SB"></div>
   <div class="nav">
-    <button class="nb on" id="nb-venues" onclick="go('venues')"><span>🏨</span><span>Venues</span></button>
-    <button class="nb" id="nb-assign" onclick="go('assign')"><span>📋</span><span>Assign</span></button>
+    <button class="nb on" id="nb-assign" onclick="go('assign')"><span>🏨</span><span>Assign Duties</span></button>
     <button class="nb" id="nb-manage" onclick="go('manage')"><span>⚙️</span><span>Manage</span></button>
     <button class="nb" id="nb-leave" onclick="go('leave')"><span>🌴</span><span>Leave</span></button>
     <button class="nb" id="nb-office" onclick="go('office')"><span>🏢</span><span>Office</span></button>
     <button class="nb" id="nb-report" onclick="go('report')"><span>📄</span><span>Report</span></button>
     <button class="nb" id="nb-staffrep" onclick="go('staffrep')"><span>📊</span><span>Staff Rep</span></button>
+    <button class="nb" id="nb-drafts" onclick="go('drafts')"><span>📂</span><span>Drafts</span></button>
     <button class="nb" id="nb-settings" onclick="go('settings')"><span>🔧</span><span>Settings</span></button>
   </div>
 </div>
 
 <div id="AB" style="display:none;">
 
-<div class="screen active" id="screen-venues">
-  <input class="sbar" id="VS" placeholder="Search venues..." oninput="drawVenues()"/>
-  <div class="tip">Tap a venue to open and assign staff</div>
-  <div id="VL"></div>
-</div>
 
-<div class="screen" id="screen-assign">
-  <div class="phdr"><span style="font-size:26px;">📋</span><div><div class="ptitle">Assign Duties</div><div style="font-size:11px;color:#888;">All venues</div></div></div>
+
+<div class="screen active" id="screen-assign">
+  <div class="phdr"><span style="font-size:26px;">🏨</span><div><div class="ptitle">Assign Duties</div><div style="font-size:11px;color:#888;" id="ADATE"></div></div></div>
+  <div style="display:flex;gap:8px;margin-bottom:9px;">
+    <button onclick="showCopyFrom()" style="flex:1;background:#e3f2fd;border:1.5px solid #90caf9;color:#1565c0;border-radius:9px;padding:9px 0;font-size:11px;font-weight:700;cursor:pointer;">📅 Copy from Date</button>
+    <button onclick="showSaveDraft()" style="flex:1;background:#fff8e1;border:1.5px solid #ffe082;color:#f57f17;border-radius:9px;padding:9px 0;font-size:11px;font-weight:700;cursor:pointer;">💾 Save as Draft</button>
+    <button onclick="go('drafts')" style="flex:1;background:#f3e5f5;border:1.5px solid #ce93d8;color:#6a1b9a;border-radius:9px;padding:9px 0;font-size:11px;font-weight:700;cursor:pointer;">📂 Drafts</button>
+  </div>
   <input class="sbar" id="AS2" placeholder="Search venues..." oninput="drawAssign()"/>
   <div id="AL2"></div>
 </div>
 
 <div class="screen" id="screen-detail">
   <div class="dhdr">
-    <button class="bbtn" onclick="go('venues')">Back</button>
+    <button class="bbtn" onclick="go('assign')">Back</button>
     <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#0d47a1;" id="DT"></div><div style="font-size:10px;color:#1565c0;" id="DM"></div></div>
+    <button onclick="showBulkTime()" style="background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;border-radius:8px;padding:7px 9px;font-size:10px;cursor:pointer;font-weight:700;flex-shrink:0;margin-right:4px;">⏰ All Same Time</button>
     <button class="vipbtn" id="VB" onclick="toggleVIP()">VIP</button>
     <button class="cbtn2" id="CB" onclick="clearVen()">Clear</button>
   </div>
@@ -250,6 +252,25 @@ input,select,button{font-family:inherit;}
   <div id="SRS"></div>
   <div id="SRB"></div>
   <button class="pdfbtn hide" id="SRPB" onclick="makeSRPDF()">Download Staff PDF</button>
+</div>
+
+<div class="screen" id="screen-drafts">
+  <div class="phdr"><span style="font-size:26px;">📂</span><div><div class="ptitle">Drafts</div><div style="font-size:11px;color:#888;">Future duty plans</div></div></div>
+  <div id="DRAFTLIST"></div>
+  <div id="DRAFTDETAIL" class="hide">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;">
+      <button class="bbtn" onclick="g('DRAFTDETAIL').classList.add('hide');g('DRAFTLIST').classList.remove('hide');drawDrafts();">Back</button>
+      <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:#0d47a1;" id="DNAME"></div><div style="font-size:11px;color:#888;" id="DMETA"></div></div>
+    </div>
+    <div style="display:flex;gap:7px;margin-bottom:11px;overflow-x:auto;" id="DVERSIONS"></div>
+    <div id="DCONTENT"></div>
+    <div style="display:flex;gap:8px;margin-top:11px;">
+      <button onclick="activateDraft()" style="flex:1;background:#e8f5e9;border:1.5px solid #a5d6a7;color:#1b5e20;border-radius:9px;padding:11px 0;font-size:12px;font-weight:700;cursor:pointer;">✅ Activate</button>
+      <button onclick="downloadDraftPDF()" style="flex:1;background:#e3f2fd;border:1.5px solid #90caf9;color:#1565c0;border-radius:9px;padding:11px 0;font-size:12px;font-weight:700;cursor:pointer;">⬇ PDF</button>
+      <button onclick="editDraft()" style="flex:1;background:#fff8e1;border:1.5px solid #ffe082;color:#f57f17;border-radius:9px;padding:11px 0;font-size:12px;font-weight:700;cursor:pointer;">✏️ Edit</button>
+      <button onclick="deleteDraftConfirm()" style="flex:1;background:#ffebee;border:1.5px solid #ffcdd2;color:#c62828;border-radius:9px;padding:11px 0;font-size:12px;font-weight:700;cursor:pointer;">🗑️ Delete</button>
+    </div>
+  </div>
 </div>
 
 <div class="screen" id="screen-settings">
@@ -343,23 +364,24 @@ function initApp(){
   initSRDrops();
   applyPinned();
   drawStats();
-  drawVenues();
+  updateADate();
+  drawAssign();
 }
 
 function go(s){
   document.querySelectorAll('.screen').forEach(function(x){x.classList.remove('active');});
   document.querySelectorAll('.nb').forEach(function(x){x.classList.remove('on');});
   var sc=g('screen-'+s);if(sc)sc.classList.add('active');
-  var nb=g('nb-'+(s==='detail'?'venues':s));if(nb)nb.classList.add('on');
+  var nb=g('nb-'+(s==='detail'?'assign':s));if(nb)nb.classList.add('on');
   drawStats();
-  if(s==='venues')drawVenues();
-  else if(s==='assign')drawAssign();
+  if(s==='assign')drawAssign();
   else if(s==='detail')drawDetail();
   else if(s==='manage')drawManage();
   else if(s==='leave'){lTab='a';styleLT();drawLeave();}
   else if(s==='office'){oTab='a';styleOT();drawOffice();}
   else if(s==='report')drawReport();
   else if(s==='staffrep')drawSR();
+  else if(s==='drafts'){drawDrafts();}
 }
 
 function drawStats(){
@@ -483,7 +505,7 @@ function drawDetail(){
 
 function setRole(r){curRole=r;drawDetail();}
 function vdu(eid,vid,val){if(asgn[vid]&&asgn[vid][eid])asgn[vid][eid].duty=val;}
-function toggleVIP(){var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===curV){v=venues[i];break;}}if(!v)return;v.vip=!v.vip;drawDetail();drawVenues();toast(v.vip?'VIP set!':'VIP removed','w');}
+function toggleVIP(){var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===curV){v=venues[i];break;}}if(!v)return;v.vip=!v.vip;drawDetail();drawAssign();toast(v.vip?'VIP set!':'VIP removed','w');}
 
 function drawAddStaff(){
   var q=(g('ADDS')||{}).value||'';
@@ -568,7 +590,7 @@ function delRole(r){if(r==='Manager'){toast('Cannot delete Manager','e');return;
 function doDel(){
   if(!pDel){closeModal();return;}var pd=pDel;pDel=null;closeModal();
   if(pd.type==='staff'){staff=staff.filter(function(e){return e.id!==pd.id;});delete lvMap[pd.id];delete offMap[pd.id];Object.keys(asgn).forEach(function(v){if(asgn[v])delete asgn[v][pd.id];});toast(pd.name+' removed','w');drawMStaff();drawStats();refreshSREmp();}
-  else if(pd.type==='venue'){venues=venues.filter(function(v){return v.id!==pd.id;});delete asgn[pd.id];staff.forEach(function(e){if(e.pv===pd.id)e.pv='';});toast('Venue removed','w');drawMVenues();drawVenues();fillPDD();}
+  else if(pd.type==='venue'){venues=venues.filter(function(v){return v.id!==pd.id;});delete asgn[pd.id];staff.forEach(function(e){if(e.pv===pd.id)e.pv='';});toast('Venue removed','w');drawMVenues();drawAssign();fillPDD();}
   else if(pd.type==='role'){ROLES.splice(ROLES.indexOf(pd.id),1);toast(pd.name+' removed','w');drawMRoles();fillRDD();}
 }
 
@@ -601,9 +623,9 @@ function editVenue(vid){
 function saveEV(vid){
   var n=(g('EVN').value||'').trim();if(!n){toast('Enter name','w');return;}
   var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===vid){v=venues[i];break;}}if(!v){closeModal();return;}
-  v.name=n;closeModal();toast(n+' updated!');drawMVenues();drawVenues();fillPDD();if(curV===vid)drawDetail();
+  v.name=n;closeModal();toast(n+' updated!');drawMVenues();drawAssign();fillPDD();if(curV===vid)drawDetail();
 }
-function addVenue(){var n=(g('NVN').value||'').trim();if(!n){toast('Enter name','w');return;}venues.push({id:mkId(),name:n,vip:false});g('NVN').value='';toast(n+' added!');drawMVenues();drawVenues();fillPDD();}
+function addVenue(){var n=(g('NVN').value||'').trim();if(!n){toast('Enter name','w');return;}venues.push({id:mkId(),name:n,vip:false});g('NVN').value='';toast(n+' added!');drawMVenues();drawAssign();fillPDD();}
 function addRole(){var n=(g('NRN').value||'').trim();if(!n){toast('Enter role','w');return;}if(ROLES.indexOf(n)>=0){toast('Exists','w');return;}ROLES.push(n);g('NRN').value='';toast(n+' added!');drawMRoles();fillRDD();}
 
 function drawMStaff(){
@@ -901,6 +923,317 @@ function changePass(){
   setTimeout(function(){msg.style.display='none';},3000);toast('Password updated!');
 }
 
+
+// ── ASSIGN SCREEN helpers ─────────────────────────────────────────────────────
+function updateADate(){
+  var d=getD();
+  var el=g('ADATE');
+  if(el)el.textContent='Date: '+fd(d);
+}
+
+// ── BULK SET TIME ─────────────────────────────────────────────────────────────
+function showBulkTime(){
+  var t=getTeam(curV);
+  if(!t.length){toast('No staff assigned','w');return;}
+  var opts=TIMES.map(function(tm){return '<option>'+tm+'</option>';}).join('');
+  showModal(
+    '<div class="mtitle">Set Same Time for All</div>'+
+    '<div style="font-size:12px;color:#555;text-align:center;margin-bottom:14px;">All '+t.length+' staff in this venue will get the same duty time.</div>'+
+    '<select id="BTIME" class="sfield">'+opts+'</select>'+
+    '<button class="mbtn blue" onclick="applyBulkTime()">Apply to All Staff</button>'+
+    '<button class="mcancel" onclick="closeModal()">Cancel</button>'
+  );
+}
+
+function applyBulkTime(){
+  var tm=g('BTIME').value;
+  if(!asgn[curV])return;
+  Object.keys(asgn[curV]).forEach(function(eid){asgn[curV][eid].duty=tm;});
+  closeModal();
+  toast('All staff set to '+tm);
+  drawDetail();
+}
+
+// ── COPY FROM DATE ────────────────────────────────────────────────────────────
+function showCopyFrom(){
+  showModal(
+    '<div class="mtitle">Copy Duties from Date</div>'+
+    '<div style="font-size:12px;color:#555;text-align:center;margin-bottom:14px;">Select a past date to copy all venue assignments from.</div>'+
+    '<label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:4px;">Select Date</label>'+
+    '<input id="CFDATE" type="date" class="ifield" style="margin-bottom:14px;"/>'+
+    '<button class="mbtn blue" onclick="doCopyFrom()">Copy Duties</button>'+
+    '<button class="mcancel" onclick="closeModal()">Cancel</button>'
+  );
+  // Set default to yesterday
+  var y=new Date();y.setDate(y.getDate()-1);
+  var el=g('CFDATE');
+  if(el)el.value=y.toISOString().slice(0,10);
+}
+
+function doCopyFrom(){
+  var dateEl=g('CFDATE');
+  if(!dateEl||!dateEl.value){toast('Select a date','w');return;}
+  var fromDate=dateEl.value;
+  var log=dlog[fromDate];
+  if(!log||!Object.keys(log.venues||{}).length){
+    toast('No duties found for '+fd(fromDate),'w');
+    closeModal();return;
+  }
+  // Copy venue assignments
+  Object.keys(log.venues).forEach(function(vid){
+    if(!asgn[vid])asgn[vid]={};
+    Object.keys(log.venues[vid]).forEach(function(eid){
+      var emp=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){emp=staff[i];break;}}
+      if(emp)asgn[vid][eid]={emp:emp,duty:log.venues[vid][eid],pinned:emp.pv===vid};
+    });
+  });
+  closeModal();
+  toast('Duties copied from '+fd(fromDate));
+  updateADate();
+  drawAssign();drawStats();
+}
+
+// ── DRAFTS ────────────────────────────────────────────────────────────────────
+// drafts = [{id, name, date, createdAt, versions:[{v, savedAt, asgn, lvMap, offMap}], activated}]
+var drafts = [];
+var curDraftId = null;
+var curDraftVer = 0;
+
+function showSaveDraft(){
+  var d=getD();
+  showModal(
+    '<div class="mtitle">Save as Draft</div>'+
+    '<div style="font-size:12px;color:#555;text-align:center;margin-bottom:14px;">Save current assignments as a draft for '+fd(d)+'</div>'+
+    '<label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:4px;">Event / Draft Name (optional)</label>'+
+    '<input id="DRAFTNAME" class="ifield" placeholder="e.g. Annual Conference, Wedding Event..." style="margin-bottom:14px;"/>'+
+    '<button class="mbtn blue" onclick="doSaveDraft()">Save Draft</button>'+
+    '<button class="mcancel" onclick="closeModal()">Cancel</button>'
+  );
+}
+
+function doSaveDraft(){
+  var name=(g('DRAFTNAME').value||'').trim()||'Draft '+fd(getD());
+  var d=getD();
+  // Deep copy current state
+  var snap={
+    v:1,
+    savedAt:new Date().toISOString(),
+    asgn:JSON.parse(JSON.stringify(asgn)),
+    lvMap:JSON.parse(JSON.stringify(lvMap)),
+    offMap:JSON.parse(JSON.stringify(offMap))
+  };
+  // Check if draft for this name already exists
+  var existing=null;
+  for(var i=0;i<drafts.length;i++){if(drafts[i].name===name&&drafts[i].date===d){existing=drafts[i];break;}}
+  if(existing){
+    // Add new version
+    snap.v=existing.versions.length+1;
+    existing.versions.push(snap);
+    toast('Draft updated to v'+snap.v);
+  } else {
+    drafts.push({id:mkId(),name:name,date:d,createdAt:new Date().toISOString(),versions:[snap],activated:false});
+    toast('Draft saved as v1');
+  }
+  closeModal();
+}
+
+function drawDrafts(){
+  var el=g('DRAFTLIST');if(!el)return;
+  g('DRAFTLIST').classList.remove('hide');
+  g('DRAFTDETAIL').classList.add('hide');
+  if(!drafts.length){
+    el.innerHTML='<div class="ebig"><div style="font-size:36px;">📂</div><div style="font-size:14px;font-weight:700;color:#6a1b9a;margin-top:8px;">No Drafts Yet</div><div style="font-size:12px;color:#888;margin-top:4px;">Go to Assign Duties and tap Save as Draft</div></div>';
+    return;
+  }
+  var h='';
+  drafts.forEach(function(dr){
+    var latest=dr.versions[dr.versions.length-1];
+    var vcount=dr.versions.length;
+    var acount=Object.keys(latest.asgn).reduce(function(sum,vid){return sum+Object.keys(latest.asgn[vid]).length;},0);
+    h+='<div style="background:#fff;border:1.5px solid '+(dr.activated?'#a5d6a7':'#e3eaff')+';border-radius:13px;margin-bottom:11px;overflow:hidden;">';
+    if(dr.activated)h+='<div style="background:#1b5e20;color:#fff;font-size:9px;font-weight:800;padding:3px 13px;letter-spacing:0.08em;">ACTIVATED</div>';
+    h+='<div style="padding:12px 13px;">';
+    h+='<div style="display:flex;align-items:flex-start;gap:9px;">';
+    h+='<span style="font-size:22px;">📋</span>';
+    h+='<div style="flex:1;min-width:0;">';
+    h+='<div style="font-size:14px;font-weight:800;color:#0d47a1;">'+esc(dr.name)+'</div>';
+    h+='<div style="font-size:11px;color:#666;margin-top:2px;">📅 '+fd(dr.date)+'</div>';
+    h+='<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">';
+    h+='<span style="font-size:10px;background:#e3eaff;color:#1565c0;border-radius:4px;padding:2px 7px;font-weight:700;">'+vcount+' version'+(vcount>1?'s':'')+'</span>';
+    h+='<span style="font-size:10px;background:#e8f5e9;color:#1b5e20;border-radius:4px;padding:2px 7px;font-weight:700;">'+acount+' staff</span>';
+    h+='<span style="font-size:10px;background:#f3e5f5;color:#6a1b9a;border-radius:4px;padding:2px 7px;font-weight:700;">Latest: v'+vcount+'</span>';
+    h+='</div></div>';
+    h+='<button onclick="openDraft(\''+dr.id+'\')" style="background:#1565c0;border:none;color:#fff;border-radius:8px;padding:8px 13px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;">Open</button>';
+    h+='</div></div></div>';
+  });
+  el.innerHTML=h;
+}
+
+function openDraft(id){
+  var dr=null;for(var i=0;i<drafts.length;i++){if(drafts[i].id===id){dr=drafts[i];break;}}
+  if(!dr)return;
+  curDraftId=id;curDraftVer=dr.versions.length-1;
+  g('DRAFTLIST').classList.add('hide');
+  g('DRAFTDETAIL').classList.remove('hide');
+  renderDraftDetail(dr);
+}
+
+function renderDraftDetail(dr){
+  g('DNAME').textContent=dr.name;
+  g('DMETA').textContent=fd(dr.date)+(dr.activated?' - ACTIVATED':'');
+  // Version pills
+  var vh='';
+  dr.versions.forEach(function(v,i){
+    vh+='<button onclick="selectDraftVer('+i+')" style="background:'+(i===curDraftVer?'#1565c0':'#e3eaff')+';color:'+(i===curDraftVer?'#fff':'#1565c0')+';border:none;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;">v'+(i+1)+'</button>';
+  });
+  g('DVERSIONS').innerHTML=vh;
+  // Content
+  var ver=dr.versions[curDraftVer];
+  var h='';
+  venues.forEach(function(v){
+    var varr=ver.asgn[v.id];if(!varr||!Object.keys(varr).length)return;
+    var t=Object.values(varr);
+    h+='<div class="pvcard">';
+    h+='<div class="pvname">'+esc(v.name)+'</div>';
+    h+='<div style="font-size:11px;color:#1565c0;margin-bottom:8px;">'+t.length+' staff</div>';
+    t.forEach(function(a,i){
+      var c=cc(a.emp.role);
+      h+='<div class="prow"><span class="pnum">'+(i+1)+'</span>';
+      h+='<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;">'+esc(a.emp.name)+'</div>';
+      h+='<span style="font-size:10px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 5px;">'+esc(a.emp.role)+'</span></div>';
+      h+='<div style="font-size:11px;font-weight:700;color:#0d47a1;">'+esc(a.duty)+'</div></div>';
+    });
+    h+='</div>';
+  });
+  var lvArr=ver.lvMap?Object.values(ver.lvMap):[];
+  var ofArr=ver.offMap?Object.values(ver.offMap):[];
+  if(lvArr.length){h+='<div class="pvcard" style="border-left:4px solid #c62828;"><div class="pvname" style="color:#c62828;">On Leave - '+lvArr.length+' staff</div>';lvArr.forEach(function(a,i){h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;"><div style="font-weight:700;font-size:12px;">'+esc(a.emp.name)+'</div></div></div>';});h+='</div>';}
+  if(ofArr.length){h+='<div class="pvcard" style="border-left:4px solid #e65100;"><div class="pvname" style="color:#e65100;">In Office - '+ofArr.length+' staff</div>';ofArr.forEach(function(a,i){h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;"><div style="font-weight:700;font-size:12px;">'+esc(a.emp.name)+'</div></div></div>';});h+='</div>';}
+  if(!h)h='<div class="empty">No assignments in this version.</div>';
+  g('DCONTENT').innerHTML=h;
+}
+
+function selectDraftVer(idx){
+  curDraftVer=idx;
+  var dr=null;for(var i=0;i<drafts.length;i++){if(drafts[i].id===curDraftId){dr=drafts[i];break;}}
+  if(dr)renderDraftDetail(dr);
+}
+
+function activateDraft(){
+  var dr=null;for(var i=0;i<drafts.length;i++){if(drafts[i].id===curDraftId){dr=drafts[i];break;}}
+  if(!dr)return;
+  var ver=dr.versions[curDraftVer];
+  // Load draft assignments into current state
+  Object.keys(ver.asgn).forEach(function(vid){
+    asgn[vid]=JSON.parse(JSON.stringify(ver.asgn[vid]));
+    // Re-link emp objects to current staff
+    Object.keys(asgn[vid]).forEach(function(eid){
+      var emp=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){emp=staff[i];break;}}
+      if(emp)asgn[vid][eid].emp=emp;
+    });
+  });
+  if(ver.lvMap)Object.keys(ver.lvMap).forEach(function(eid){lvMap[eid]=ver.lvMap[eid];var emp=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){emp=staff[i];break;}}if(emp)lvMap[eid].emp=emp;});
+  if(ver.offMap)Object.keys(ver.offMap).forEach(function(eid){offMap[eid]=ver.offMap[eid];var emp=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){emp=staff[i];break;}}if(emp)offMap[eid].emp=emp;});
+  dr.activated=true;
+  toast('Draft activated for '+fd(dr.date));
+  drawStats();
+}
+
+function editDraft(){
+  var dr=null;for(var i=0;i<drafts.length;i++){if(drafts[i].id===curDraftId){dr=drafts[i];break;}}
+  if(!dr)return;
+  // Load this version's assignments into current working state
+  var ver=dr.versions[curDraftVer];
+  Object.keys(ver.asgn).forEach(function(vid){
+    asgn[vid]=JSON.parse(JSON.stringify(ver.asgn[vid]));
+    Object.keys(asgn[vid]).forEach(function(eid){
+      var emp=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){emp=staff[i];break;}}
+      if(emp)asgn[vid][eid].emp=emp;
+    });
+  });
+  // Go to assign screen, user edits, then saves as new version
+  showModal(
+    '<div class="mtitle">Edit Draft</div>'+
+    '<div style="font-size:13px;color:#333;text-align:center;margin-bottom:14px;">Draft <strong>'+esc(dr.name)+'</strong> v'+(curDraftVer+1)+' has been loaded.<br><span style="font-size:12px;color:#888;">Make your changes in Assign Duties, then tap Save as Draft to create a new version.</span></div>'+
+    '<button class="mbtn blue" onclick="closeModal();go(\'assign\');">Go to Assign Duties</button>'+
+    '<button class="mcancel" onclick="closeModal()">Cancel</button>'
+  );
+}
+
+function deleteDraftConfirm(){
+  var dr=null;for(var i=0;i<drafts.length;i++){if(drafts[i].id===curDraftId){dr=drafts[i];break;}}
+  if(!dr)return;
+  showModal(
+    '<div class="mtitle" style="color:#c62828;">Delete Draft?</div>'+
+    '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:14px;">Delete <strong>'+esc(dr.name)+'</strong> and all '+dr.versions.length+' version(s)?</div>'+
+    '<button class="mbtn red" onclick="deleteDraftVer()">Delete This Version (v'+(curDraftVer+1)+')</button>'+
+    '<button class="mbtn red" onclick="deleteEntireDraft()">Delete Entire Draft</button>'+
+    '<button class="mcancel" onclick="closeModal()">Cancel</button>'
+  );
+}
+
+function deleteDraftVer(){
+  var dr=null;for(var i=0;i<drafts.length;i++){if(drafts[i].id===curDraftId){dr=drafts[i];break;}}
+  if(!dr)return;
+  if(dr.versions.length===1){deleteEntireDraft();return;}
+  dr.versions.splice(curDraftVer,1);
+  curDraftVer=Math.min(curDraftVer,dr.versions.length-1);
+  closeModal();toast('Version deleted','w');renderDraftDetail(dr);
+}
+
+function deleteEntireDraft(){
+  drafts=drafts.filter(function(dr){return dr.id!==curDraftId;});
+  closeModal();
+  g('DRAFTDETAIL').classList.add('hide');
+  g('DRAFTLIST').classList.remove('hide');
+  toast('Draft deleted','w');drawDrafts();
+}
+
+function downloadDraftPDF(){
+  var dr=null;for(var i=0;i<drafts.length;i++){if(drafts[i].id===curDraftId){dr=drafts[i];break;}}
+  if(!dr||!window.jspdf){toast('Error','e');return;}
+  var ver=dr.versions[curDraftVer];
+  var vnum=curDraftVer+1;
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,mg=12,y=mg;
+  function cp(n){if(y+n>283){doc.addPage();y=mg;}}
+  // Header
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Draft Duty Plan',pw/2+10,22,{align:'center'});
+  y=38;
+  // Draft banner
+  doc.setFillColor(255,248,225);doc.rect(mg,y,pw-mg*2,14,'F');doc.setDrawColor(230,160,0);doc.setLineWidth(0.5);doc.rect(mg,y,pw-mg*2,14,'S');doc.setLineWidth(0.2);
+  doc.setTextColor(120,70,0);doc.setFontSize(11);doc.setFont('helvetica','bold');
+  doc.text('DRAFT  v'+vnum+'  —  '+esc(dr.name),pw/2,y+6,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Duty Date: '+fd(dr.date)+'   |   Saved: '+new Date(ver.savedAt).toLocaleDateString('en-IN'),pw/2,y+12,{align:'center'});
+  y+=20;
+  // Venues
+  venues.forEach(function(v){
+    var varr=ver.asgn[v.id];if(!varr||!Object.keys(varr).length)return;
+    var t=Object.values(varr);cp(24);
+    doc.setFillColor(21,101,192);doc.roundedRect(mg,y,pw-mg*2,12,2,2,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.text(v.name,pw/2,y+8,{align:'center'});
+    doc.setFontSize(8);doc.text(t.length+' staff',pw-mg-3,y+8,{align:'right'});y+=13;
+    doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,6,'F');
+    doc.setTextColor(13,71,161);doc.setFontSize(6);doc.setFont('helvetica','bold');
+    doc.text('#',mg+2,y+4.2);doc.text('Name',mg+10,y+4.2);doc.text('Role',mg+100,y+4.2);doc.text('Duty',pw-mg-3,y+4.2,{align:'right'});y+=7;
+    t.forEach(function(a,i){
+      cp(6.5);if(i%2===0){doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,6.5,'F');}
+      doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(String(i+1),mg+2,y+4.5);
+      doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.text(a.emp.name,mg+10,y+4.5);
+      doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+100,y+4.5);
+      doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text(a.duty,pw-mg-3,y+4.5,{align:'right'});
+      y+=6.5;
+    });y+=4;
+  });
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('DRAFT v'+vnum+' | Grover Audio Visual Services | '+fd(dr.date),mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_DRAFT_v'+vnum+'_'+dr.date+'.pdf');
+  toast('Draft PDF downloaded!');
+}
+
 var dragId=null,ghost=null;
 function tStart(ev,eid){
   dragId=eid;var t=ev.touches[0];
@@ -926,7 +1259,7 @@ document.addEventListener('touchend',function(ev){
   if(dropped&&navigator.vibrate)navigator.vibrate([20,10,20]);dragId=null;
 });
 
-g('DP').addEventListener('change',function(){applyPinned();drawStats();});
+g('DP').addEventListener('change',function(){applyPinned();drawStats();updateADate();});
 // Login button - most reliable approach for iOS
 var lbtn=g('LB');
 if(lbtn){

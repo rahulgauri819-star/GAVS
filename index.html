@@ -108,14 +108,14 @@ input,select,button{font-family:inherit;}
   <img src="gavs_logo.png" alt="" style="height:80px;width:auto;margin-bottom:16px;" onerror="this.style.display='none'"/>
   <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:4px;text-align:center;">Grover Audio Visual Services</div>
   <div style="font-size:11px;color:#bbdefb;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:28px;">Staff Deployment System</div>
-  <form onsubmit="doLogin();return false;" style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+  <form id="LF" style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
     <div style="font-size:16px;font-weight:800;color:#0d47a1;margin-bottom:18px;text-align:center;">Login</div>
     <label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:4px;">Username</label>
     <input id="LU" type="text" autocomplete="username" placeholder="Enter username" style="width:100%;background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:8px;color:#111;padding:10px 12px;font-size:16px;outline:none;margin-bottom:12px;box-sizing:border-box;display:block;"/>
     <label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:4px;">Password</label>
     <input id="LP" type="password" autocomplete="current-password" placeholder="Enter password" style="width:100%;background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:8px;color:#111;padding:10px 12px;font-size:16px;outline:none;margin-bottom:16px;box-sizing:border-box;display:block;"/>
     <div id="LE" style="color:#c62828;font-size:12px;text-align:center;margin-bottom:10px;display:none;">Wrong username or password</div>
-    <input type="submit" value="Login" style="width:100%;background:#1565c0;border:none;color:#fff;border-radius:9px;padding:14px 0;font-size:16px;font-weight:700;cursor:pointer;-webkit-appearance:none;appearance:none;display:block;box-sizing:border-box;"/>
+    <button type="button" id="LB" style="width:100%;background:#1565c0;border:none;color:#fff;border-radius:9px;padding:14px 0;font-size:16px;font-weight:700;cursor:pointer;display:block;box-sizing:border-box;">Login</button>
   </form>
   <div style="font-size:10px;color:#90caf9;margin-top:20px;">GAVS 2026</div>
 </div>
@@ -927,6 +927,16 @@ document.addEventListener('touchend',function(ev){
 });
 
 g('DP').addEventListener('change',function(){applyPinned();drawStats();});
+// Login button - most reliable approach for iOS
+var lbtn=g('LB');
+if(lbtn){
+  lbtn.addEventListener('click',function(e){e.preventDefault();doLogin();},false);
+  lbtn.addEventListener('touchend',function(e){e.preventDefault();doLogin();},false);
+}
+var lpw=g('LP');
+if(lpw){lpw.addEventListener('keyup',function(e){if(e.keyCode===13||e.key==='Enter'){e.preventDefault();doLogin();}},false);}
+var lus=g('LU');
+if(lus){lus.addEventListener('keyup',function(e){if(e.keyCode===13||e.key==='Enter'){if(g('LP'))g('LP').focus();}},false);}
 </script>
 </body>
 </html>

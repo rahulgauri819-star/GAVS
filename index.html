@@ -1,11 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-<meta http-equiv="Cache-Control" content="no-cache"/>
-<title>GAVS Staff App v15</title>
+<title>GAVS v16</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -17,10 +15,10 @@ input,select,button{font-family:inherit;}
 .hdr{background:#1565c0;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
 .hdr-top{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 6px;}
 .hdr-logo{display:flex;align-items:center;gap:8px;}
-.hdr-title{font-size:13px;font-weight:800;color:#fff;line-height:1.2;}
+.hdr-title{font-size:13px;font-weight:800;color:#fff;}
 .hdr-sub{font-size:8px;color:#bbdefb;letter-spacing:0.1em;text-transform:uppercase;}
 .hdr-date{background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);border-radius:7px;color:#fff;padding:6px 8px;font-size:11px;outline:none;font-weight:600;}
-.stats{display:flex;gap:5px;padding:0 10px 8px;overflow-x:auto;}
+.sbar-wrap{display:flex;gap:5px;padding:0 10px 8px;overflow-x:auto;}
 .stt{background:rgba(255,255,255,0.15);border-radius:8px;padding:4px 10px;display:flex;flex-direction:column;align-items:center;flex-shrink:0;min-width:48px;}
 .stv{font-size:15px;font-weight:800;color:#fff;line-height:1;}
 .stl{font-size:8px;color:#bbdefb;margin-top:1px;text-align:center;}
@@ -65,8 +63,6 @@ input,select,button{font-family:inherit;}
 .addbtn{background:#e3f2fd;border:1.5px solid #90caf9;color:#1565c0;border-radius:7px;padding:5px 10px;cursor:pointer;font-size:11px;font-weight:700;flex-shrink:0;white-space:nowrap;}
 .empty{text-align:center;color:#bbb;font-size:12px;padding:25px 15px;}
 .ebig{text-align:center;padding:45px 20px;color:#888;}
-.abi{font-size:38px;margin-bottom:10px;}
-.att{font-size:14px;font-weight:700;color:#1565c0;margin-bottom:5px;}
 .addbox{background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:11px;padding:13px;margin-bottom:13px;}
 .abt{font-size:11px;font-weight:800;color:#1565c0;margin-bottom:9px;}
 .ifield{width:100%;background:#fff;border:1.5px solid #bbdefb;border-radius:7px;color:#111;padding:9px 11px;font-size:13px;outline:none;margin-bottom:7px;display:block;}
@@ -81,7 +77,7 @@ input,select,button{font-family:inherit;}
 .lhdr{display:flex;align-items:center;gap:13px;border-radius:11px;padding:13px;margin-bottom:13px;border:1.5px solid;}
 .ltitle{font-size:17px;font-weight:800;}
 .togbtn{border-radius:8px;padding:7px 13px;cursor:pointer;font-size:11px;font-weight:700;border:1.5px solid;flex-shrink:0;}
-.ov{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;display:flex;align-items:flex-end;justify-content:center;}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;display:flex;align-items:flex-end;justify-content:center;}
 .mbox{background:#fff;border-radius:16px 16px 0 0;padding:20px 16px 30px;width:100%;max-width:540px;max-height:85vh;overflow-y:auto;}
 .mtitle{font-size:15px;font-weight:800;color:#0d47a1;margin-bottom:13px;text-align:center;}
 .mbtn{display:block;width:100%;padding:12px;border-radius:9px;border:1.5px solid #bbdefb;background:#f0f4ff;color:#0d47a1;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px;text-align:left;}
@@ -108,35 +104,35 @@ input,select,button{font-family:inherit;}
 <body>
 
 <!-- LOGIN -->
-<div id="loginScreen" style="position:fixed;inset:0;background:#1565c0;z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;">
-  <img src="gavs_logo.png" alt="GAVS" style="height:80px;width:auto;margin-bottom:16px;" onerror="this.style.display='none'"/>
+<div id="LS" style="position:fixed;inset:0;background:#1565c0;z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;">
+  <img src="gavs_logo.png" alt="" style="height:80px;width:auto;margin-bottom:16px;" onerror="this.style.display='none'"/>
   <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:4px;text-align:center;">Grover Audio Visual Services</div>
   <div style="font-size:11px;color:#bbdefb;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:28px;">Staff Deployment System</div>
-  <form id="loginForm" onsubmit="doLogin();return false;" style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+  <form onsubmit="doLogin();return false;" style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
     <div style="font-size:16px;font-weight:800;color:#0d47a1;margin-bottom:18px;text-align:center;">Login</div>
-    <div style="font-size:11px;color:#555;font-weight:700;margin-bottom:4px;">Username</div>
-    <input id="lusr" name="username" type="text" autocomplete="username" placeholder="Enter username" style="width:100%;background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:8px;color:#111;padding:10px 12px;font-size:16px;outline:none;margin-bottom:12px;box-sizing:border-box;"/>
-    <div style="font-size:11px;color:#555;font-weight:700;margin-bottom:4px;">Password</div>
-    <input id="lpas" name="password" type="password" autocomplete="current-password" placeholder="Enter password" style="width:100%;background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:8px;color:#111;padding:10px 12px;font-size:16px;outline:none;margin-bottom:16px;box-sizing:border-box;"/>
-    <div id="lerr" style="color:#c62828;font-size:12px;text-align:center;margin-bottom:10px;display:none;">Wrong username or password</div>
-    <input type="submit" value="Login" style="width:100%;background:#1565c0;border:none;color:#fff;border-radius:9px;padding:14px 0;font-size:16px;font-weight:700;cursor:pointer;-webkit-appearance:none;appearance:none;display:block;"/>
+    <label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:4px;">Username</label>
+    <input id="LU" type="text" autocomplete="username" placeholder="Enter username" style="width:100%;background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:8px;color:#111;padding:10px 12px;font-size:16px;outline:none;margin-bottom:12px;box-sizing:border-box;display:block;"/>
+    <label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:4px;">Password</label>
+    <input id="LP" type="password" autocomplete="current-password" placeholder="Enter password" style="width:100%;background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:8px;color:#111;padding:10px 12px;font-size:16px;outline:none;margin-bottom:16px;box-sizing:border-box;display:block;"/>
+    <div id="LE" style="color:#c62828;font-size:12px;text-align:center;margin-bottom:10px;display:none;">Wrong username or password</div>
+    <input type="submit" value="Login" style="width:100%;background:#1565c0;border:none;color:#fff;border-radius:9px;padding:14px 0;font-size:16px;font-weight:700;cursor:pointer;-webkit-appearance:none;appearance:none;display:block;box-sizing:border-box;"/>
   </form>
   <div style="font-size:10px;color:#90caf9;margin-top:20px;">GAVS 2026</div>
 </div>
 
 <div class="toast" id="toast"></div>
-<div class="hide" id="modal"><div class="ov" onclick="closeModal()"><div class="mbox" onclick="event.stopPropagation()" id="mbox"></div></div></div>
+<div id="modal" class="hide"><div class="modal-ov" onclick="closeModal()"><div class="mbox" onclick="event.stopPropagation()" id="mbox"></div></div></div>
 
 <!-- APP HEADER -->
-<div class="hdr" id="appHdr" style="display:none;">
+<div class="hdr" id="AH" style="display:none;">
   <div class="hdr-top">
     <div class="hdr-logo">
-      <img src="gavs_logo.png" id="logoImg" alt="GAVS" style="height:38px;width:auto;" onerror="this.style.display='none'"/>
+      <img src="gavs_logo.png" id="logoImg" alt="" style="height:38px;width:auto;" onerror="this.style.display='none'"/>
       <div><div class="hdr-title">Grover Audio Visual Services</div><div class="hdr-sub">Staff Deployment System</div></div>
     </div>
-    <input type="date" id="datepicker" class="hdr-date"/>
+    <input type="date" id="DP" class="hdr-date"/>
   </div>
-  <div class="stats" id="statsBar"></div>
+  <div class="sbar-wrap" id="SB"></div>
   <div class="nav">
     <button class="nb on" id="nb-venues" onclick="go('venues')"><span>🏨</span><span>Venues</span></button>
     <button class="nb" id="nb-assign" onclick="go('assign')"><span>📋</span><span>Assign</span></button>
@@ -149,43 +145,39 @@ input,select,button{font-family:inherit;}
   </div>
 </div>
 
-<div id="appBody" style="display:none;">
+<div id="AB" style="display:none;">
 
-<!-- VENUES -->
 <div class="screen active" id="screen-venues">
-  <input class="sbar" id="vsrch" placeholder="Search venues..." oninput="drawVenues()"/>
-  <div class="tip">Tap a venue to open it and assign staff</div>
-  <div id="vlist"></div>
+  <input class="sbar" id="VS" placeholder="Search venues..." oninput="drawVenues()"/>
+  <div class="tip">Tap a venue to open and assign staff</div>
+  <div id="VL"></div>
 </div>
 
-<!-- ASSIGN DUTIES -->
 <div class="screen" id="screen-assign">
-  <div class="phdr"><span style="font-size:26px;">📋</span><div><div class="ptitle">Assign Duties</div><div style="font-size:11px;color:#888;">All venues — tap Assign to add staff</div></div></div>
-  <input class="sbar" id="asrch" placeholder="Search venues..." oninput="drawAssign()"/>
-  <div id="alist2"></div>
+  <div class="phdr"><span style="font-size:26px;">📋</span><div><div class="ptitle">Assign Duties</div><div style="font-size:11px;color:#888;">All venues</div></div></div>
+  <input class="sbar" id="AS2" placeholder="Search venues..." oninput="drawAssign()"/>
+  <div id="AL2"></div>
 </div>
 
-<!-- VENUE DETAIL -->
 <div class="screen" id="screen-detail">
   <div class="dhdr">
     <button class="bbtn" onclick="go('venues')">Back</button>
-    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#0d47a1;line-height:1.3;" id="dtitle"></div><div style="font-size:10px;color:#1565c0;margin-top:1px;" id="dmeta"></div></div>
-    <button class="vipbtn" id="vipbtn" onclick="toggleVIP()">VIP</button>
-    <button class="cbtn2" id="clearbtn" onclick="clearVen()">Clear</button>
+    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#0d47a1;" id="DT"></div><div style="font-size:10px;color:#1565c0;" id="DM"></div></div>
+    <button class="vipbtn" id="VB" onclick="toggleVIP()">VIP</button>
+    <button class="cbtn2" id="CB" onclick="clearVen()">Clear</button>
   </div>
   <div style="padding:0 14px;">
-    <div class="dropz" id="dropzone">Drop staff here or tap + Add</div>
-    <div id="asec"></div>
+    <div class="dropz" id="DZ">Drop staff here or tap + Add</div>
+    <div id="ASEC"></div>
     <div class="sec">
       <div class="sech">ADD STAFF</div>
-      <input class="sbar" id="addsrch" placeholder="Search staff..." oninput="drawAddStaff()"/>
-      <div class="rfilt" id="rfilts"></div>
-      <div id="addlist"></div>
+      <input class="sbar" id="ADDS" placeholder="Search staff..." oninput="drawAddStaff()"/>
+      <div class="rfilt" id="RF"></div>
+      <div id="AL"></div>
     </div>
   </div>
 </div>
 
-<!-- MANAGE -->
 <div class="screen" id="screen-manage">
   <div class="stabs">
     <button class="stab on" id="mt-staff" onclick="mtab('staff')">Staff</button>
@@ -194,750 +186,747 @@ input,select,button{font-family:inherit;}
   </div>
   <div id="mp-staff">
     <div class="addbox"><div class="abt">Add New Staff</div>
-      <input class="ifield" id="nsname" placeholder="Full Name"/>
-      <input class="ifield" id="nsphone" placeholder="Phone Number" style="display:none;"/>
-      <select class="sfield" id="nsrole" onchange="togglePh()"></select>
-      <select class="sfield" id="nspin"><option value="">No Fixed Venue</option></select>
+      <input class="ifield" id="NSN" placeholder="Full Name"/>
+      <input class="ifield" id="NSPH" placeholder="Phone Number" style="display:none;"/>
+      <select class="sfield" id="NSR" onchange="togglePh()"></select>
+      <select class="sfield" id="NSP"><option value="">No Fixed Venue</option></select>
       <button class="bigbtn" onclick="addStaff()">+ Add Staff Member</button>
     </div>
-    <input class="sbar" id="mssrch" placeholder="Search staff..." oninput="drawMStaff()"/>
-    <div id="mslist"></div>
+    <input class="sbar" id="MSS" placeholder="Search staff..." oninput="drawMStaff()"/>
+    <div id="MSL"></div>
   </div>
   <div id="mp-venues" class="hide">
     <div class="addbox"><div class="abt">Add New Venue</div>
-      <input class="ifield" id="nvname" placeholder="Venue Name"/>
+      <input class="ifield" id="NVN" placeholder="Venue Name"/>
       <button class="bigbtn" onclick="addVenue()">+ Add Venue</button>
     </div>
-    <input class="sbar" id="mvsrch" placeholder="Search venues..." oninput="drawMVenues()"/>
-    <div id="mvlist"></div>
+    <input class="sbar" id="MVS" placeholder="Search venues..." oninput="drawMVenues()"/>
+    <div id="MVL"></div>
   </div>
   <div id="mp-roles" class="hide">
     <div class="addbox"><div class="abt">Add New Role</div>
-      <input class="ifield" id="nrname" placeholder="e.g. Sound Technician"/>
+      <input class="ifield" id="NRN" placeholder="e.g. Sound Technician"/>
       <button class="bigbtn" onclick="addRole()">+ Add Role</button>
     </div>
-    <div id="mrlist"></div>
+    <div id="MRL"></div>
   </div>
 </div>
 
-<!-- LEAVE -->
 <div class="screen" id="screen-leave">
-  <div class="lhdr" style="background:#fff5f5;border-color:#ffcdd2;"><span style="font-size:26px;">🌴</span><div><div class="ltitle" style="color:#c62828;">On Leave</div><div style="font-size:12px;color:#666;" id="lcnt">0 staff</div></div></div>
+  <div class="lhdr" style="background:#fff5f5;border-color:#ffcdd2;"><span style="font-size:26px;">🌴</span><div><div class="ltitle" style="color:#c62828;">On Leave</div><div style="font-size:12px;color:#666;" id="LC">0 staff</div></div></div>
   <div style="display:flex;gap:7px;margin-bottom:9px;">
-    <button id="lta" onclick="ltab('a')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid #c62828;background:#c62828;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Available</button>
-    <button id="ltm" onclick="ltab('m')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid #c62828;background:transparent;color:#c62828;font-size:11px;font-weight:700;cursor:pointer;">Marked</button>
+    <button id="LTA" onclick="ltab('a')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid #c62828;background:#c62828;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Available</button>
+    <button id="LTM" onclick="ltab('m')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid #c62828;background:transparent;color:#c62828;font-size:11px;font-weight:700;cursor:pointer;">Marked</button>
   </div>
-  <input class="sbar" id="lsrch" placeholder="Search..." oninput="drawLeave()"/>
-  <div id="llist"></div>
+  <input class="sbar" id="LSR" placeholder="Search..." oninput="drawLeave()"/>
+  <div id="LL"></div>
 </div>
 
-<!-- OFFICE -->
 <div class="screen" id="screen-office">
-  <div class="lhdr" style="background:#fff8f0;border-color:#ffe0b2;"><span style="font-size:26px;">🏢</span><div><div class="ltitle" style="color:#e65100;">In Office</div><div style="font-size:12px;color:#666;" id="ocnt">0 staff</div></div></div>
+  <div class="lhdr" style="background:#fff8f0;border-color:#ffe0b2;"><span style="font-size:26px;">🏢</span><div><div class="ltitle" style="color:#e65100;">In Office</div><div style="font-size:12px;color:#666;" id="OC">0 staff</div></div></div>
   <div style="display:flex;gap:7px;margin-bottom:9px;">
-    <button id="ota" onclick="otab('a')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid #e65100;background:#e65100;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Available</button>
-    <button id="otm" onclick="otab('m')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid #e65100;background:transparent;color:#e65100;font-size:11px;font-weight:700;cursor:pointer;">Marked</button>
+    <button id="OTA" onclick="otab('a')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid #e65100;background:#e65100;color:#fff;font-size:11px;font-weight:700;cursor:pointer;">Available</button>
+    <button id="OTM" onclick="otab('m')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid #e65100;background:transparent;color:#e65100;font-size:11px;font-weight:700;cursor:pointer;">Marked</button>
   </div>
-  <input class="sbar" id="osrch" placeholder="Search..." oninput="drawOffice()"/>
-  <div id="olist"></div>
+  <input class="sbar" id="OSR" placeholder="Search..." oninput="drawOffice()"/>
+  <div id="OL"></div>
 </div>
 
-<!-- REPORT -->
 <div class="screen" id="screen-report">
-  <div class="phdr"><span style="font-size:26px;">📋</span><div><div class="ptitle">Duty Report</div><div style="font-size:12px;color:#1565c0;font-weight:600;" id="rptduty"></div><div style="font-size:10px;color:#888;" id="rptprep"></div></div></div>
-  <div id="rptbody"></div>
+  <div class="phdr"><span style="font-size:26px;">📋</span><div><div class="ptitle">Duty Report</div><div style="font-size:12px;color:#1565c0;font-weight:600;" id="RD"></div><div style="font-size:10px;color:#888;" id="RP"></div></div></div>
+  <div id="RB"></div>
   <button class="pdfbtn" onclick="makePDF()">Download PDF</button>
 </div>
 
-<!-- STAFF REPORT -->
 <div class="screen" id="screen-staffrep">
-  <div class="phdr"><span style="font-size:26px;">📊</span><div><div class="ptitle">Staff Monthly Report</div><div style="font-size:11px;color:#888;">Select employee and month</div></div></div>
+  <div class="phdr"><span style="font-size:26px;">📊</span><div><div class="ptitle">Staff Monthly Report</div></div></div>
   <div class="sec"><div class="sech">SELECT</div>
-    <select class="sfield" id="srEmp" onchange="drawSR()"><option value="">-- Select Employee --</option></select>
+    <select class="sfield" id="SRE" onchange="drawSR()"><option value="">-- Select Employee --</option></select>
     <div style="display:flex;gap:8px;">
-      <select class="sfield" id="srMon" onchange="drawSR()" style="flex:1;"></select>
-      <select class="sfield" id="srYr" onchange="drawSR()" style="flex:1;"></select>
+      <select class="sfield" id="SRM" onchange="drawSR()" style="flex:1;"></select>
+      <select class="sfield" id="SRY" onchange="drawSR()" style="flex:1;"></select>
     </div>
   </div>
-  <div id="srSum"></div>
-  <div id="srBody"></div>
-  <button class="pdfbtn hide" id="srPdfBtn" onclick="makeSRPDF()">Download Staff PDF</button>
+  <div id="SRS"></div>
+  <div id="SRB"></div>
+  <button class="pdfbtn hide" id="SRPB" onclick="makeSRPDF()">Download Staff PDF</button>
 </div>
 
-<!-- SETTINGS -->
 <div class="screen" id="screen-settings">
-  <div class="phdr"><span style="font-size:26px;">🔧</span><div><div class="ptitle">Settings</div><div style="font-size:11px;color:#888;">Change password &amp; app info</div></div></div>
+  <div class="phdr"><span style="font-size:26px;">🔧</span><div><div class="ptitle">Settings</div></div></div>
   <div class="sec"><div class="sech">CHANGE PASSWORD</div>
-    <div style="font-size:11px;color:#555;font-weight:700;margin-bottom:4px;">Current Password</div>
-    <input id="cpCur" type="password" class="ifield" placeholder="Current password"/>
-    <div style="font-size:11px;color:#555;font-weight:700;margin-bottom:4px;">New Password</div>
-    <input id="cpNew" type="password" class="ifield" placeholder="New password (min 4 chars)"/>
-    <div style="font-size:11px;color:#555;font-weight:700;margin-bottom:4px;">Confirm New Password</div>
-    <input id="cpCon" type="password" class="ifield" placeholder="Confirm new password"/>
-    <div id="cpMsg" style="font-size:12px;text-align:center;margin-bottom:8px;display:none;padding:8px;border-radius:7px;"></div>
+    <label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:4px;">Current Password</label>
+    <input id="CPO" type="password" class="ifield" placeholder="Current password"/>
+    <label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:4px;">New Password</label>
+    <input id="CPN" type="password" class="ifield" placeholder="New password"/>
+    <label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:4px;">Confirm Password</label>
+    <input id="CPC" type="password" class="ifield" placeholder="Confirm new password"/>
+    <div id="CPM" style="font-size:12px;text-align:center;margin-bottom:8px;display:none;padding:8px;border-radius:7px;"></div>
     <button class="bigbtn" onclick="changePass()">Change Password</button>
   </div>
   <div class="sec"><div class="sech">APP INFO</div>
-    <div style="font-size:13px;color:#333;padding:7px 0;border-bottom:1px solid #f0f4ff;">Company: Grover Audio Visual Services</div>
-    <div style="font-size:13px;color:#333;padding:7px 0;border-bottom:1px solid #f0f4ff;">Version: 13.0</div>
-    <div style="font-size:13px;color:#333;padding:7px 0;">Purpose: Staff Deployment Management</div>
+    <div style="padding:7px 0;border-bottom:1px solid #f0f4ff;font-size:13px;">Grover Audio Visual Services</div>
+    <div style="padding:7px 0;font-size:13px;color:#888;">Staff Deployment System v16</div>
   </div>
   <button onclick="doLogout()" style="display:block;width:100%;background:#ffebee;border:1.5px solid #ffcdd2;color:#c62828;border-radius:9px;padding:12px 0;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;">Logout</button>
 </div>
 
-</div><!-- end appBody -->
+</div>
 
 <script>
-// ── DATA ──────────────────────────────────────────────────────────────────────
-var CREDS = [{u:"admin",p:"gavs2024"},{u:"grover",p:"audio123"}];
-var curUser = "";
-var CLRS = ["#1565c0","#6a1b9a","#0277bd","#1b5e20","#b71c1c","#880e4f","#e65100","#00695c","#33691e","#4527a0","#c62828","#4e342e","#00796b","#ad1457","#283593"];
-var TIMES = ["6:00 AM","7:00 AM","8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM"];
-var MONS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-var VNS = ["The Leela Palace New Delhi","The Oberoi New Delhi","ITC Maurya New Delhi","Taj Mahal Hotel New Delhi","The Imperial New Delhi","Hyatt Regency Delhi","Radisson Blu Plaza Delhi Airport","Le Meridien New Delhi","The Ashok New Delhi","Sheraton New Delhi Hotel","Eros Hotel New Delhi","The Suryaa New Delhi","Crowne Plaza Today Okhla","JW Marriott New Delhi Aerocity","Pullman New Delhi Aerocity","Novotel New Delhi Aerocity","Andaz Delhi","Aloft New Delhi Aerocity","Ibis New Delhi Aerocity","Pride Plaza Hotel Aerocity","Holiday Inn New Delhi Aerocity","Roseate House New Delhi","The Grand New Delhi","Shangri-La Eros New Delhi","Lalit New Delhi","Hans Hotel New Delhi","The Manor New Delhi","Hotel Bristol New Delhi","Jaypee Siddharth New Delhi","Vivanta New Delhi Dwarka","Lemon Tree Premier New Delhi","The Westin Gurgaon","Trident Gurgaon","Hyatt Place Gurgaon","Courtyard by Marriott Gurgaon","ITC Grand Bharat Gurgaon","Hilton Garden Inn Gurgaon","Four Points by Sheraton Gurgaon","DoubleTree Hilton Gurgaon","Le Meridien Gurgaon","Park Hyatt Gurgaon","Radisson Blu MBD Noida","Crowne Plaza Greater Noida","Jaypee Greens Golf Resort Noida","The Westin Sohna Resort","Vivanta Surajkund","Sheraton Saket New Delhi","Fortune Select Excalibur Gurgaon","Country Inn Sahibabad","Maidens Hotel Delhi"];
-var ROLES = ["Manager","Sound Engineer","Lighting Tech","AV Tech","Stage Manager","Camera Operator","Video Tech","Crew Lead","Setup Specialist","Live Stream Tech","Projection Tech","DJ Operator","Truss Rigger"];
-var staff = [];
-var venues = [];
-var asgn = {};
-var lvMap = {};
-var offMap = {};
-var dlog = {};
-var curV = null;
-var curRole = "All";
-var lTab = "a";
-var oTab = "a";
-var mTab = "staff";
-var pDel = null;
+// ALL JS strings that contain HTML use single quotes as delimiters
+// HTML attributes inside those strings use double quotes - this is valid JS
 
-// ── INIT venues ───────────────────────────────────────────────────────────────
-function mkId(){return "_"+Math.random().toString(36).slice(2,9);}
+var CREDS = [{u:'admin',p:'gavs2024'},{u:'grover',p:'audio123'}];
+var curUser = '';
+var CLRS = ['#1565c0','#6a1b9a','#0277bd','#1b5e20','#b71c1c','#880e4f','#e65100','#00695c','#33691e','#4527a0','#c62828','#4e342e','#00796b','#ad1457','#283593'];
+var TIMES = ['6:00 AM','7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM','7:00 PM','8:00 PM','9:00 PM','10:00 PM','11:00 PM'];
+var MONS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var VNS = ['The Leela Palace New Delhi','The Oberoi New Delhi','ITC Maurya New Delhi','Taj Mahal Hotel New Delhi','The Imperial New Delhi','Hyatt Regency Delhi','Radisson Blu Plaza Delhi Airport','Le Meridien New Delhi','The Ashok New Delhi','Sheraton New Delhi Hotel','Eros Hotel New Delhi','The Suryaa New Delhi','Crowne Plaza Today Okhla','JW Marriott New Delhi Aerocity','Pullman New Delhi Aerocity','Novotel New Delhi Aerocity','Andaz Delhi','Aloft New Delhi Aerocity','Ibis New Delhi Aerocity','Pride Plaza Hotel Aerocity','Holiday Inn New Delhi Aerocity','Roseate House New Delhi','The Grand New Delhi','Shangri-La Eros New Delhi','Lalit New Delhi','Hans Hotel New Delhi','The Manor New Delhi','Hotel Bristol New Delhi','Jaypee Siddharth New Delhi','Vivanta New Delhi Dwarka','Lemon Tree Premier New Delhi','The Westin Gurgaon','Trident Gurgaon','Hyatt Place Gurgaon','Courtyard by Marriott Gurgaon','ITC Grand Bharat Gurgaon','Hilton Garden Inn Gurgaon','Four Points by Sheraton Gurgaon','DoubleTree Hilton Gurgaon','Le Meridien Gurgaon','Park Hyatt Gurgaon','Radisson Blu MBD Noida','Crowne Plaza Greater Noida','Jaypee Greens Golf Resort Noida','The Westin Sohna Resort','Vivanta Surajkund','Sheraton Saket New Delhi','Fortune Select Excalibur Gurgaon','Country Inn Sahibabad','Maidens Hotel Delhi'];
+var ROLES = ['Manager','Sound Engineer','Lighting Tech','AV Tech','Stage Manager','Camera Operator','Video Tech','Crew Lead','Setup Specialist','Live Stream Tech','Projection Tech','DJ Operator','Truss Rigger'];
+var staff=[], venues=[], asgn={}, lvMap={}, offMap={}, dlog={};
+var curV=null, curRole='All', lTab='a', oTab='a', mTab='staff', pDel=null;
+
+function mkId(){return '_'+Math.random().toString(36).slice(2,9);}
 VNS.forEach(function(n){venues.push({id:mkId(),name:n,vip:false});});
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
-function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-function cc(r){if(r==="Manager")return"#1a237e";var i=ROLES.indexOf(r);return CLRS[i>=0?i%CLRS.length:0]||"#1565c0";}
-function ini(n){var p=n.trim().split(" ");return(p[0]||"?")[0].toUpperCase()+((p[1]||"")[0]||"").toUpperCase();}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function cc(r){if(r==='Manager')return '#1a237e';var i=ROLES.indexOf(r);return CLRS[i>=0?i%CLRS.length:0]||'#1565c0';}
+function ini(n){var p=n.trim().split(' ');return(p[0]||'?')[0].toUpperCase()+((p[1]||'')[0]||'').toUpperCase();}
 function nd(d){var x=new Date(d);x.setDate(x.getDate()+1);return x.toISOString().slice(0,10);}
-function fd(d){return new Date(d).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});}
-function getD(){return document.getElementById("datepicker").value||new Date().toISOString().slice(0,10);}
-function isMgr(e){return e&&e.role==="Manager";}
+function fd(d){return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});}
+function getD(){return document.getElementById('DP').value||new Date().toISOString().slice(0,10);}
+function isMgr(e){return e&&e.role==='Manager';}
 function getTeam(vid){return Object.values(asgn[vid]||{});}
 function getAids(){var r=[];Object.values(asgn).forEach(function(m){Object.keys(m).forEach(function(i){r.push(i);});});return r;}
-function mkTsel(cur,cb){return '<select class="tsel" onchange="'+cb+'">'+TIMES.map(function(t){return'<option'+(t===cur?' selected':'')+'>'+t+'</option>';}).join('')+'</select>';}
+function mkTsel(cur,cb){
+  var opts=TIMES.map(function(t){return '<option'+(t===cur?' selected':'')+'>'+t+'</option>';}).join('');
+  return '<select class="tsel" onchange="'+cb+'">'+opts+'</select>';
+}
+function g(id){return document.getElementById(id);}
 
-// ── TOAST ─────────────────────────────────────────────────────────────────────
 var TT;
-function toast(msg,t){var el=document.getElementById("toast");el.textContent=msg;el.style.background=t==="e"?"#c62828":t==="w"?"#e65100":"#1b5e20";el.style.display="block";clearTimeout(TT);TT=setTimeout(function(){el.style.display="none";},2500);}
+function toast(msg,t){var el=g('toast');el.textContent=msg;el.style.background=t==='e'?'#c62828':t==='w'?'#e65100':'#1b5e20';el.style.display='block';clearTimeout(TT);TT=setTimeout(function(){el.style.display='none';},2500);}
+function showModal(h){g('mbox').innerHTML=h;g('modal').classList.remove('hide');}
+function closeModal(){g('modal').classList.add('hide');}
 
-// ── MODAL ─────────────────────────────────────────────────────────────────────
-function showModal(h){document.getElementById("mbox").innerHTML=h;document.getElementById("modal").classList.remove("hide");}
-function closeModal(){document.getElementById("modal").classList.add("hide");}
-
-// ── LOGIN ─────────────────────────────────────────────────────────────────────
 function doLogin(){
-  var u=(document.getElementById("lusr").value||"").trim().toLowerCase();
-  var p=(document.getElementById("lpas").value||"").trim();
+  var u=(g('LU').value||'').trim().toLowerCase();
+  var p=(g('LP').value||'').trim();
   var ok=null;
   for(var i=0;i<CREDS.length;i++){if(CREDS[i].u===u&&CREDS[i].p===p){ok=CREDS[i];break;}}
   if(ok){
     curUser=u;
-    document.getElementById("loginScreen").style.display="none";
-    document.getElementById("appHdr").style.display="block";
-    document.getElementById("appBody").style.display="block";
-    document.getElementById("lerr").style.display="none";
+    g('LS').style.display='none';
+    g('AH').style.display='block';
+    g('AB').style.display='block';
+    g('LE').style.display='none';
     initApp();
-    toast("Welcome, "+u+"!");
+    toast('Welcome '+u+'!');
   } else {
-    document.getElementById("lerr").style.display="block";
-    document.getElementById("lpas").value="";
+    g('LE').style.display='block';
+    g('LP').value='';
   }
 }
 
 function doLogout(){
-  curUser="";
-  document.getElementById("loginScreen").style.display="flex";
-  document.getElementById("appHdr").style.display="none";
-  document.getElementById("appBody").style.display="none";
-  document.getElementById("lpas").value="";
-  document.getElementById("lusr").value="";
-  toast("Logged out","w");
+  curUser='';
+  g('LS').style.display='flex';
+  g('AH').style.display='none';
+  g('AB').style.display='none';
+  g('LP').value='';g('LU').value='';
+  toast('Logged out','w');
 }
 
-// ── APP INIT ──────────────────────────────────────────────────────────────────
 function initApp(){
-  document.getElementById("datepicker").value=new Date().toISOString().slice(0,10);
-  initSRDropdowns();
+  g('DP').value=new Date().toISOString().slice(0,10);
+  initSRDrops();
   applyPinned();
   drawStats();
   drawVenues();
 }
 
-// ── NAVIGATION ────────────────────────────────────────────────────────────────
 function go(s){
-  document.querySelectorAll(".screen").forEach(function(x){x.classList.remove("active");});
-  document.querySelectorAll(".nb").forEach(function(x){x.classList.remove("on");});
-  var sc=document.getElementById("screen-"+s);if(sc)sc.classList.add("active");
-  var nb=document.getElementById("nb-"+(s==="detail"?"venues":s));if(nb)nb.classList.add("on");
+  document.querySelectorAll('.screen').forEach(function(x){x.classList.remove('active');});
+  document.querySelectorAll('.nb').forEach(function(x){x.classList.remove('on');});
+  var sc=g('screen-'+s);if(sc)sc.classList.add('active');
+  var nb=g('nb-'+(s==='detail'?'venues':s));if(nb)nb.classList.add('on');
   drawStats();
-  if(s==="venues")drawVenues();
-  else if(s==="assign")drawAssign();
-  else if(s==="detail")drawDetail();
-  else if(s==="manage")drawManage();
-  else if(s==="leave"){lTab="a";styleLTabs();drawLeave();}
-  else if(s==="office"){oTab="a";styleOTabs();drawOffice();}
-  else if(s==="report")drawReport();
-  else if(s==="staffrep")drawSR();
+  if(s==='venues')drawVenues();
+  else if(s==='assign')drawAssign();
+  else if(s==='detail')drawDetail();
+  else if(s==='manage')drawManage();
+  else if(s==='leave'){lTab='a';styleLT();drawLeave();}
+  else if(s==='office'){oTab='a';styleOT();drawOffice();}
+  else if(s==='report')drawReport();
+  else if(s==='staffrep')drawSR();
 }
 
-// ── STATS ─────────────────────────────────────────────────────────────────────
 function drawStats(){
   var a=getAids().length,l=Object.keys(lvMap).length,o=Object.keys(offMap).length,f=Math.max(0,staff.length-a-l-o);
-  document.getElementById("statsBar").innerHTML=
-    "<div class="stt"><div class="stv">"+staff.length+"</div><div class="stl">Staff</div></div>"+
-    "<div class="stt"><div class="stv" style="color:#90ef90;">"+a+"</div><div class="stl">Deployed</div></div>"+
-    "<div class="stt"><div class="stv" style="color:#ff8a80;">"+l+"</div><div class="stl">Leave</div></div>"+
-    "<div class="stt"><div class="stv" style="color:#ffcc80;">"+o+"</div><div class="stl">Office</div></div>"+
-    "<div class="stt"><div class="stv" style="color:#ce93d8;">"+f+"</div><div class="stl">Free</div></div>";
+  g('SB').innerHTML=
+    '<div class="stt"><div class="stv">'+staff.length+'</div><div class="stl">Staff</div></div>'+
+    '<div class="stt"><div class="stv" style="color:#90ef90;">'+a+'</div><div class="stl">Deployed</div></div>'+
+    '<div class="stt"><div class="stv" style="color:#ff8a80;">'+l+'</div><div class="stl">Leave</div></div>'+
+    '<div class="stt"><div class="stv" style="color:#ffcc80;">'+o+'</div><div class="stl">Office</div></div>'+
+    '<div class="stt"><div class="stv" style="color:#ce93d8;">'+f+'</div><div class="stl">Free</div></div>';
 }
 
-// ── PINNED STAFF ──────────────────────────────────────────────────────────────
 function applyPinned(){
   var lids=Object.keys(lvMap),oids=Object.keys(offMap);
   staff.forEach(function(e){
-    if(!e.pinnedVenue)return;
+    if(!e.pv)return;
     if(lids.indexOf(e.id)>=0||oids.indexOf(e.id)>=0)return;
-    var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===e.pinnedVenue){v=venues[i];break;}}
+    var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===e.pv){v=venues[i];break;}}
     if(!v)return;
-    Object.keys(asgn).forEach(function(vid){if(vid!==e.pinnedVenue&&asgn[vid][e.id])delete asgn[vid][e.id];});
-    if(!asgn[e.pinnedVenue])asgn[e.pinnedVenue]={};
-    if(!asgn[e.pinnedVenue][e.id])asgn[e.pinnedVenue][e.id]={emp:e,duty:"6:00 AM",pinned:true};
+    Object.keys(asgn).forEach(function(vid){if(vid!==e.pv&&asgn[vid]&&asgn[vid][e.id])delete asgn[vid][e.id];});
+    if(!asgn[e.pv])asgn[e.pv]={};
+    if(!asgn[e.pv][e.id])asgn[e.pv][e.id]={emp:e,duty:'6:00 AM',pinned:true};
   });
 }
 
-// ── VENUES ────────────────────────────────────────────────────────────────────
 function drawVenues(){
-  var q=(document.getElementById("vsrch")||{}).value||"";
-  var el=document.getElementById("vlist");if(!el)return;
+  var q=(g('VS')||{}).value||'';
+  var el=g('VL');if(!el)return;
   var fv=venues.filter(function(v){return v.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
-  var vips=fv.filter(function(v){return v.vip;});
-  var rest=fv.filter(function(v){return !v.vip;});
+  var vips=fv.filter(function(v){return v.vip;}),rest=fv.filter(function(v){return !v.vip;});
   var list=vips.concat(rest);
-  if(!list.length){el.innerHTML="<div class="empty">No venues found.</div>";return;}
-  var h="";
+  if(!list.length){el.innerHTML='<div class="empty">No venues.</div>';return;}
+  var h='';
   list.forEach(function(v){
     var t=getTeam(v.id);
     var mgrs=t.filter(function(a){return isMgr(a.emp);});
-    var mh=mgrs.map(function(a){return '<div class="mbar"><span style="font-size:13px;">M</span><div><div class="mnm">'+esc(a.emp.name)+'</div>'+(a.emp.phone?'<div class="mph">Ph: '+esc(a.emp.phone)+'</div>':'')+'</div></div>';}).join('');
-    var prev=t.filter(function(a){return !isMgr(a.emp);}).slice(0,4).map(function(a){var c=cc(a.emp.role);return "<span style="font-size:10px;color:"+c+";background:"+c+"18;border:1px solid "+c+"33;border-radius:4px;padding:2px 6px;">"+esc(a.emp.name.split(" ")[0])+"</span>";}).join("");
-    if(t.filter(function(a){return !isMgr(a.emp);}).length>4)prev+="<span style="font-size:10px;color:#888;">+more</span>";
-    h+=(v.vip?"<div style="font-size:9px;font-weight:800;color:#fff;background:#f9a825;padding:3px 13px;">VIP EVENT</div>":"")+
-      "<div class="vcard"+(v.vip?" vip":"")+"" onclick="openV('"+v.id+"')">"+mh+
-      "<div class="vrow"><div class="vnum">V"+(venues.indexOf(v)+1)+"</div>"+
-      "<div style="flex:1;min-width:0;"><div class="vname">"+esc(v.name)+"</div>"+
-      "<div class="vmeta"><span style="color:#1565c0;font-weight:700;">"+t.length+"</span> staff</div></div>"+
-      (t.length?"<div style="background:#1565c0;color:#fff;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;flex-shrink:0;">"+t.length+"</div>":"")+
-      "<span style="font-size:18px;color:#bbb;margin-left:3px;"> ></span></div>"+
-      (prev?"<div class="vprev">"+prev+"</div>":"")+
-    "</div>";
+    var mh=mgrs.map(function(a){
+      return '<div class="mbar"><span style="font-size:12px;">M</span><div><div class="mnm">'+esc(a.emp.name)+'</div>'+(a.emp.phone?'<div class="mph">Ph: '+esc(a.emp.phone)+'</div>':'')+'</div></div>';
+    }).join('');
+    var nonmgr=t.filter(function(a){return !isMgr(a.emp);});
+    var prev=nonmgr.slice(0,4).map(function(a){
+      var c=cc(a.emp.role);
+      return '<span style="font-size:10px;color:'+c+';background:'+c+'18;border:1px solid '+c+'33;border-radius:4px;padding:2px 6px;">'+esc(a.emp.name.split(' ')[0])+'</span>';
+    }).join('');
+    if(nonmgr.length>4)prev+='<span style="font-size:10px;color:#888;">+more</span>';
+    h+=(v.vip?'<div style="font-size:9px;font-weight:800;color:#fff;background:#f9a825;padding:3px 13px;">VIP EVENT</div>':'')+
+      '<div class="vcard'+(v.vip?' vip':'')+'" onclick="openV(\''+v.id+'\')">'+(mh)+
+      '<div class="vrow"><div class="vnum">V'+(venues.indexOf(v)+1)+'</div>'+
+      '<div style="flex:1;min-width:0;"><div class="vname">'+esc(v.name)+'</div>'+
+      '<div class="vmeta"><span style="color:#1565c0;font-weight:700;">'+t.length+'</span> staff</div></div>'+
+      (t.length?'<div style="background:#1565c0;color:#fff;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;flex-shrink:0;">'+t.length+'</div>':'')+
+      '<span style="font-size:18px;color:#bbb;margin-left:3px;">&gt;</span></div>'+
+      (prev?'<div class="vprev">'+prev+'</div>':'')+
+      '</div>';
   });
   el.innerHTML=h;
 }
 
-function openV(id){curV=id;curRole="All";var el=document.getElementById("addsrch");if(el)el.value="";go("detail");}
+function openV(id){curV=id;curRole='All';var el=g('ADDS');if(el)el.value='';go('detail');}
 
-// ── ASSIGN DUTIES ─────────────────────────────────────────────────────────────
 function drawAssign(){
-  var q=(document.getElementById("asrch")||{}).value||"";
-  var el=document.getElementById("alist2");if(!el)return;
+  var q=(g('AS2')||{}).value||'';
+  var el=g('AL2');if(!el)return;
   var fv=venues.filter(function(v){return v.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
-  if(!fv.length){el.innerHTML="<div class="empty">No venues found.</div>";return;}
-  var h="";
+  if(!fv.length){el.innerHTML='<div class="empty">No venues.</div>';return;}
+  var h='';
   fv.forEach(function(v){
     var t=getTeam(v.id);
-    var mgrs=t.filter(function(a){return isMgr(a.emp);});
-    h+=(v.vip?"<div style="font-size:9px;font-weight:800;color:#fff;background:#f9a825;padding:3px 13px;">VIP EVENT</div>":"")+
-      "<div style="background:#fff;border:1.5px solid "+(v.vip?"#f9a825":"#e3eaff")+";border-radius:13px;margin-bottom:9px;overflow:hidden;">";
-    mgrs.forEach(function(a){h+="<div class="mbar"><span>M</span><div><div class="mnm">"+esc(a.emp.name)+"</div>"+(a.emp.phone?"<div class="mph">Ph: "+esc(a.emp.phone)+"</div>":"")+"</div></div>";});
-    h+="<div style="display:flex;align-items:center;padding:11px 13px 8px;gap:9px;">"+
-      "<div style="font-weight:800;font-size:10px;color:#1565c0;background:#e3eaff;border-radius:5px;padding:2px 7px;flex-shrink:0;">V"+(venues.indexOf(v)+1)+"</div>"+
-      "<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0d47a1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">"+esc(v.name)+"</div>"+
-      "<div style="font-size:10px;color:#666;"><span style="color:#1565c0;font-weight:700;">"+t.length+"</span> staff assigned</div></div>"+
-      "<button onclick="openV('"+v.id+"');" style="background:#1565c0;border:none;color:#fff;border-radius:8px;padding:7px 13px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;">Assign +</button></div>";
+    h+='<div style="background:#fff;border:1.5px solid #e3eaff;border-radius:13px;margin-bottom:9px;overflow:hidden;">';
+    h+='<div style="display:flex;align-items:center;padding:11px 13px;gap:9px;">';
+    h+='<div style="font-weight:800;font-size:10px;color:#1565c0;background:#e3eaff;border-radius:5px;padding:2px 7px;flex-shrink:0;">V'+(venues.indexOf(v)+1)+'</div>';
+    h+='<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0d47a1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(v.name)+'</div>';
+    h+='<div style="font-size:10px;color:#666;"><span style="color:#1565c0;font-weight:700;">'+t.length+'</span> staff</div></div>';
+    h+='<button onclick="openV(\''+v.id+'\')" style="background:#1565c0;border:none;color:#fff;border-radius:8px;padding:7px 13px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;">Assign +</button>';
+    h+='</div>';
     if(t.length){
-      h+="<div style="display:flex;flex-wrap:wrap;gap:4px;padding:3px 13px 11px;">";
-      t.forEach(function(a){var c=cc(a.emp.role);h+="<span style="font-size:10px;color:"+c+";background:"+c+"18;border:1px solid "+c+"33;border-radius:4px;padding:2px 7px;">"+(isMgr(a.emp)?"[M] ":"")+esc(a.emp.name)+"</span>";});
-      h+="</div>";
+      h+='<div style="display:flex;flex-wrap:wrap;gap:4px;padding:3px 13px 11px;">';
+      t.forEach(function(a){var c=cc(a.emp.role);h+='<span style="font-size:10px;color:'+c+';background:'+c+'18;border:1px solid '+c+'33;border-radius:4px;padding:2px 6px;">'+(isMgr(a.emp)?'[M] ':'')+esc(a.emp.name)+'</span>';});
+      h+='</div>';
     }
-    h+="</div>";
+    h+='</div>';
   });
   el.innerHTML=h;
 }
 
-// ── DETAIL ────────────────────────────────────────────────────────────────────
 function drawDetail(){
   var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===curV){v=venues[i];break;}}if(!v)return;
   var t=getTeam(curV);
-  document.getElementById("dtitle").textContent=v.name;
-  document.getElementById("dmeta").textContent=t.length+" staff assigned"+(v.vip?" - VIP EVENT":"");
-  document.getElementById("clearbtn").style.display=t.length?"block":"none";
-  var vb=document.getElementById("vipbtn");vb.className="vipbtn"+(v.vip?" on":"");
+  g('DT').textContent=v.name;
+  g('DM').textContent=t.length+' staff assigned'+(v.vip?' - VIP EVENT':'');
+  g('CB').style.display=t.length?'block':'none';
+  g('VB').className='vipbtn'+(v.vip?' on':'');
   var mgrs=t.filter(function(a){return isMgr(a.emp);});
   var pins=t.filter(function(a){return a.pinned&&!isMgr(a.emp);});
   var rest=t.filter(function(a){return !a.pinned&&!isMgr(a.emp);});
   var sorted=mgrs.concat(pins).concat(rest);
-  var ah="";
+  var ah='';
   if(sorted.length){
-    ah="<div class="sec"><div class="sech">ASSIGNED TEAM - "+sorted.length+" STAFF</div>";
+    ah='<div class="sec"><div class="sech">ASSIGNED - '+sorted.length+' STAFF</div>';
     sorted.forEach(function(a){
-      var c=cc(a.emp.role);var av=ini(a.emp.name);var isMG=isMgr(a.emp);
-      ah+="<div class="ac"+(isMG?" mgrc":a.pinned?" pinc":"")+"">";
-      ah+=isMG?"<div class="av" style="background:#1a237e;color:#fff;">"+av+"</div>":"<div class="av" style="background:"+c+"18;color:"+c+";border:2px solid "+c+"33;">"+av+"</div>";
-      ah+="<div style="flex:1;min-width:0;">";
-      ah+=isMG?"<div class="en" style="color:#1a237e;">"+esc(a.emp.name)+" <span class="bdg mgrb">MGR</span>"+(a.emp.phone?" Ph: "+esc(a.emp.phone):"")+"</div>":"<div class="en">"+esc(a.emp.name)+(a.pinned?" <span class="bdg pinb">FIXED</span>":"")+"</div>";
-      ah+="<div class="er" style="color:"+c+"">"+esc(a.emp.role)+"</div>";
-      ah+="<div class="drow"><span class="dlbl">Duty:</span>"+mkTsel(a.duty,"vdu('"+a.emp.id+"','"+curV+"',this.value)")+"</div>";
-      ah+="</div><button class="rmbtn" onclick=""+( a.pinned||isMG?"pinOpts('"+a.emp.id+"')":"remV('"+a.emp.id+"','"+curV+"')") +"">"+( a.pinned||isMG?"...":"x")+"</button></div>";
+      var c=cc(a.emp.role),av=ini(a.emp.name),isMG=isMgr(a.emp);
+      ah+='<div class="ac'+(isMG?' mgrc':a.pinned?' pinc':'')+'">';
+      ah+=isMG?'<div class="av" style="background:#1a237e;color:#fff;">'+av+'</div>':'<div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+av+'</div>';
+      ah+='<div style="flex:1;min-width:0;">';
+      if(isMG)ah+='<div class="en" style="color:#1a237e;">'+esc(a.emp.name)+' <span class="bdg mgrb">MGR</span>'+(a.emp.phone?' Ph:'+esc(a.emp.phone):'')+'</div>';
+      else ah+='<div class="en">'+esc(a.emp.name)+(a.pinned?' <span class="bdg pinb">FIXED</span>':'')+'</div>';
+      ah+='<div class="er" style="color:'+c+';">'+esc(a.emp.role)+'</div>';
+      ah+='<div class="drow"><span class="dlbl">Duty:</span>'+mkTsel(a.duty,"vdu('"+a.emp.id+"','"+curV+"',this.value)")+'</div>';
+      ah+='</div>';
+      ah+='<button class="rmbtn" onclick="'+(a.pinned||isMG?"pinOpts('"+a.emp.id+"')":"remV('"+a.emp.id+"','"+curV+"')")+'">'+( a.pinned||isMG?'...':'x')+'</button>';
+      ah+='</div>';
     });
-    ah+="</div>";
+    ah+='</div>';
   }
-  document.getElementById("asec").innerHTML=ah;
-  var rf="<button class="rpill"+(curRole==="All"?" on":"")+"" style=""+( curRole==="All"?"background:#1565c0;color:#fff;border:none;":"") +"" onclick="setRole('All')">All</button>";
-  ROLES.forEach(function(r){var c=cc(r);var on=curRole===r;rf+="<button class="rpill"+(on?" on":"")+"" style=""+( on?"background:"+c+";color:#fff;border:none;":"")+"" onclick="setRole('"+esc(r)+"')">"+esc(r)+"</button>";});
-  document.getElementById("rfilts").innerHTML=rf;
+  g('ASEC').innerHTML=ah;
+  var rf='<button class="rpill'+(curRole==='All'?' on':'')+'" style="'+(curRole==='All'?'background:#1565c0;color:#fff;border:none;':'')+'" onclick="setRole(\'All\')">All</button>';
+  ROLES.forEach(function(r){var c=cc(r),on=curRole===r;rf+='<button class="rpill'+(on?' on':'')+'" style="'+(on?'background:'+c+';color:#fff;border:none;':'')+'" onclick="setRole(\''+esc(r)+'\')">'+esc(r)+'</button>';});
+  g('RF').innerHTML=rf;
   drawAddStaff();
 }
 
 function setRole(r){curRole=r;drawDetail();}
 function vdu(eid,vid,val){if(asgn[vid]&&asgn[vid][eid])asgn[vid][eid].duty=val;}
-function toggleVIP(){var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===curV){v=venues[i];break;}}if(!v)return;v.vip=!v.vip;drawDetail();drawVenues();toast(v.vip?"VIP set!":"VIP removed","w");}
+function toggleVIP(){var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===curV){v=venues[i];break;}}if(!v)return;v.vip=!v.vip;drawDetail();drawVenues();toast(v.vip?'VIP set!':'VIP removed','w');}
 
 function drawAddStaff(){
-  var q=(document.getElementById("addsrch")||{}).value||"";
+  var q=(g('ADDS')||{}).value||'';
   var aids=getAids(),lids=Object.keys(lvMap),oids=Object.keys(offMap);
-  var av=staff.filter(function(e){return aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&oids.indexOf(e.id)<0&&e.name.toLowerCase().indexOf(q.toLowerCase())>=0&&(curRole==="All"||e.role===curRole);});
-  var el=document.getElementById("addlist");if(!el)return;
-  if(!staff.length){el.innerHTML="<div class="empty">No staff yet. Go to Manage tab.</div>";return;}
-  if(!av.length){el.innerHTML="<div class="empty">No available staff.</div>";return;}
-  el.innerHTML=av.map(function(e){
+  var av=staff.filter(function(e){return aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&oids.indexOf(e.id)<0&&e.name.toLowerCase().indexOf(q.toLowerCase())>=0&&(curRole==='All'||e.role===curRole);});
+  var el=g('AL');if(!el)return;
+  if(!staff.length){el.innerHTML='<div class="empty">No staff yet. Go to Manage.</div>';return;}
+  if(!av.length){el.innerHTML='<div class="empty">No available staff.</div>';return;}
+  var h='';
+  av.forEach(function(e){
     var c=cc(e.role);
-      return '<div class="sr" ontouchstart="tStart(event,\''+e.id+'\');" onclick="addE(\''+e.id+'\');">'+
-        '<div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div>'+
-        '<div style="flex:1;min-width:0;"><div class="en">'+esc(e.name)+(isMgr(e)?' [MGR]':'')+(e.pinnedVenue===curV?' [Fixed]':'')+'</div>'+
-        '<div class="er" style="color:'+c+'">'+esc(e.role)+'</div>'+(e.phone?'<div style="font-size:10px;color:#888;">Ph: '+esc(e.phone)+'</div>':'')+
-        '</div><button class="addbtn" onclick="event.stopPropagation();addE(\''+e.id+'\');">+ Add</button></div>';
-      "<div class="av" style="background:"+c+"18;color:"+c+";border:2px solid "+c+"33;">"+ini(e.name)+"</div>"+
-      "<div style="flex:1;min-width:0;"><div class="en">"+esc(e.name)+(isMgr(e)?" [MGR]":"")+(e.pinnedVenue===curV?" [Fixed]":"")+"</div>"+
-      "<div class="er" style="color:"+c+"">"+esc(e.role)+"</div>"+(e.phone?"<div style="font-size:10px;color:#888;">Ph: "+esc(e.phone)+"</div>":"")+
-      "</div><button class="addbtn" onclick="event.stopPropagation();addE('"+e.id+"');">+ Add</button></div>";
-  }).join("");
+    h+='<div class="sr" ontouchstart="tStart(event,\''+e.id+'\')" onclick="addE(\''+e.id+'\')">';
+    h+='<div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div>';
+    h+='<div style="flex:1;min-width:0;"><div class="en">'+esc(e.name)+(isMgr(e)?' [MGR]':'')+(e.pv===curV?' [Fixed]':'')+'</div>';
+    h+='<div class="er" style="color:'+c+';">'+esc(e.role)+'</div>'+(e.phone?'<div style="font-size:10px;color:#888;">Ph:'+esc(e.phone)+'</div>':'')+'</div>';
+    h+='<button class="addbtn" onclick="event.stopPropagation();addE(\''+e.id+'\')">+ Add</button>';
+    h+='</div>';
+  });
+  el.innerHTML=h;
 }
 
 function addE(eid){
   var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}if(!e||!curV)return;
   if(!asgn[curV])asgn[curV]={};
-  Object.keys(asgn).forEach(function(vid){if(asgn[vid][eid])delete asgn[vid][eid];});
+  Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid])delete asgn[vid][eid];});
   delete lvMap[eid];delete offMap[eid];
-  asgn[curV][eid]={emp:e,duty:"6:00 AM",pinned:e.pinnedVenue===curV};
+  asgn[curV][eid]={emp:e,duty:'6:00 AM',pinned:e.pv===curV};
   var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===curV){v=venues[i];break;}}
-  toast(e.name+" added to "+(v?v.name:"venue"));
-  drawDetail();drawStats();
+  toast(e.name+' added to '+(v?v.name:'venue'));drawDetail();drawStats();
 }
-
 function remV(eid,vid){if(asgn[vid])delete asgn[vid][eid];drawDetail();drawStats();}
-function clearVen(){if(curV)asgn[curV]={};toast("Cleared","w");drawDetail();drawStats();}
+function clearVen(){if(curV)asgn[curV]={};toast('Cleared','w');drawDetail();drawStats();}
 
 function pinOpts(eid){
   var a=asgn[curV]&&asgn[curV][eid];if(!a)return;
   var emp=a.emp;
-  var vopts=venues.filter(function(v){return v.id!==curV;}).map(function(v){return '<button class="mbtn grn" onclick="movePin(\''+eid+'\',\''+v.id+'\');closeModal();">Move to: '+esc(v.name)+'</button>';}).join('');
-  showModal("<div class="mtitle">"+esc(emp.name)+"</div>"+
-    "<button class="mbtn warn" onclick="mvLeave('"+eid+"');closeModal();">Give Leave Today</button>"+
-    "<button class="mbtn warn" onclick="mvOffice('"+eid+"');closeModal();">Give Office Duty Today</button>"+
-    "<div style="font-size:10px;color:#888;margin:10px 0 6px;font-weight:700;">MOVE TO:</div>"+
-    "<div style="max-height:200px;overflow-y:auto;">"+vopts+"</div>"+
-    "<button class="mbtn red" onclick="remV('"+eid+"','"+curV+"');closeModal();">Remove from Venue</button>"+
-    "<button class="mcancel" onclick="closeModal()">Cancel</button>");
+  var vo=venues.filter(function(v){return v.id!==curV;}).map(function(v){
+    return '<button class="mbtn grn" onclick="movePin(\''+eid+'\',\''+v.id+'\');closeModal();">Move: '+esc(v.name)+'</button>';
+  }).join('');
+  showModal('<div class="mtitle">'+esc(emp.name)+'</div>'+
+    '<button class="mbtn warn" onclick="mvLeave(\''+eid+'\');closeModal();">Give Leave Today</button>'+
+    '<button class="mbtn warn" onclick="mvOffice(\''+eid+'\');closeModal();">Give Office Duty Today</button>'+
+    '<div style="font-size:10px;color:#888;margin:10px 0 6px;font-weight:700;">MOVE TO VENUE:</div>'+
+    '<div style="max-height:200px;overflow-y:auto;">'+vo+'</div>'+
+    '<button class="mbtn red" onclick="remV(\''+eid+'\',\''+curV+'\');closeModal();">Remove</button>'+
+    '<button class="mcancel" onclick="closeModal()">Cancel</button>');
 }
+function movePin(eid,vid){var a=asgn[curV]&&asgn[curV][eid];if(!a)return;if(!asgn[vid])asgn[vid]={};asgn[vid][eid]=JSON.parse(JSON.stringify(a));delete asgn[curV][eid];drawDetail();drawStats();toast('Moved!');}
+function mvLeave(eid){var a=asgn[curV]&&asgn[curV][eid];if(!a)return;lvMap[eid]={emp:a.emp,duty:a.duty};delete asgn[curV][eid];toast('On leave','w');drawDetail();drawStats();}
+function mvOffice(eid){var a=asgn[curV]&&asgn[curV][eid];if(!a)return;offMap[eid]={emp:a.emp,duty:a.duty};delete asgn[curV][eid];toast('In office','w');drawDetail();drawStats();}
 
-function movePin(eid,vid){var a=asgn[curV]&&asgn[curV][eid];if(!a)return;if(!asgn[vid])asgn[vid]={};asgn[vid][eid]=Object.assign({},a);delete asgn[curV][eid];drawDetail();drawStats();toast("Moved!");}
-function mvLeave(eid){var a=asgn[curV]&&asgn[curV][eid];if(!a)return;lvMap[eid]={emp:a.emp,duty:a.duty};delete asgn[curV][eid];toast("On leave","w");drawDetail();drawStats();}
-function mvOffice(eid){var a=asgn[curV]&&asgn[curV][eid];if(!a)return;offMap[eid]={emp:a.emp,duty:a.duty};delete asgn[curV][eid];toast("In office","w");drawDetail();drawStats();}
-
-// ── MANAGE ────────────────────────────────────────────────────────────────────
 function mtab(t){
   mTab=t;
-  ["staff","venues","roles"].forEach(function(x){
-    document.getElementById("mp-"+x).classList.toggle("hide",x!==t);
-    document.getElementById("mt-"+x).classList.toggle("on",x===t);
-  });
+  ['staff','venues','roles'].forEach(function(x){g('mp-'+x).classList.toggle('hide',x!==t);g('mt-'+x).classList.toggle('on',x===t);});
   drawManage();
 }
-function drawManage(){fillRDD();fillPDD();if(mTab==="staff")drawMStaff();else if(mTab==="venues")drawMVenues();else if(mTab==="roles")drawMRoles();}
-function fillRDD(){var el=document.getElementById("nsrole");if(!el)return;var cur=el.value;el.innerHTML=ROLES.map(function(r){return"<option"+(r===cur?" selected":"")+">"+esc(r)+"</option>";}).join("");togglePh();}
-function togglePh(){var r=document.getElementById("nsrole").value;document.getElementById("nsphone").style.display=r==="Manager"?"block":"none";}
-function fillPDD(){var el=document.getElementById("nspin");if(!el)return;var cur=el.value;el.innerHTML="<option value="">No Fixed Venue</option>"+venues.map(function(v){return"<option value=""+v.id+"""+(v.id===cur?" selected":"")+">"+esc(v.name)+"</option>";}).join("");}
+function drawManage(){fillRDD();fillPDD();if(mTab==='staff')drawMStaff();else if(mTab==='venues')drawMVenues();else drawMRoles();}
+function fillRDD(){var el=g('NSR');if(!el)return;var cur=el.value;el.innerHTML=ROLES.map(function(r){return'<option'+(r===cur?' selected':'')+'>'+esc(r)+'</option>';}).join('');togglePh();}
+function togglePh(){var r=(g('NSR')||{}).value||'';if(g('NSPH'))g('NSPH').style.display=r==='Manager'?'block':'none';}
+function fillPDD(){var el=g('NSP');if(!el)return;var cur=el.value;el.innerHTML='<option value="">No Fixed Venue</option>'+venues.map(function(v){return'<option value="'+v.id+'"'+(v.id===cur?' selected':'')+'>'+esc(v.name)+'</option>';}).join('');}
 
 function addStaff(){
-  var n=(document.getElementById("nsname").value||"").trim();
-  var r=document.getElementById("nsrole").value||ROLES[0];
-  var ph=(document.getElementById("nsphone").value||"").trim();
-  var pin=document.getElementById("nspin").value||"";
-  if(!n){toast("Enter a name","w");return;}
-  var e={id:mkId(),name:n,role:r,phone:ph,pinnedVenue:pin};
-  staff.push(e);
-  document.getElementById("nsname").value="";document.getElementById("nsphone").value="";
-  if(pin){if(!asgn[pin])asgn[pin]={};if(!asgn[pin][e.id])asgn[pin][e.id]={emp:e,duty:"6:00 AM",pinned:true};}
-  toast(n+" added!");drawMStaff();drawStats();refreshSREmp();
+  var n=(g('NSN').value||'').trim(),r=(g('NSR').value||ROLES[0]),ph=(g('NSPH').value||'').trim(),pv=(g('NSP').value||'');
+  if(!n){toast('Enter a name','w');return;}
+  var e={id:mkId(),name:n,role:r,phone:ph,pv:pv};
+  staff.push(e);g('NSN').value='';if(g('NSPH'))g('NSPH').value='';
+  if(pv){if(!asgn[pv])asgn[pv]={};if(!asgn[pv][e.id])asgn[pv][e.id]={emp:e,duty:'6:00 AM',pinned:true};}
+  toast(n+' added!');drawMStaff();drawStats();refreshSREmp();
 }
 
-function delStaff(eid){var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}if(!e)return;pDel={type:"staff",id:eid,name:e.name};showModal("<div class="mtitle" style="color:#c62828;">Delete Staff?</div><div style="text-align:center;font-size:14px;color:#333;margin-bottom:14px;">Delete <strong>"+esc(e.name)+"</strong>?</div><button class="mbtn red" onclick="doDel()">Yes Delete</button><button class="mcancel" onclick="closeModal()">Cancel</button>");}
-function delVenue(vid){var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===vid){v=venues[i];break;}}if(!v)return;var tc=getTeam(vid).length;pDel={type:"venue",id:vid,name:v.name};showModal("<div class="mtitle" style="color:#c62828;">Delete Venue?</div><div style="text-align:center;font-size:14px;color:#333;margin-bottom:8px;">Delete <strong>"+esc(v.name)+"</strong>?</div>"+(tc?"<div style="color:#e65100;font-size:12px;text-align:center;margin-bottom:12px;">"+tc+" staff will be unassigned.</div>":"")+"<button class="mbtn red" onclick="doDel()">Yes Delete</button><button class="mcancel" onclick="closeModal()">Cancel</button>");}
-function delRole(r){if(r==="Manager"){toast("Cannot delete Manager","e");return;}pDel={type:"role",id:r,name:r};showModal("<div class="mtitle" style="color:#c62828;">Delete Role?</div><div style="text-align:center;font-size:14px;margin-bottom:14px;">Delete <strong>"+esc(r)+"</strong>?</div><button class="mbtn red" onclick="doDel()">Yes Delete</button><button class="mcancel" onclick="closeModal()">Cancel</button>");}
-
+function delStaff(eid){
+  var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}if(!e)return;
+  pDel={type:'staff',id:eid,name:e.name};
+  showModal('<div class="mtitle" style="color:#c62828;">Delete Staff?</div><div style="text-align:center;font-size:14px;color:#333;margin-bottom:14px;">Delete <strong>'+esc(e.name)+'</strong>?</div><button class="mbtn red" onclick="doDel()">Yes Delete</button><button class="mcancel" onclick="closeModal()">Cancel</button>');
+}
+function delVenue(vid){
+  var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===vid){v=venues[i];break;}}if(!v)return;
+  var tc=getTeam(vid).length;pDel={type:'venue',id:vid,name:v.name};
+  showModal('<div class="mtitle" style="color:#c62828;">Delete Venue?</div><div style="text-align:center;font-size:14px;margin-bottom:8px;">Delete <strong>'+esc(v.name)+'</strong>?</div>'+(tc?'<div style="color:#e65100;font-size:12px;text-align:center;margin-bottom:12px;">'+tc+' staff unassigned.</div>':'')+' <button class="mbtn red" onclick="doDel()">Yes Delete</button><button class="mcancel" onclick="closeModal()">Cancel</button>');
+}
+function delRole(r){if(r==='Manager'){toast('Cannot delete Manager','e');return;}pDel={type:'role',id:r,name:r};showModal('<div class="mtitle" style="color:#c62828;">Delete Role?</div><div style="text-align:center;font-size:14px;margin-bottom:14px;">Delete <strong>'+esc(r)+'</strong>?</div><button class="mbtn red" onclick="doDel()">Yes Delete</button><button class="mcancel" onclick="closeModal()">Cancel</button>');}
 function doDel(){
   if(!pDel){closeModal();return;}var pd=pDel;pDel=null;closeModal();
-  if(pd.type==="staff"){staff=staff.filter(function(e){return e.id!==pd.id;});delete lvMap[pd.id];delete offMap[pd.id];Object.keys(asgn).forEach(function(v){delete asgn[v][pd.id];});toast(pd.name+" removed","w");drawMStaff();drawStats();refreshSREmp();}
-  else if(pd.type==="venue"){venues=venues.filter(function(v){return v.id!==pd.id;});delete asgn[pd.id];staff.forEach(function(e){if(e.pinnedVenue===pd.id)e.pinnedVenue="";});toast("Venue removed","w");drawMVenues();drawVenues();fillPDD();}
-  else if(pd.type==="role"){ROLES.splice(ROLES.indexOf(pd.id),1);toast(pd.name+" removed","w");drawMRoles();fillRDD();}
+  if(pd.type==='staff'){staff=staff.filter(function(e){return e.id!==pd.id;});delete lvMap[pd.id];delete offMap[pd.id];Object.keys(asgn).forEach(function(v){if(asgn[v])delete asgn[v][pd.id];});toast(pd.name+' removed','w');drawMStaff();drawStats();refreshSREmp();}
+  else if(pd.type==='venue'){venues=venues.filter(function(v){return v.id!==pd.id;});delete asgn[pd.id];staff.forEach(function(e){if(e.pv===pd.id)e.pv='';});toast('Venue removed','w');drawMVenues();drawVenues();fillPDD();}
+  else if(pd.type==='role'){ROLES.splice(ROLES.indexOf(pd.id),1);toast(pd.name+' removed','w');drawMRoles();fillRDD();}
 }
 
 function editStaff(eid){
   var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}if(!e)return;
-  var ropts=ROLES.map(function(r){return"<option value=""+esc(r)+"""+(e.role===r?" selected":"")+">"+esc(r)+"</option>";}).join("");
-  var popts="<option value="">No Fixed Venue</option>"+venues.map(function(v){return"<option value=""+v.id+"""+(e.pinnedVenue===v.id?" selected":"")+">"+esc(v.name)+"</option>";}).join("");
-  showModal("<div class="mtitle">Edit Staff</div>"+
-    "<label style="font-size:11px;color:#555;font-weight:700;">Name</label><input id="esNm" class="ifield" value=""+esc(e.name)+"" style="margin-top:3px;"/>"+
-    "<label style="font-size:11px;color:#555;font-weight:700;">Role</label><select id="esRl" class="sfield" style="margin-top:3px;">"+ropts+"</select>"+
-    "<label style="font-size:11px;color:#555;font-weight:700;">Phone</label><input id="esPh" class="ifield" value=""+esc(e.phone||"")+"" placeholder="Phone" style="margin-top:3px;"/>"+
-    "<label style="font-size:11px;color:#555;font-weight:700;">Fixed Venue</label><select id="esPn" class="sfield" style="margin-top:3px;margin-bottom:12px;">"+popts+"</select>"+
-    "<button class="mbtn blue" onclick="saveES('"+eid+"')">Save</button><button class="mcancel" onclick="closeModal()">Cancel</button>");
+  var ro=ROLES.map(function(r){return'<option value="'+esc(r)+'"'+(e.role===r?' selected':'')+'>'+esc(r)+'</option>';}).join('');
+  var po='<option value="">No Fixed Venue</option>'+venues.map(function(v){return'<option value="'+v.id+'"'+(e.pv===v.id?' selected':'')+'>'+esc(v.name)+'</option>';}).join('');
+  showModal('<div class="mtitle">Edit Staff</div>'+
+    '<label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:3px;">Name</label><input id="ESN" class="ifield" value="'+esc(e.name)+'"/>'+
+    '<label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:3px;">Role</label><select id="ESR" class="sfield">'+ro+'</select>'+
+    '<label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:3px;">Phone</label><input id="ESP" class="ifield" value="'+esc(e.phone||'')+'" placeholder="Phone"/>'+
+    '<label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:3px;">Fixed Venue</label><select id="ESPV" class="sfield" style="margin-bottom:12px;">'+po+'</select>'+
+    '<button class="mbtn blue" onclick="saveES(\''+eid+'\')">Save</button><button class="mcancel" onclick="closeModal()">Cancel</button>');
 }
-
 function saveES(eid){
-  var n=(document.getElementById("esNm").value||"").trim();
-  var r=document.getElementById("esRl").value;
-  var ph=(document.getElementById("esPh").value||"").trim();
-  var pin=document.getElementById("esPn").value;
-  if(!n){toast("Enter name","w");return;}
+  var n=(g('ESN').value||'').trim(),r=(g('ESR').value||''),ph=(g('ESP').value||'').trim(),pv=(g('ESPV').value||'');
+  if(!n){toast('Enter name','w');return;}
   var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}if(!e){closeModal();return;}
-  var oldPin=e.pinnedVenue;e.name=n;e.role=r;e.phone=ph;e.pinnedVenue=pin;
-  Object.values(asgn).forEach(function(vm){if(vm[eid])vm[eid].emp=e;});
+  var oldPv=e.pv;e.name=n;e.role=r;e.phone=ph;e.pv=pv;
+  Object.values(asgn).forEach(function(vm){if(vm&&vm[eid])vm[eid].emp=e;});
   if(lvMap[eid])lvMap[eid].emp=e;if(offMap[eid])offMap[eid].emp=e;
-  if(pin&&pin!==oldPin){if(oldPin&&asgn[oldPin])delete asgn[oldPin][eid];if(!asgn[pin])asgn[pin]={};if(!asgn[pin][eid])asgn[pin][eid]={emp:e,duty:"6:00 AM",pinned:true};}
-  else if(!pin&&oldPin){Object.values(asgn).forEach(function(vm){if(vm[eid])vm[eid].pinned=false;});}
-  closeModal();toast(n+" updated!");drawMStaff();drawStats();refreshSREmp();if(curV)drawDetail();
+  if(pv&&pv!==oldPv){if(oldPv&&asgn[oldPv])delete asgn[oldPv][eid];if(!asgn[pv])asgn[pv]={};if(!asgn[pv][eid])asgn[pv][eid]={emp:e,duty:'6:00 AM',pinned:true};}
+  else if(!pv&&oldPv){Object.values(asgn).forEach(function(vm){if(vm&&vm[eid])vm[eid].pinned=false;});}
+  closeModal();toast(n+' updated!');drawMStaff();drawStats();refreshSREmp();if(curV)drawDetail();
 }
-
 function editVenue(vid){
   var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===vid){v=venues[i];break;}}if(!v)return;
-  showModal("<div class="mtitle">Edit Venue</div><label style="font-size:11px;color:#555;font-weight:700;">Venue Name</label><input id="evNm" class="ifield" value=""+esc(v.name)+"" style="margin-top:3px;margin-bottom:14px;"/><button class="mbtn blue" onclick="saveEV('"+vid+"')">Save</button><button class="mcancel" onclick="closeModal()">Cancel</button>");
+  showModal('<div class="mtitle">Edit Venue</div><label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:3px;">Name</label><input id="EVN" class="ifield" value="'+esc(v.name)+'" style="margin-bottom:14px;"/><button class="mbtn blue" onclick="saveEV(\''+vid+'\')">Save</button><button class="mcancel" onclick="closeModal()">Cancel</button>');
 }
-
 function saveEV(vid){
-  var n=(document.getElementById("evNm").value||"").trim();if(!n){toast("Enter name","w");return;}
+  var n=(g('EVN').value||'').trim();if(!n){toast('Enter name','w');return;}
   var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===vid){v=venues[i];break;}}if(!v){closeModal();return;}
-  v.name=n;closeModal();toast(n+" updated!");drawMVenues();drawVenues();fillPDD();if(curV===vid)drawDetail();
+  v.name=n;closeModal();toast(n+' updated!');drawMVenues();drawVenues();fillPDD();if(curV===vid)drawDetail();
 }
-
-function addVenue(){var n=(document.getElementById("nvname").value||"").trim();if(!n){toast("Enter name","w");return;}venues.push({id:mkId(),name:n,vip:false});document.getElementById("nvname").value="";toast(n+" added!");drawMVenues();drawVenues();fillPDD();}
-function addRole(){var n=(document.getElementById("nrname").value||"").trim();if(!n){toast("Enter role","w");return;}if(ROLES.indexOf(n)>=0){toast("Exists","w");return;}ROLES.push(n);document.getElementById("nrname").value="";toast(n+" added!");drawMRoles();fillRDD();}
+function addVenue(){var n=(g('NVN').value||'').trim();if(!n){toast('Enter name','w');return;}venues.push({id:mkId(),name:n,vip:false});g('NVN').value='';toast(n+' added!');drawMVenues();drawVenues();fillPDD();}
+function addRole(){var n=(g('NRN').value||'').trim();if(!n){toast('Enter role','w');return;}if(ROLES.indexOf(n)>=0){toast('Exists','w');return;}ROLES.push(n);g('NRN').value='';toast(n+' added!');drawMRoles();fillRDD();}
 
 function drawMStaff(){
-  var q=(document.getElementById("mssrch")||{}).value||"";
-  var el=document.getElementById("mslist");
+  var q=(g('MSS')||{}).value||'';
+  var el=g('MSL');if(!el)return;
   var f=staff.filter(function(e){return e.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
-  if(!staff.length){el.innerHTML="<div class="ebig"><div class="abi">👤</div><div class="att">No Staff Yet</div></div>";return;}
-  el.innerHTML=f.map(function(e){
-    var c=cc(e.role);var pv=null;if(e.pinnedVenue){for(var i=0;i<venues.length;i++){if(venues[i].id===e.pinnedVenue){pv=venues[i];break;}}}
-    return "<div class='mrow"><div class='av' style='background:"+c+"18;color:"+c+";border:2px solid "+c+"33;">"+ini(e.name)+"</div>"+
-      "<div style="flex:1;min-width:0;"><div class="en">"+esc(e.name)+(isMgr(e)?" [MGR]":"")+"</div>"+
-      "<div class="er" style="color:"+c+"">"+esc(e.role)+"</div>"+
-      (e.phone?"<div style="font-size:10px;color:#888;">Ph: "+esc(e.phone)+"</div>":"")+
-      (pv?"<div style="font-size:10px;color:#7986cb;">Fixed: "+esc(pv.name)+"</div>":"")+
-      "</div><button class="editbtn" onclick="editStaff('"+e.id+"')">E</button>"+
-      "<button class="delbtn" onclick="delStaff('"+e.id+"')">X</button></div>";
-  }).join("");
+  if(!staff.length){el.innerHTML='<div class="ebig"><div style="font-size:36px;">👤</div><div style="font-size:14px;font-weight:700;color:#1565c0;margin-top:8px;">No Staff Yet</div></div>';return;}
+  var h='';
+  f.forEach(function(e){
+    var c=cc(e.role),pv=null;if(e.pv){for(var i=0;i<venues.length;i++){if(venues[i].id===e.pv){pv=venues[i];break;}}}
+    h+='<div class="mrow">';
+    h+='<div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div>';
+    h+='<div style="flex:1;min-width:0;"><div class="en">'+esc(e.name)+(isMgr(e)?' [MGR]':'')+'</div>';
+    h+='<div class="er" style="color:'+c+';">'+esc(e.role)+'</div>';
+    if(e.phone)h+='<div style="font-size:10px;color:#888;">Ph: '+esc(e.phone)+'</div>';
+    if(pv)h+='<div style="font-size:10px;color:#7986cb;">Fixed: '+esc(pv.name)+'</div>';
+    h+='</div>';
+    h+='<button class="editbtn" onclick="editStaff(\''+e.id+'\')">E</button>';
+    h+='<button class="delbtn" onclick="delStaff(\''+e.id+'\')">X</button>';
+    h+='</div>';
+  });
+  el.innerHTML=h;
 }
-
 function drawMVenues(){
-  var q=(document.getElementById("mvsrch")||{}).value||"";
-  var el=document.getElementById("mvlist");
+  var q=(g('MVS')||{}).value||'';
+  var el=g('MVL');if(!el)return;
   var f=venues.filter(function(v){return v.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
-  if(!venues.length){el.innerHTML="<div class="ebig"><div class="abi">🏨</div><div class="att">No Venues</div></div>";return;}
-  el.innerHTML=f.map(function(v){
-    return "<div class='mrow"><div class='av' style='background:#e3eaff;color:#1565c0;font-size:9px;">V"+(venues.indexOf(v)+1)+"</div>"+
-      "<div style="flex:1;min-width:0;"><div class="en" style="font-size:12px;">"+esc(v.name)+"</div>"+(v.vip?"<span style="font-size:9px;background:#f9a825;color:#fff;border-radius:4px;padding:1px 6px;font-weight:700;">VIP</span>":"")+
-      "</div><button class="editbtn" onclick="editVenue('"+v.id+"')">E</button>"+
-      "<button class="delbtn" onclick="delVenue('"+v.id+"')">X</button></div>";
-  }).join("");
+  if(!venues.length){el.innerHTML='<div class="ebig"><div style="font-size:36px;">🏨</div><div style="font-size:14px;font-weight:700;color:#1565c0;margin-top:8px;">No Venues</div></div>';return;}
+  var h='';
+  f.forEach(function(v){
+    h+='<div class="mrow">';
+    h+='<div class="av" style="background:#e3eaff;color:#1565c0;font-size:9px;">V'+(venues.indexOf(v)+1)+'</div>';
+    h+='<div style="flex:1;min-width:0;"><div class="en" style="font-size:12px;">'+esc(v.name)+'</div>';
+    if(v.vip)h+='<span style="font-size:9px;background:#f9a825;color:#fff;border-radius:4px;padding:1px 6px;font-weight:700;">VIP</span>';
+    h+='</div>';
+    h+='<button class="editbtn" onclick="editVenue(\''+v.id+'\')">E</button>';
+    h+='<button class="delbtn" onclick="delVenue(\''+v.id+'\')">X</button>';
+    h+='</div>';
+  });
+  el.innerHTML=h;
 }
-
 function drawMRoles(){
-  var el=document.getElementById("mrlist");
-  el.innerHTML=ROLES.map(function(r,i){var c=cc(r);return "<div class='mrow"><div class='av' style='background:"+c+"18;color:"+c+";border:2px solid "+c+"33;font-size:10px;">"+(i+1)+"</div><div style="flex:1;"><div class='en' style='color:"+c+"">"+esc(r)+"</div></div>"+(r!=="Manager"?"<button class='delbtn' onclick='delRole('"+esc(r)+"')">X</button>":"<span style="font-size:10px;color:#1a237e;padding:0 6px;">Lock</span>")+"</div>";}).join("");
+  var el=g('MRL');if(!el)return;
+  var h='';
+  ROLES.forEach(function(r,i){
+    var c=cc(r);
+    h+='<div class="mrow">';
+    h+='<div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;font-size:10px;">'+(i+1)+'</div>';
+    h+='<div style="flex:1;"><div class="en" style="color:'+c+';">'+esc(r)+'</div></div>';
+    h+=(r!=='Manager'?'<button class="delbtn" onclick="delRole(\''+esc(r)+'\')">X</button>':'<span style="font-size:10px;color:#1a237e;padding:0 6px;">Lock</span>');
+    h+='</div>';
+  });
+  el.innerHTML=h;
 }
 
-// ── LEAVE ─────────────────────────────────────────────────────────────────────
-function styleLTabs(){document.getElementById("lta").style.background=lTab==="a"?"#c62828":"transparent";document.getElementById("lta").style.color=lTab==="a"?"#fff":"#c62828";document.getElementById("ltm").style.background=lTab==="m"?"#c62828":"transparent";document.getElementById("ltm").style.color=lTab==="m"?"#fff":"#c62828";}
-function ltab(t){lTab=t;styleLTabs();drawLeave();}
-function markLeave(eid){var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}if(!e)return;Object.keys(asgn).forEach(function(v){delete asgn[v][eid];});delete offMap[eid];lvMap[eid]={emp:e,duty:"6:00 AM"};toast(e.name+" on leave");drawLeave();drawStats();}
-function unLeave(eid){delete lvMap[eid];toast("Removed","w");drawLeave();drawStats();}
+function styleLT(){g('LTA').style.background=lTab==='a'?'#c62828':'transparent';g('LTA').style.color=lTab==='a'?'#fff':'#c62828';g('LTM').style.background=lTab==='m'?'#c62828':'transparent';g('LTM').style.color=lTab==='m'?'#fff':'#c62828';}
+function ltab(t){lTab=t;styleLT();drawLeave();}
+function markLeave(eid){var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}if(!e)return;Object.keys(asgn).forEach(function(v){if(asgn[v])delete asgn[v][eid];});delete offMap[eid];lvMap[eid]={emp:e,duty:'6:00 AM'};toast(e.name+' on leave');drawLeave();drawStats();}
+function unLeave(eid){delete lvMap[eid];toast('Removed','w');drawLeave();drawStats();}
 function ldut(eid,val){if(lvMap[eid])lvMap[eid].duty=val;}
 function drawLeave(){
-  var q=(document.getElementById("lsrch")||{}).value||"";
-  document.getElementById("lcnt").textContent=Object.keys(lvMap).length+" staff";
-  var el=document.getElementById("llist");
+  var q=(g('LSR')||{}).value||'';
+  g('LC').textContent=Object.keys(lvMap).length+' staff';
+  var el=g('LL');if(!el)return;
   var aids=getAids(),oids=Object.keys(offMap);
-  if(lTab==="a"){
+  if(lTab==='a'){
     var av=staff.filter(function(e){return !lvMap[e.id]&&aids.indexOf(e.id)<0&&oids.indexOf(e.id)<0&&e.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
-    if(!av.length){el.innerHTML="<div class="empty">No undeployed staff.</div>";return;}
-    el.innerHTML=av.map(function(e){var c=cc(e.role);return '<div class="mrow"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div><div style="flex:1;min-width:0;"><div class="en">'+esc(e.name)+'</div><div class="er" style="color:'+c+'">'+esc(e.role)+'</div></div><button class="togbtn" style="color:#c62828;border-color:#c62828;background:transparent;" onclick="markLeave(\''+e.id+'\')">Mark</button></div>';}).join('');
+    if(!av.length){el.innerHTML='<div class="empty">No undeployed staff.</div>';return;}
+    var h='';
+    av.forEach(function(e){
+      var c=cc(e.role);
+      h+='<div class="mrow"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div>';
+      h+='<div style="flex:1;min-width:0;"><div class="en">'+esc(e.name)+'</div><div class="er" style="color:'+c+';">'+esc(e.role)+'</div></div>';
+      h+='<button class="togbtn" style="color:#c62828;border-color:#c62828;background:transparent;" onclick="markLeave(\''+e.id+'\')">Mark</button></div>';
+    });
+    el.innerHTML=h;
   } else {
     var mk=Object.values(lvMap).filter(function(a){return a.emp.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
-    if(!mk.length){el.innerHTML="<div class="empty">No staff on leave.</div>";return;}
-    el.innerHTML=mk.map(function(a){var c=cc(a.emp.role);return '<div class="ac" style="background:#fff5f5;border:1.5px solid #ffcdd2;margin-bottom:7px;"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(a.emp.name)+'</div><div style="flex:1;min-width:0;"><div class="en">'+esc(a.emp.name)+'</div><div class="er" style="color:'+c+'">'+esc(a.emp.role)+'</div></div><button class="rmbtn" onclick="unLeave(\''+a.emp.id+'\')">x</button></div>';}).join('');
+    if(!mk.length){el.innerHTML='<div class="empty">No staff on leave.</div>';return;}
+    var h='';
+    mk.forEach(function(a){
+      var c=cc(a.emp.role);
+      h+='<div class="ac" style="background:#fff5f5;border:1.5px solid #ffcdd2;margin-bottom:7px;">';
+      h+='<div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(a.emp.name)+'</div>';
+      h+='<div style="flex:1;min-width:0;"><div class="en">'+esc(a.emp.name)+'</div><div class="er" style="color:'+c+';">'+esc(a.emp.role)+'</div>';
+      h+='<div class="drow"><span class="dlbl">Duty:</span>'+mkTsel(a.duty,"ldut('"+a.emp.id+"',this.value)")+'</div></div>';
+      h+='<button class="rmbtn" onclick="unLeave(\''+a.emp.id+'\')">x</button></div>';
+    });
+    el.innerHTML=h;
   }
 }
 
-// ── OFFICE ────────────────────────────────────────────────────────────────────
-function styleOTabs(){document.getElementById("ota").style.background=oTab==="a"?"#e65100":"transparent";document.getElementById("ota").style.color=oTab==="a"?"#fff":"#e65100";document.getElementById("otm").style.background=oTab==="m"?"#e65100":"transparent";document.getElementById("otm").style.color=oTab==="m"?"#fff":"#e65100";}
-function otab(t){oTab=t;styleOTabs();drawOffice();}
-function markOffice(eid){var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}if(!e)return;Object.keys(asgn).forEach(function(v){delete asgn[v][eid];});delete lvMap[eid];offMap[eid]={emp:e,duty:"6:00 AM"};toast(e.name+" in office");drawOffice();drawStats();}
-function unOffice(eid){delete offMap[eid];toast("Removed","w");drawOffice();drawStats();}
+function styleOT(){g('OTA').style.background=oTab==='a'?'#e65100':'transparent';g('OTA').style.color=oTab==='a'?'#fff':'#e65100';g('OTM').style.background=oTab==='m'?'#e65100':'transparent';g('OTM').style.color=oTab==='m'?'#fff':'#e65100';}
+function otab(t){oTab=t;styleOT();drawOffice();}
+function markOffice(eid){var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}if(!e)return;Object.keys(asgn).forEach(function(v){if(asgn[v])delete asgn[v][eid];});delete lvMap[eid];offMap[eid]={emp:e,duty:'6:00 AM'};toast(e.name+' in office');drawOffice();drawStats();}
+function unOffice(eid){delete offMap[eid];toast('Removed','w');drawOffice();drawStats();}
 function odut(eid,val){if(offMap[eid])offMap[eid].duty=val;}
 function drawOffice(){
-  var q=(document.getElementById("osrch")||{}).value||"";
-  document.getElementById("ocnt").textContent=Object.keys(offMap).length+" staff";
-  var el=document.getElementById("olist");
+  var q=(g('OSR')||{}).value||'';
+  g('OC').textContent=Object.keys(offMap).length+' staff';
+  var el=g('OL');if(!el)return;
   var aids=getAids(),lids=Object.keys(lvMap);
-  if(oTab==="a"){
+  if(oTab==='a'){
     var av=staff.filter(function(e){return !offMap[e.id]&&aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&e.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
-    if(!av.length){el.innerHTML="<div class="empty">No undeployed staff.</div>";return;}
-    el.innerHTML=av.map(function(e){var c=cc(e.role);return '<div class="mrow"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div><div style="flex:1;min-width:0;"><div class="en">'+esc(e.name)+'</div><div class="er" style="color:'+c+'">'+esc(e.role)+'</div></div><button class="togbtn" style="color:#e65100;border-color:#e65100;background:transparent;" onclick="markOffice(\''+e.id+'\')">Mark</button></div>';}).join('');
+    if(!av.length){el.innerHTML='<div class="empty">No undeployed staff.</div>';return;}
+    var h='';
+    av.forEach(function(e){
+      var c=cc(e.role);
+      h+='<div class="mrow"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div>';
+      h+='<div style="flex:1;min-width:0;"><div class="en">'+esc(e.name)+'</div><div class="er" style="color:'+c+';">'+esc(e.role)+'</div></div>';
+      h+='<button class="togbtn" style="color:#e65100;border-color:#e65100;background:transparent;" onclick="markOffice(\''+e.id+'\')">Mark</button></div>';
+    });
+    el.innerHTML=h;
   } else {
     var mk=Object.values(offMap).filter(function(a){return a.emp.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
-    if(!mk.length){el.innerHTML="<div class="empty">No staff in office.</div>";return;}
-    el.innerHTML=mk.map(function(a){var c=cc(a.emp.role);return '<div class="ac" style="background:#fff8f0;border:1.5px solid #ffe0b2;margin-bottom:7px;"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(a.emp.name)+'</div><div style="flex:1;min-width:0;"><div class="en">'+esc(a.emp.name)+'</div><div class="er" style="color:'+c+'">'+esc(a.emp.role)+'</div></div><button class="rmbtn" onclick="unOffice(\''+a.emp.id+'\')">x</button></div>';}).join('');
+    if(!mk.length){el.innerHTML='<div class="empty">No staff in office.</div>';return;}
+    var h='';
+    mk.forEach(function(a){
+      var c=cc(a.emp.role);
+      h+='<div class="ac" style="background:#fff8f0;border:1.5px solid #ffe0b2;margin-bottom:7px;">';
+      h+='<div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(a.emp.name)+'</div>';
+      h+='<div style="flex:1;min-width:0;"><div class="en">'+esc(a.emp.name)+'</div><div class="er" style="color:'+c+';">'+esc(a.emp.role)+'</div>';
+      h+='<div class="drow"><span class="dlbl">Duty:</span>'+mkTsel(a.duty,"odut('"+a.emp.id+"',this.value)")+'</div></div>';
+      h+='<button class="rmbtn" onclick="unOffice(\''+a.emp.id+'\')">x</button></div>';
+    });
+    el.innerHTML=h;
   }
 }
 
-// ── REPORT ────────────────────────────────────────────────────────────────────
-function saveLog(){var d=getD();var log={venues:{},leave:[],office:[]};Object.keys(asgn).forEach(function(vid){log.venues[vid]={};Object.keys(asgn[vid]).forEach(function(eid){log.venues[vid][eid]=asgn[vid][eid].duty;});});Object.keys(lvMap).forEach(function(eid){log.leave.push({id:eid,duty:lvMap[eid].duty});});Object.keys(offMap).forEach(function(eid){log.office.push({id:eid,duty:offMap[eid].duty});});dlog[d]=log;}
+function saveLog(){var d=getD();var log={venues:{},leave:[],office:[]};Object.keys(asgn).forEach(function(vid){if(!asgn[vid])return;log.venues[vid]={};Object.keys(asgn[vid]).forEach(function(eid){log.venues[vid][eid]=asgn[vid][eid].duty;});});Object.keys(lvMap).forEach(function(eid){log.leave.push({id:eid,duty:lvMap[eid].duty});});Object.keys(offMap).forEach(function(eid){log.office.push({id:eid,duty:offMap[eid].duty});});dlog[d]=log;}
 
 function drawReport(){
   var d=getD(),ndd=nd(d);
-  document.getElementById("rptduty").textContent="Duty Date: "+fd(ndd);
-  document.getElementById("rptprep").textContent="Prepared: "+fd(d);
-  var lv2=Object.values(lvMap),ov=Object.values(offMap),h="";
+  g('RD').textContent='Duty Date: '+fd(ndd);
+  g('RP').textContent='Prepared: '+fd(d);
+  var lv2=Object.values(lvMap),ov=Object.values(offMap),h='';
   venues.forEach(function(v){
     var t=getTeam(v.id);if(!t.length)return;
-    var mgrs=t.filter(function(a){return isMgr(a.emp);});
-    var rest=t.filter(function(a){return !isMgr(a.emp);});
-    h+="<div class="pvcard">"+(v.vip?"<div style="font-size:9px;font-weight:800;color:#f9a825;margin-bottom:5px;">VIP EVENT</div>":"")+
-      "<div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:9px;"><div><div class="pvname">"+esc(v.name)+"</div><div style="font-size:11px;color:#1565c0;font-weight:600;">"+t.length+" staff</div></div></div>";
+    var mgrs=t.filter(function(a){return isMgr(a.emp);}),rest=t.filter(function(a){return !isMgr(a.emp);});
+    h+='<div class="pvcard">'+(v.vip?'<div style="font-size:9px;font-weight:800;color:#f9a825;margin-bottom:5px;">VIP EVENT</div>':'')+
+      '<div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:9px;"><div><div class="pvname">'+esc(v.name)+'</div><div style="font-size:11px;color:#1565c0;font-weight:600;">'+t.length+' staff</div></div></div>';
     mgrs.concat(rest).forEach(function(a,i){
       var c=cc(a.emp.role),isMG=isMgr(a.emp);
-      h+="<div class="prow"style=""+( isMG?"background:#e8eaf6;border-radius:6px;":"")+"">";
-      h+="<span class="pnum">"+(i+1)+"</span><div style="flex:1;min-width:0;">";
-      h+=isMG?"<div style="font-weight:800;font-size:13px;color:#1a237e;">"+esc(a.emp.name)+(a.emp.phone?"  Ph: "+esc(a.emp.phone):"")+"</div>":"<div style="font-weight:700;font-size:12px;color:#111;">"+esc(a.emp.name)+"</div>";
-      h+="<span style="font-size:10px;color:"+c+";background:"+c+"18;border-radius:3px;padding:1px 5px;">"+esc(a.emp.role)+"</span></div>";
-      h+="<div style="font-size:11px;font-weight:700;color:#0d47a1;flex-shrink:0;">"+esc(a.duty)+"</div></div>";
+      h+='<div class="prow"'+(isMG?' style="background:#e8eaf6;border-radius:6px;"':'')+'>'+
+        '<span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;">';
+      h+=isMG?'<div style="font-weight:800;font-size:13px;color:#1a237e;">'+esc(a.emp.name)+(a.emp.phone?'  Ph:'+esc(a.emp.phone):'')+'</div>':'<div style="font-weight:700;font-size:12px;color:#111;">'+esc(a.emp.name)+'</div>';
+      h+='<span style="font-size:10px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 5px;">'+esc(a.emp.role)+'</span></div>';
+      h+='<div style="font-size:11px;font-weight:700;color:#0d47a1;flex-shrink:0;">'+esc(a.duty)+'</div></div>';
     });
-    h+="</div>";
+    h+='</div>';
   });
-  if(lv2.length){h+="<div class="pvcard" style="border-left:4px solid #c62828;"><div class="pvname" style="color:#c62828;margin-bottom:9px;">On Leave - "+lv2.length+" staff</div>";lv2.forEach(function(a,i){var c=cc(a.emp.role);h+="<div class="prow"><span class="pnum">"+(i+1)+"</span><div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;">"+esc(a.emp.name)+"</div><span style="font-size:10px;color:"+c+";background:"+c+"18;border-radius:3px;padding:1px 5px;">"+esc(a.emp.role)+"</span></div></div>";});h+="</div>";}
-  if(ov.length){h+="<div class="pvcard" style="border-left:4px solid #e65100;"><div class="pvname" style="color:#e65100;margin-bottom:9px;">In Office - "+ov.length+" staff</div>";ov.forEach(function(a,i){var c=cc(a.emp.role);h+="<div class="prow"><span class="pnum">"+(i+1)+"</span><div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;">"+esc(a.emp.name)+"</div><span style="font-size:10px;color:"+c+";background:"+c+"18;border-radius:3px;padding:1px 5px;">"+esc(a.emp.role)+"</span></div></div>";});h+="</div>";}
-  if(!h)h="<div class="empty">No staff deployed yet.</div>";
-  document.getElementById("rptbody").innerHTML=h;
-  saveLog();
+  if(lv2.length){h+='<div class="pvcard" style="border-left:4px solid #c62828;"><div class="pvname" style="color:#c62828;margin-bottom:9px;">On Leave - '+lv2.length+' staff</div>';lv2.forEach(function(a,i){var c=cc(a.emp.role);h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;">'+esc(a.emp.name)+'</div><span style="font-size:10px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 5px;">'+esc(a.emp.role)+'</span></div></div>';});h+='</div>';}
+  if(ov.length){h+='<div class="pvcard" style="border-left:4px solid #e65100;"><div class="pvname" style="color:#e65100;margin-bottom:9px;">In Office - '+ov.length+' staff</div>';ov.forEach(function(a,i){var c=cc(a.emp.role);h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;">'+esc(a.emp.name)+'</div><span style="font-size:10px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 5px;">'+esc(a.emp.role)+'</span></div></div>';});h+='</div>';}
+  if(!h)h='<div class="empty">No staff deployed yet.</div>';
+  g('RB').innerHTML=h;saveLog();
 }
 
-// ── MAKE PDF ──────────────────────────────────────────────────────────────────
 function makePDF(){
-  var d=getD(),ndd=nd(d);
-  var lv2=Object.values(lvMap),ov=Object.values(offMap);
-  if(!window.jspdf){toast("PDF loading...","w");return;}
-  var doc=new window.jspdf.jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+  var d=getD(),ndd=nd(d),lv2=Object.values(lvMap),ov=Object.values(offMap);
+  if(!window.jspdf){toast('PDF loading...','w');return;}
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
-  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,"F");
-  try{var img=document.getElementById("logoImg");if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement("canvas");cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext("2d").drawImage(img,0,0);doc.addImage(cv.toDataURL("image/png"),"PNG",mg,4,28,28);}}catch(er){}
-  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont("helvetica","bold");
-  doc.text("GROVER AUDIO VISUAL SERVICES",pw/2+10,14,{align:"center"});
-  doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text("Staff Duty Deployment Report",pw/2+10,22,{align:"center"});
-  y=42;
-  doc.setTextColor(13,71,161);doc.setFontSize(11);doc.setFont("helvetica","bold");doc.text("Duty Date: "+fd(ndd),mg,y);
-  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(130,130,130);doc.text("Prepared: "+fd(d),mg,y+6);y+=16;
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Staff Duty Deployment Report',pw/2+10,22,{align:'center'});y=42;
+  doc.setTextColor(13,71,161);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('Duty Date: '+fd(ndd),mg,y);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(130,130,130);doc.text('Prepared: '+fd(d),mg,y+6);y+=16;
   venues.forEach(function(v){
     var t=getTeam(v.id);if(!t.length)return;cp(24);
-    doc.setFillColor(21,101,192);doc.roundedRect(mg,y,pw-mg*2,12,2,2,"F");
-    doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont("helvetica","bold");
-    doc.text(v.name,pw/2,y+8,{align:"center"});
-    if(v.vip){doc.setTextColor(255,60,60);doc.setFontSize(8);doc.text("VIP EVENT",pw-mg-3,y+5,{align:"right"});doc.setTextColor(255,255,255);}
-    doc.setFontSize(8);doc.text(t.length+" staff",pw-mg-3,y+10,{align:"right"});y+=13;
-    doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,6,"F");
-    doc.setTextColor(13,71,161);doc.setFontSize(6);doc.setFont("helvetica","bold");
-    doc.text("#",mg+2,y+4.2);doc.text("Name",mg+10,y+4.2);doc.text("Role",mg+100,y+4.2);doc.text("Duty",pw-mg-3,y+4.2,{align:"right"});y+=7;
-    var mgrs=t.filter(function(a){return isMgr(a.emp);});
-    var rest=t.filter(function(a){return !isMgr(a.emp);});
+    doc.setFillColor(21,101,192);doc.roundedRect(mg,y,pw-mg*2,12,2,2,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.text(v.name,pw/2,y+8,{align:'center'});
+    if(v.vip){doc.setTextColor(255,60,60);doc.setFontSize(8);doc.text('VIP EVENT',pw-mg-3,y+5,{align:'right'});doc.setTextColor(255,255,255);}
+    doc.setFontSize(8);doc.text(t.length+' staff',pw-mg-3,y+10,{align:'right'});y+=13;
+    doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,6,'F');
+    doc.setTextColor(13,71,161);doc.setFontSize(6);doc.setFont('helvetica','bold');
+    doc.text('#',mg+2,y+4.2);doc.text('Name',mg+10,y+4.2);doc.text('Role',mg+100,y+4.2);doc.text('Duty',pw-mg-3,y+4.2,{align:'right'});y+=7;
+    var mgrs=t.filter(function(a){return isMgr(a.emp);}),rest=t.filter(function(a){return !isMgr(a.emp);});
     mgrs.concat(rest).forEach(function(a,i){
       var isMG=isMgr(a.emp),rh=isMG?8:6.5;cp(rh);
-      if(isMG){doc.setFillColor(255,244,180);doc.rect(mg,y,pw-mg*2,rh,"F");doc.setDrawColor(220,160,0);doc.setLineWidth(0.4);doc.rect(mg,y,pw-mg*2,rh,"S");doc.setLineWidth(0.2);}
-      else if(i%2===0){doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,rh,"F");}
-      doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont("helvetica","normal");doc.text(String(i+1),mg+2,y+rh-2);
-      if(isMG){doc.setTextColor(120,70,0);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text(a.emp.name+(a.emp.phone?"  Ph:"+a.emp.phone:""),mg+10,y+rh-2);}
-      else{doc.setTextColor(30,30,30);doc.setFont("helvetica","bold");doc.setFontSize(7);doc.text(a.emp.name,mg+10,y+rh-2);}
-      doc.setFont("helvetica","normal");doc.setFontSize(6);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+100,y+rh-2);
-      doc.setTextColor(13,71,161);doc.setFont("helvetica","bold");doc.setFontSize(7);doc.text(a.duty,pw-mg-3,y+rh-2,{align:"right"});
+      if(isMG){doc.setFillColor(255,244,180);doc.rect(mg,y,pw-mg*2,rh,'F');doc.setDrawColor(220,160,0);doc.setLineWidth(0.4);doc.rect(mg,y,pw-mg*2,rh,'S');doc.setLineWidth(0.2);}
+      else if(i%2===0){doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,rh,'F');}
+      doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(String(i+1),mg+2,y+rh-2);
+      if(isMG){doc.setTextColor(120,70,0);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(a.emp.name+(a.emp.phone?'  Ph:'+a.emp.phone:''),mg+10,y+rh-2);}
+      else{doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text(a.emp.name,mg+10,y+rh-2);}
+      doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+100,y+rh-2);
+      doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text(a.duty,pw-mg-3,y+rh-2,{align:'right'});
       y+=rh;
     });y+=4;
   });
-  if(lv2.length){cp(20);doc.setFillColor(198,40,40);doc.roundedRect(mg,y,pw-mg*2,10,2,2,"F");doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont("helvetica","bold");doc.text("ON LEAVE",pw/2,y+7,{align:"center"});doc.text(lv2.length+" staff",pw-mg-3,y+7,{align:"right"});y+=11;doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,6,"F");doc.setTextColor(13,71,161);doc.setFontSize(6);doc.setFont("helvetica","bold");doc.text("#",mg+2,y+4.2);doc.text("Name",mg+10,y+4.2);doc.text("Role",mg+100,y+4.2);y+=7;lv2.forEach(function(a,i){cp(6.5);if(i%2===0){doc.setFillColor(255,245,245);doc.rect(mg,y,pw-mg*2,6.5,"F");}doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont("helvetica","normal");doc.text(String(i+1),mg+2,y+4.5);doc.setTextColor(30,30,30);doc.setFont("helvetica","bold");doc.text(a.emp.name,mg+10,y+4.5);doc.setFont("helvetica","normal");doc.setFontSize(6);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+100,y+4.5);y+=6.5;});y+=4;}
-  if(ov.length){cp(20);doc.setFillColor(230,81,0);doc.roundedRect(mg,y,pw-mg*2,10,2,2,"F");doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont("helvetica","bold");doc.text("IN OFFICE",pw/2,y+7,{align:"center"});doc.text(ov.length+" staff",pw-mg-3,y+7,{align:"right"});y+=11;doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,6,"F");doc.setTextColor(13,71,161);doc.setFontSize(6);doc.setFont("helvetica","bold");doc.text("#",mg+2,y+4.2);doc.text("Name",mg+10,y+4.2);doc.text("Role",mg+100,y+4.2);y+=7;ov.forEach(function(a,i){cp(6.5);if(i%2===0){doc.setFillColor(255,248,240);doc.rect(mg,y,pw-mg*2,6.5,"F");}doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont("helvetica","normal");doc.text(String(i+1),mg+2,y+4.5);doc.setTextColor(30,30,30);doc.setFont("helvetica","bold");doc.text(a.emp.name,mg+10,y+4.5);doc.setFont("helvetica","normal");doc.setFontSize(6);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+100,y+4.5);y+=6.5;});y+=4;}
-  var pc=doc.internal.getNumberOfPages();for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,"F");doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont("helvetica","normal");doc.text("Grover Audio Visual Services | "+fd(d),mg,293);doc.text("Page "+p+" of "+pc,pw-mg,293,{align:"right"});}
-  doc.save("GAVS_Duty_"+ndd+".pdf");toast("PDF downloaded!");
+  if(lv2.length){cp(20);doc.setFillColor(198,40,40);doc.roundedRect(mg,y,pw-mg*2,10,2,2,'F');doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('ON LEAVE',pw/2,y+7,{align:'center'});doc.text(lv2.length+' staff',pw-mg-3,y+7,{align:'right'});y+=11;doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,6,'F');doc.setTextColor(13,71,161);doc.setFontSize(6);doc.setFont('helvetica','bold');doc.text('#',mg+2,y+4.2);doc.text('Name',mg+10,y+4.2);doc.text('Role',mg+100,y+4.2);y+=7;lv2.forEach(function(a,i){cp(6.5);if(i%2===0){doc.setFillColor(255,245,245);doc.rect(mg,y,pw-mg*2,6.5,'F');}doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(String(i+1),mg+2,y+4.5);doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.text(a.emp.name,mg+10,y+4.5);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+100,y+4.5);y+=6.5;});y+=4;}
+  if(ov.length){cp(20);doc.setFillColor(230,81,0);doc.roundedRect(mg,y,pw-mg*2,10,2,2,'F');doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('IN OFFICE',pw/2,y+7,{align:'center'});doc.text(ov.length+' staff',pw-mg-3,y+7,{align:'right'});y+=11;doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,6,'F');doc.setTextColor(13,71,161);doc.setFontSize(6);doc.setFont('helvetica','bold');doc.text('#',mg+2,y+4.2);doc.text('Name',mg+10,y+4.2);doc.text('Role',mg+100,y+4.2);y+=7;ov.forEach(function(a,i){cp(6.5);if(i%2===0){doc.setFillColor(255,248,240);doc.rect(mg,y,pw-mg*2,6.5,'F');}doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(String(i+1),mg+2,y+4.5);doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.text(a.emp.name,mg+10,y+4.5);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+100,y+4.5);y+=6.5;});y+=4;}
+  var pc=doc.internal.getNumberOfPages();for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | '+fd(d),mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_Duty_'+ndd+'.pdf');toast('PDF downloaded!');
 }
 
-// ── STAFF REPORT ──────────────────────────────────────────────────────────────
-function initSRDropdowns(){
-  var ms=document.getElementById("srMon");if(ms&&!ms.options.length){MONS.forEach(function(m,i){ms.innerHTML+="<option value=""+i+"">"+m+"</option>";});ms.value=new Date().getMonth();}
-  var ys=document.getElementById("srYr");if(ys&&!ys.options.length){var cy=new Date().getFullYear();for(var y2=cy;y2>=cy-2;y2--){ys.innerHTML+="<option value=""+y2+"">"+y2+"</option>";}ys.value=cy;}
+function initSRDrops(){
+  var ms=g('SRM');if(ms&&!ms.options.length){MONS.forEach(function(m,i){ms.innerHTML+='<option value="'+i+'">'+m+'</option>';});ms.value=new Date().getMonth();}
+  var ys=g('SRY');if(ys&&!ys.options.length){var cy=new Date().getFullYear();for(var y2=cy;y2>=cy-2;y2--){ys.innerHTML+='<option value="'+y2+'">'+y2+'</option>';}ys.value=cy;}
   refreshSREmp();
 }
-function refreshSREmp(){var el=document.getElementById("srEmp");if(!el)return;var cur=el.value;el.innerHTML="<option value="">-- Select Employee --</option>"+staff.map(function(e){return"<option value=""+e.id+"""+( e.id===cur?" selected":"")+">"+esc(e.name)+" ("+esc(e.role)+")</option>";}).join("");}
+function refreshSREmp(){var el=g('SRE');if(!el)return;var cur=el.value;el.innerHTML='<option value="">-- Select Employee --</option>'+staff.map(function(e){return'<option value="'+e.id+'"'+(e.id===cur?' selected':'')+'>'+esc(e.name)+' ('+esc(e.role)+')</option>';}).join('');}
 function drawSR(){
-  var eid=document.getElementById("srEmp").value;
-  var month=parseInt(document.getElementById("srMon").value);
-  var year=parseInt(document.getElementById("srYr").value);
-  var ss=document.getElementById("srSum"),sb=document.getElementById("srBody"),btn=document.getElementById("srPdfBtn");
-  if(!eid){ss.innerHTML="";sb.innerHTML="";btn.classList.add("hide");return;}
+  var eid=(g('SRE')||{}).value||'';
+  var month=parseInt((g('SRM')||{}).value||'0');
+  var year=parseInt((g('SRY')||{}).value||new Date().getFullYear());
+  var ss=g('SRS'),sb=g('SRB'),btn=g('SRPB');
+  if(!eid){if(ss)ss.innerHTML='';if(sb)sb.innerHTML='';if(btn)btn.classList.add('hide');return;}
   var emp=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){emp=staff[i];break;}}if(!emp)return;
-  var dim=new Date(year,month+1,0).getDate(),dep=0,lvD=0,offD=0,frD=0,rows="";
+  var dim=new Date(year,month+1,0).getDate(),dep=0,lvD=0,offD=0,frD=0,rows='';
   var today=new Date().toISOString().slice(0,10);
   for(var day=1;day<=dim;day++){
-    var ds=year+"-"+String(month+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
-    var log=dlog[ds],status="free",detail="Unassigned",duty="";
+    var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    var log=dlog[ds],status='free',detail='Unassigned',duty='';
     if(log){
-      var inL=null;if(log.leave){for(var i=0;i<log.leave.length;i++){if(log.leave[i].id===eid){inL=log.leave[i];break;}}}
-      var inO=null;if(log.office){for(var i=0;i<log.office.length;i++){if(log.office[i].id===eid){inO=log.office[i];break;}}}
-      if(inL){status="leave";detail="On Leave";duty=inL.duty;lvD++;}
-      else if(inO){status="office";detail="In Office";duty=inO.duty;offD++;}
-      else{Object.keys(log.venues||{}).forEach(function(vid){if(log.venues[vid][eid]){var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===vid){v=venues[i];break;}}detail=v?v.name:"Venue";duty=log.venues[vid][eid];status="deployed";dep++;}});if(status==="free")frD++;}
-    } else {if(ds===today){var ft=false;Object.keys(asgn).forEach(function(vid){if(asgn[vid][eid]){var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===vid){v=venues[i];break;}}detail=v?v.name:"Venue";duty=asgn[vid][eid].duty;status="deployed";dep++;ft=true;}});if(!ft&&lvMap[eid]){status="leave";detail="On Leave";lvD++;}else if(!ft&&offMap[eid]){status="office";detail="In Office";offD++;}else if(!ft)frD++;}else frD++;}
-    var dc=status==="deployed"?"#1565c0":status==="leave"?"#c62828":status==="office"?"#e65100":"#ccc";
-    var bg=status==="deployed"?"#f0f4ff":status==="leave"?"#fff5f5":status==="office"?"#fff8f0":"#fff";
-    var dn=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][new Date(year,month,day).getDay()];
-    rows+="<div class="reprow" style="background:"+bg+""><div style="font-weight:800;color:#1565c0;width:24px;flex-shrink:0;">"+day+"</div><div style="font-size:10px;color:#888;width:28px;flex-shrink:0;">"+dn+"</div><div style="flex:1;font-weight:600;color:"+dc+"">"+esc(detail)+"</div>"+(duty?"<div style="font-size:10px;color:#0d47a1;font-weight:700;flex-shrink:0;">"+esc(duty)+"</div>":"")+"</div>";
+      var inL=null;if(log.leave){for(var j=0;j<log.leave.length;j++){if(log.leave[j].id===eid){inL=log.leave[j];break;}}}
+      var inO=null;if(log.office){for(var j=0;j<log.office.length;j++){if(log.office[j].id===eid){inO=log.office[j];break;}}}
+      if(inL){status='leave';detail='On Leave';duty=inL.duty;lvD++;}
+      else if(inO){status='office';detail='In Office';duty=inO.duty;offD++;}
+      else{Object.keys(log.venues||{}).forEach(function(vid){if(log.venues[vid]&&log.venues[vid][eid]){var v=null;for(var k=0;k<venues.length;k++){if(venues[k].id===vid){v=venues[k];break;}}detail=v?v.name:'Venue';duty=log.venues[vid][eid];status='deployed';dep++;}});if(status==='free')frD++;}
+    } else {
+      if(ds===today){var ft=false;Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid]){var v=null;for(var k=0;k<venues.length;k++){if(venues[k].id===vid){v=venues[k];break;}}detail=v?v.name:'Venue';duty=asgn[vid][eid].duty;status='deployed';dep++;ft=true;}});if(!ft&&lvMap[eid]){status='leave';detail='On Leave';lvD++;}else if(!ft&&offMap[eid]){status='office';detail='In Office';offD++;}else if(!ft)frD++;}
+      else frD++;
+    }
+    var dc=status==='deployed'?'#1565c0':status==='leave'?'#c62828':status==='office'?'#e65100':'#ccc';
+    var bg=status==='deployed'?'#f0f4ff':status==='leave'?'#fff5f5':status==='office'?'#fff8f0':'#fff';
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,day).getDay()];
+    rows+='<div class="reprow" style="background:'+bg+';"><div style="font-weight:800;color:#1565c0;width:24px;flex-shrink:0;">'+day+'</div><div style="font-size:10px;color:#888;width:28px;flex-shrink:0;">'+dn+'</div><div style="flex:1;font-weight:600;color:'+dc+';">'+esc(detail)+'</div>'+(duty?'<div style="font-size:10px;color:#0d47a1;font-weight:700;flex-shrink:0;">'+esc(duty)+'</div>':'')+'</div>';
   }
   var c=cc(emp.role);
-  ss.innerHTML="<div class="sec"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div class="av" style="background:"+c+"18;color:"+c+";border:2px solid "+c+"33;width:42px;height:42px;border-radius:10px;font-size:13px;">"+ini(emp.name)+"</div><div><div style="font-size:14px;font-weight:800;color:#0d47a1;">"+esc(emp.name)+"</div><div style="font-size:11px;color:"+c+";font-weight:600;">"+esc(emp.role)+"</div>"+(emp.phone?"<div style="font-size:10px;color:#888;">Ph: "+esc(emp.phone)+"</div>":"")+"</div></div>"+
-    "<div style="font-size:13px;font-weight:800;color:#0d47a1;margin-bottom:8px;">"+MONS[month]+" "+year+"</div>"+
-    "<div style="display:flex;gap:5px;flex-wrap:wrap;">"+
-    "<div style="background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:8px;padding:6px 10px;text-align:center;flex:1;min-width:55px;"><div style="font-size:15px;font-weight:800;color:#1565c0;">"+dep+"</div><div style="font-size:9px;color:#888;">Deployed</div></div>"+
-    "<div style="background:#fff5f5;border:1.5px solid #ffcdd2;border-radius:8px;padding:6px 10px;text-align:center;flex:1;min-width:55px;"><div style="font-size:15px;font-weight:800;color:#c62828;">"+lvD+"</div><div style="font-size:9px;color:#888;">Leave</div></div>"+
-    "<div style="background:#fff8f0;border:1.5px solid #ffe0b2;border-radius:8px;padding:6px 10px;text-align:center;flex:1;min-width:55px;"><div style="font-size:15px;font-weight:800;color:#e65100;">"+offD+"</div><div style="font-size:9px;color:#888;">Office</div></div>"+
-    "<div style="background:#f5f5f5;border:1.5px solid #ddd;border-radius:8px;padding:6px 10px;text-align:center;flex:1;min-width:55px;"><div style="font-size:15px;font-weight:800;color:#888;">"+frD+"</div><div style="font-size:9px;color:#888;">Free</div></div>"+
-    "</div></div>";
-  sb.innerHTML="<div class="sec"><div class="sech">DAY BY DAY</div>"+rows+"</div>";
-  btn.classList.remove("hide");
+  if(ss)ss.innerHTML='<div class="sec"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;width:42px;height:42px;border-radius:10px;font-size:13px;">'+ini(emp.name)+'</div><div><div style="font-size:14px;font-weight:800;color:#0d47a1;">'+esc(emp.name)+'</div><div style="font-size:11px;color:'+c+';font-weight:600;">'+esc(emp.role)+'</div>'+(emp.phone?'<div style="font-size:10px;color:#888;">Ph: '+esc(emp.phone)+'</div>':'')+'</div></div><div style="font-size:13px;font-weight:800;color:#0d47a1;margin-bottom:8px;">'+MONS[month]+' '+year+'</div><div style="display:flex;gap:5px;flex-wrap:wrap;"><div style="background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:8px;padding:6px 10px;text-align:center;flex:1;min-width:55px;"><div style="font-size:15px;font-weight:800;color:#1565c0;">'+dep+'</div><div style="font-size:9px;color:#888;">Deployed</div></div><div style="background:#fff5f5;border:1.5px solid #ffcdd2;border-radius:8px;padding:6px 10px;text-align:center;flex:1;min-width:55px;"><div style="font-size:15px;font-weight:800;color:#c62828;">'+lvD+'</div><div style="font-size:9px;color:#888;">Leave</div></div><div style="background:#fff8f0;border:1.5px solid #ffe0b2;border-radius:8px;padding:6px 10px;text-align:center;flex:1;min-width:55px;"><div style="font-size:15px;font-weight:800;color:#e65100;">'+offD+'</div><div style="font-size:9px;color:#888;">Office</div></div><div style="background:#f5f5f5;border:1.5px solid #ddd;border-radius:8px;padding:6px 10px;text-align:center;flex:1;min-width:55px;"><div style="font-size:15px;font-weight:800;color:#888;">'+frD+'</div><div style="font-size:9px;color:#888;">Free</div></div></div></div>';
+  if(sb)sb.innerHTML='<div class="sec"><div class="sech">DAY BY DAY</div>'+rows+'</div>';
+  if(btn)btn.classList.remove('hide');
 }
 
 function makeSRPDF(){
-  var eid=document.getElementById("srEmp").value;
-  var month=parseInt(document.getElementById("srMon").value);
-  var year=parseInt(document.getElementById("srYr").value);
+  var eid=(g('SRE')||{}).value||'',month=parseInt((g('SRM')||{}).value||'0'),year=parseInt((g('SRY')||{}).value||new Date().getFullYear());
   var emp=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){emp=staff[i];break;}}
-  if(!emp||!window.jspdf){toast("Error","e");return;}
-  var doc=new window.jspdf.jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+  if(!emp||!window.jspdf){toast('Error','e');return;}
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
-  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,"F");
-  try{var img=document.getElementById("logoImg");if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement("canvas");cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext("2d").drawImage(img,0,0);doc.addImage(cv.toDataURL("image/png"),"PNG",mg,4,28,28);}}catch(er){}
-  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont("helvetica","bold");doc.text("GROVER AUDIO VISUAL SERVICES",pw/2+10,14,{align:"center"});
-  doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text("Employee Monthly Duty Report",pw/2+10,22,{align:"center"});y=42;
-  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,22,3,3,"F");
-  doc.setTextColor(13,71,161);doc.setFontSize(12);doc.setFont("helvetica","bold");doc.text(emp.name,mg+5,y+9);
-  doc.setFontSize(8);doc.setFont("helvetica","normal");doc.setTextColor(80,80,80);doc.text(emp.role,mg+5,y+16);if(emp.phone)doc.text("Ph: "+emp.phone,mg+5,y+21);
-  doc.setTextColor(13,71,161);doc.setFontSize(11);doc.setFont("helvetica","bold");doc.text(MONS[month]+" "+year,pw-mg-5,y+12,{align:"right"});y+=28;
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Employee Monthly Report',pw/2+10,22,{align:'center'});y=42;
+  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,22,3,3,'F');
+  doc.setTextColor(13,71,161);doc.setFontSize(12);doc.setFont('helvetica','bold');doc.text(emp.name,mg+5,y+9);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(80,80,80);doc.text(emp.role,mg+5,y+16);if(emp.phone)doc.text('Ph: '+emp.phone,mg+5,y+21);
+  doc.setTextColor(13,71,161);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text(MONS[month]+' '+year,pw-mg-5,y+12,{align:'right'});y+=28;
   var dim=new Date(year,month+1,0).getDate(),dep=0,lvD=0,offD=0,frD=0,rows2=[];
   for(var day=1;day<=dim;day++){
-    var ds=year+"-"+String(month+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
-    var log=dlog[ds],status="free",detail="Unassigned",duty="";
+    var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    var log=dlog[ds],status='free',detail='Unassigned',duty='';
     if(log){
-      var inL=null;if(log.leave){for(var i=0;i<log.leave.length;i++){if(log.leave[i].id===eid){inL=log.leave[i];break;}}}
-      var inO=null;if(log.office){for(var i=0;i<log.office.length;i++){if(log.office[i].id===eid){inO=log.office[i];break;}}}
-      if(inL){status="leave";detail="On Leave";duty=inL.duty;lvD++;}
-      else if(inO){status="office";detail="In Office";duty=inO.duty;offD++;}
-      else{Object.keys(log.venues||{}).forEach(function(vid){if(log.venues[vid][eid]){var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===vid){v=venues[i];break;}}detail=v?v.name:"Venue";duty=log.venues[vid][eid];status="deployed";dep++;}});if(status==="free")frD++;}
+      var inL=null;if(log.leave){for(var j=0;j<log.leave.length;j++){if(log.leave[j].id===eid){inL=log.leave[j];break;}}}
+      var inO=null;if(log.office){for(var j=0;j<log.office.length;j++){if(log.office[j].id===eid){inO=log.office[j];break;}}}
+      if(inL){status='leave';detail='On Leave';duty=inL.duty;lvD++;}
+      else if(inO){status='office';detail='In Office';duty=inO.duty;offD++;}
+      else{Object.keys(log.venues||{}).forEach(function(vid){if(log.venues[vid]&&log.venues[vid][eid]){var v=null;for(var k=0;k<venues.length;k++){if(venues[k].id===vid){v=venues[k];break;}}detail=v?v.name:'Venue';duty=log.venues[vid][eid];status='deployed';dep++;}});if(status==='free')frD++;}
     }else frD++;
-    var dn=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][new Date(year,month,day).getDay()];
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,day).getDay()];
     rows2.push({day:day,dn:dn,status:status,detail:detail,duty:duty});
   }
-  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,16,3,3,"F");
-  var sc2=[mg+4,60,105,152],slbl=["Deployed","Leave","Office","Free"],sv=[dep,lvD,offD,frD],scl=[[21,101,192],[198,40,40],[230,81,0],[150,150,150]];
-  slbl.forEach(function(l,i){doc.setTextColor(120,120,120);doc.setFontSize(7);doc.setFont("helvetica","normal");doc.text(l,sc2[i],y+6);doc.setFontSize(12);doc.setFont("helvetica","bold");doc.setTextColor(scl[i][0],scl[i][1],scl[i][2]);doc.text(String(sv[i]),sc2[i],y+14);});y+=22;
-  doc.setFillColor(21,101,192);doc.rect(mg,y,pw-mg*2,7,"F");doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont("helvetica","bold");
-  doc.text("Day",mg+2,y+5);doc.text("Date",mg+12,y+5);doc.text("Status / Venue",mg+35,y+5);doc.text("Duty",pw-mg-3,y+5,{align:"right"});y+=8;
+  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,16,3,3,'F');
+  var sc2=[mg+4,60,105,152],slbl=['Deployed','Leave','Office','Free'],sv=[dep,lvD,offD,frD],scl=[[21,101,192],[198,40,40],[230,81,0],[150,150,150]];
+  slbl.forEach(function(l,i){doc.setTextColor(120,120,120);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(l,sc2[i],y+6);doc.setFontSize(12);doc.setFont('helvetica','bold');doc.setTextColor(scl[i][0],scl[i][1],scl[i][2]);doc.text(String(sv[i]),sc2[i],y+14);});y+=22;
+  doc.setFillColor(21,101,192);doc.rect(mg,y,pw-mg*2,7,'F');doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','bold');
+  doc.text('Day',mg+2,y+5);doc.text('Date',mg+12,y+5);doc.text('Status / Venue',mg+35,y+5);doc.text('Duty',pw-mg-3,y+5,{align:'right'});y+=8;
   rows2.forEach(function(row){
-    cp(7);var bgc=row.status==="deployed"?[240,244,255]:row.status==="leave"?[255,245,245]:row.status==="office"?[255,248,240]:[255,255,255];
-    doc.setFillColor(bgc[0],bgc[1],bgc[2]);doc.rect(mg,y,pw-mg*2,6.5,"F");doc.setDrawColor(220,220,220);doc.rect(mg,y,pw-mg*2,6.5,"S");
-    var tc=row.status==="deployed"?[21,101,192]:row.status==="leave"?[198,40,40]:row.status==="office"?[230,81,0]:[150,150,150];
-    doc.setTextColor(80,80,80);doc.setFontSize(7);doc.setFont("helvetica","bold");doc.text(row.dn,mg+2,y+4.5);
-    doc.setFont("helvetica","normal");doc.text(String(row.day).padStart(2,"0")+"/"+String(month+1).padStart(2,"0"),mg+12,y+4.5);
-    doc.setTextColor(tc[0],tc[1],tc[2]);doc.setFont("helvetica",row.status==="deployed"?"bold":"normal");
-    var det=row.detail.length>38?row.detail.slice(0,37)+"...":row.detail;doc.text(det,mg+35,y+4.5);
-    if(row.duty){doc.setTextColor(13,71,161);doc.setFont("helvetica","bold");doc.text(row.duty,pw-mg-3,y+4.5,{align:"right"});}
+    cp(7);var bgc=row.status==='deployed'?[240,244,255]:row.status==='leave'?[255,245,245]:row.status==='office'?[255,248,240]:[255,255,255];
+    doc.setFillColor(bgc[0],bgc[1],bgc[2]);doc.rect(mg,y,pw-mg*2,6.5,'F');doc.setDrawColor(220,220,220);doc.rect(mg,y,pw-mg*2,6.5,'S');
+    var tc=row.status==='deployed'?[21,101,192]:row.status==='leave'?[198,40,40]:row.status==='office'?[230,81,0]:[150,150,150];
+    doc.setTextColor(80,80,80);doc.setFontSize(7);doc.setFont('helvetica','bold');doc.text(row.dn,mg+2,y+4.5);
+    doc.setFont('helvetica','normal');doc.text(String(row.day).padStart(2,'0')+'/'+String(month+1).padStart(2,'0'),mg+12,y+4.5);
+    doc.setTextColor(tc[0],tc[1],tc[2]);doc.setFont('helvetica',row.status==='deployed'?'bold':'normal');
+    var det=row.detail.length>38?row.detail.slice(0,37)+'...':row.detail;doc.text(det,mg+35,y+4.5);
+    if(row.duty){doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.text(row.duty,pw-mg-3,y+4.5,{align:'right'});}
     y+=6.5;
   });
-  var pc2=doc.internal.getNumberOfPages();for(var p=1;p<=pc2;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,"F");doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont("helvetica","normal");doc.text("Grover Audio Visual Services | "+emp.name+" | "+MONS[month]+" "+year,mg,293);doc.text("Page "+p+" of "+pc2,pw-mg,293,{align:"right"});}
-  doc.save("GAVS_"+emp.name.replace(/ /g,"_")+"_"+MONS[month]+"_"+year+".pdf");toast("PDF downloaded!");
+  var pc2=doc.internal.getNumberOfPages();for(var p=1;p<=pc2;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | '+emp.name+' | '+MONS[month]+' '+year,mg,293);doc.text('Page '+p+' of '+pc2,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_'+emp.name.replace(/ /g,'_')+'_'+MONS[month]+'_'+year+'.pdf');toast('Staff PDF!');
 }
 
-// ── SETTINGS ──────────────────────────────────────────────────────────────────
 function changePass(){
-  var cur=document.getElementById("cpCur").value;
-  var nw=document.getElementById("cpNew").value;
-  var cn=document.getElementById("cpCon").value;
-  var msg=document.getElementById("cpMsg");
-  var cred=null;for(var i=0;i<CREDS.length;i++){if(CREDS[i].u===curUser){cred=CREDS[i];break;}}
-  if(!cred||cred.p!==cur){msg.style.background="#ffebee";msg.style.color="#c62828";msg.textContent="Current password is wrong.";msg.style.display="block";return;}
-  if(!nw||nw.length<4){msg.style.background="#ffebee";msg.style.color="#c62828";msg.textContent="Password must be at least 4 characters.";msg.style.display="block";return;}
-  if(nw!==cn){msg.style.background="#ffebee";msg.style.color="#c62828";msg.textContent="Passwords do not match.";msg.style.display="block";return;}
-  cred.p=nw;
-  document.getElementById("cpCur").value="";document.getElementById("cpNew").value="";document.getElementById("cpCon").value="";
-  msg.style.background="#e8f5e9";msg.style.color="#1b5e20";msg.textContent="Password changed!";msg.style.display="block";
-  setTimeout(function(){msg.style.display="none";},3000);toast("Password updated!");
+  var cur=(g('CPO').value||''),nw=(g('CPN').value||''),cn=(g('CPC').value||'');
+  var msg=g('CPM'),cred=null;
+  for(var i=0;i<CREDS.length;i++){if(CREDS[i].u===curUser){cred=CREDS[i];break;}}
+  if(!cred||cred.p!==cur){msg.style.background='#ffebee';msg.style.color='#c62828';msg.textContent='Current password wrong.';msg.style.display='block';return;}
+  if(!nw||nw.length<4){msg.style.background='#ffebee';msg.style.color='#c62828';msg.textContent='Min 4 characters.';msg.style.display='block';return;}
+  if(nw!==cn){msg.style.background='#ffebee';msg.style.color='#c62828';msg.textContent='Passwords do not match.';msg.style.display='block';return;}
+  cred.p=nw;g('CPO').value='';g('CPN').value='';g('CPC').value='';
+  msg.style.background='#e8f5e9';msg.style.color='#1b5e20';msg.textContent='Password changed!';msg.style.display='block';
+  setTimeout(function(){msg.style.display='none';},3000);toast('Password updated!');
 }
 
-// ── TOUCH DRAG ────────────────────────────────────────────────────────────────
 var dragId=null,ghost=null;
 function tStart(ev,eid){
   dragId=eid;var t=ev.touches[0];
   var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}if(!e)return;
-  var c=cc(e.role);ghost=document.createElement("div");ghost.className="ghost";
-  ghost.style.left=(t.clientX-110)+"px";ghost.style.top=(t.clientY-30)+"px";
-  ghost.innerHTML="<div style="background:#fff;border:2px solid "+c+";border-radius:10px;padding:8px 13px;display:flex;align-items:center;gap:9px;box-shadow:0 6px 22px rgba(0,0,0,0.2);font-family:sans-serif;"><div style="width:30px;height:30px;border-radius:7px;background:"+c+"22;color:"+c+";display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;">"+ini(e.name)+"</div><div><div style="font-size:12px;font-weight:700;color:#111;">"+esc(e.name)+"</div><div style="font-size:9px;color:"+c+"">"+esc(e.role)+"</div></div></div>";
+  var c=cc(e.role);ghost=document.createElement('div');ghost.className='ghost';
+  ghost.style.left=(t.clientX-110)+'px';ghost.style.top=(t.clientY-30)+'px';
+  var d='<div style="background:#fff;border:2px solid '+c+';border-radius:10px;padding:8px 13px;display:flex;align-items:center;gap:9px;box-shadow:0 6px 22px rgba(0,0,0,0.2);font-family:sans-serif;">';
+  d+='<div style="width:30px;height:30px;border-radius:7px;background:'+c+'22;color:'+c+';display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;">'+ini(e.name)+'</div>';
+  d+='<div><div style="font-size:12px;font-weight:700;color:#111;">'+esc(e.name)+'</div><div style="font-size:9px;color:'+c+';">'+esc(e.role)+'</div></div></div>';
+  ghost.innerHTML=d;
   document.body.appendChild(ghost);if(navigator.vibrate)navigator.vibrate(30);ev.stopPropagation();
 }
-document.addEventListener("touchmove",function(ev){
+document.addEventListener('touchmove',function(ev){
   if(!dragId||!ghost)return;ev.preventDefault();var t=ev.touches[0];
-  ghost.style.left=(t.clientX-110)+"px";ghost.style.top=(t.clientY-30)+"px";
-  var dz=document.getElementById("dropzone");
-  if(dz){var r=dz.getBoundingClientRect();dz.style.background=(t.clientX>=r.left&&t.clientX<=r.right&&t.clientY>=r.top&&t.clientY<=r.bottom)?"#c8e6c9":"#e8f5e9";}
+  ghost.style.left=(t.clientX-110)+'px';ghost.style.top=(t.clientY-30)+'px';
+  var dz=g('DZ');if(dz){var r=dz.getBoundingClientRect();dz.style.background=(t.clientX>=r.left&&t.clientX<=r.right&&t.clientY>=r.top&&t.clientY<=r.bottom)?'#c8e6c9':'#e8f5e9';}
 },{passive:false});
-document.addEventListener("touchend",function(ev){
+document.addEventListener('touchend',function(ev){
   if(!dragId){if(ghost){try{document.body.removeChild(ghost);}catch(x){}ghost=null;}return;}
-  var t=ev.changedTouches[0];var dz=document.getElementById("dropzone");var dropped=false;
-  if(dz){var r=dz.getBoundingClientRect();if(t.clientX>=r.left&&t.clientX<=r.right&&t.clientY>=r.top&&t.clientY<=r.bottom){addE(dragId);dropped=true;}dz.style.background="#e8f5e9";}
+  var t=ev.changedTouches[0];var dz=g('DZ');var dropped=false;
+  if(dz){var r=dz.getBoundingClientRect();if(t.clientX>=r.left&&t.clientX<=r.right&&t.clientY>=r.top&&t.clientY<=r.bottom){addE(dragId);dropped=true;}dz.style.background='#e8f5e9';}
   if(ghost){try{document.body.removeChild(ghost);}catch(x){}ghost=null;}
   if(dropped&&navigator.vibrate)navigator.vibrate([20,10,20]);dragId=null;
 });
 
-// ── WIRE UP LOGIN BUTTON ──────────────────────────────────────────────────────
-// Login handled by form onsubmit
-document.getElementById("lpas").addEventListener("keydown",function(e){if(e.key==="Enter")doLogin();});
-document.getElementById("lusr").addEventListener("keydown",function(e){if(e.key==="Enter")document.getElementById("lpas").focus();});
-document.getElementById("datepicker").addEventListener("change",function(){applyPinned();drawStats();});
+g('DP').addEventListener('change',function(){applyPinned();drawStats();});
 </script>
 </body>
 </html>

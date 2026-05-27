@@ -323,7 +323,7 @@ function getD(){return document.getElementById("datepicker").value||new Date().t
 function isMgr(e){return e&&e.role==="Manager";}
 function getTeam(vid){return Object.values(asgn[vid]||{});}
 function getAids(){var r=[];Object.values(asgn).forEach(function(m){Object.keys(m).forEach(function(i){r.push(i);});});return r;}
-function mkTsel(cur,cb){return "<select class="tsel" onchange=""+cb+"">"+TIMES.map(function(t){return"<option"+(t===cur?" selected":"")+">"+t+"</option>";}).join("")+"</select>";}
+function mkTsel(cur,cb){return '<select class="tsel" onchange="'+cb+'">'+TIMES.map(function(t){return'<option'+(t===cur?' selected':'')+'>'+t+'</option>';}).join('')+'</select>';}
 
 // ── TOAST ─────────────────────────────────────────────────────────────────────
 var TT;
@@ -427,7 +427,7 @@ function drawVenues(){
   list.forEach(function(v){
     var t=getTeam(v.id);
     var mgrs=t.filter(function(a){return isMgr(a.emp);});
-    var mh=mgrs.map(function(a){return "<div class="mbar"><span style="font-size:13px;">M</span><div><div class="mnm">"+esc(a.emp.name)+"</div>"+(a.emp.phone?"<div class="mph">Ph: "+esc(a.emp.phone)+"</div>":"")+"</div></div>";}).join("");
+    var mh=mgrs.map(function(a){return '<div class="mbar"><span style="font-size:13px;">M</span><div><div class="mnm">'+esc(a.emp.name)+'</div>'+(a.emp.phone?'<div class="mph">Ph: '+esc(a.emp.phone)+'</div>':'')+'</div></div>';}).join('');
     var prev=t.filter(function(a){return !isMgr(a.emp);}).slice(0,4).map(function(a){var c=cc(a.emp.role);return "<span style="font-size:10px;color:"+c+";background:"+c+"18;border:1px solid "+c+"33;border-radius:4px;padding:2px 6px;">"+esc(a.emp.name.split(" ")[0])+"</span>";}).join("");
     if(t.filter(function(a){return !isMgr(a.emp);}).length>4)prev+="<span style="font-size:10px;color:#888;">+more</span>";
     h+=(v.vip?"<div style="font-size:9px;font-weight:800;color:#fff;background:#f9a825;padding:3px 13px;">VIP EVENT</div>":"")+
@@ -520,7 +520,11 @@ function drawAddStaff(){
   if(!av.length){el.innerHTML="<div class="empty">No available staff.</div>";return;}
   el.innerHTML=av.map(function(e){
     var c=cc(e.role);
-    return "<div class="sr" ontouchstart="tStart(event,'"+e.id+"');" onclick="addE('"+e.id+"');">"+
+      return '<div class="sr" ontouchstart="tStart(event,\''+e.id+'\');" onclick="addE(\''+e.id+'\');">'+
+        '<div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div>'+
+        '<div style="flex:1;min-width:0;"><div class="en">'+esc(e.name)+(isMgr(e)?' [MGR]':'')+(e.pinnedVenue===curV?' [Fixed]':'')+'</div>'+
+        '<div class="er" style="color:'+c+'">'+esc(e.role)+'</div>'+(e.phone?'<div style="font-size:10px;color:#888;">Ph: '+esc(e.phone)+'</div>':'')+
+        '</div><button class="addbtn" onclick="event.stopPropagation();addE(\''+e.id+'\');">+ Add</button></div>';
       "<div class="av" style="background:"+c+"18;color:"+c+";border:2px solid "+c+"33;">"+ini(e.name)+"</div>"+
       "<div style="flex:1;min-width:0;"><div class="en">"+esc(e.name)+(isMgr(e)?" [MGR]":"")+(e.pinnedVenue===curV?" [Fixed]":"")+"</div>"+
       "<div class="er" style="color:"+c+"">"+esc(e.role)+"</div>"+(e.phone?"<div style="font-size:10px;color:#888;">Ph: "+esc(e.phone)+"</div>":"")+
@@ -545,7 +549,7 @@ function clearVen(){if(curV)asgn[curV]={};toast("Cleared","w");drawDetail();draw
 function pinOpts(eid){
   var a=asgn[curV]&&asgn[curV][eid];if(!a)return;
   var emp=a.emp;
-  var vopts=venues.filter(function(v){return v.id!==curV;}).map(function(v){return "<button class="mbtn grn" onclick="movePin('"+eid+"','"+v.id+"');closeModal();">"+"Move to: "+esc(v.name)+"</button>";}).join("");
+  var vopts=venues.filter(function(v){return v.id!==curV;}).map(function(v){return '<button class="mbtn grn" onclick="movePin(\''+eid+'\',\''+v.id+'\');closeModal();">Move to: '+esc(v.name)+'</button>';}).join('');
   showModal("<div class="mtitle">"+esc(emp.name)+"</div>"+
     "<button class="mbtn warn" onclick="mvLeave('"+eid+"');closeModal();">Give Leave Today</button>"+
     "<button class="mbtn warn" onclick="mvOffice('"+eid+"');closeModal();">Give Office Duty Today</button>"+
@@ -645,7 +649,7 @@ function drawMStaff(){
   if(!staff.length){el.innerHTML="<div class="ebig"><div class="abi">👤</div><div class="att">No Staff Yet</div></div>";return;}
   el.innerHTML=f.map(function(e){
     var c=cc(e.role);var pv=null;if(e.pinnedVenue){for(var i=0;i<venues.length;i++){if(venues[i].id===e.pinnedVenue){pv=venues[i];break;}}}
-    return "<div class="mrow"><div class="av" style="background:"+c+"18;color:"+c+";border:2px solid "+c+"33;">"+ini(e.name)+"</div>"+
+    return "<div class='mrow"><div class='av' style='background:"+c+"18;color:"+c+";border:2px solid "+c+"33;">"+ini(e.name)+"</div>"+
       "<div style="flex:1;min-width:0;"><div class="en">"+esc(e.name)+(isMgr(e)?" [MGR]":"")+"</div>"+
       "<div class="er" style="color:"+c+"">"+esc(e.role)+"</div>"+
       (e.phone?"<div style="font-size:10px;color:#888;">Ph: "+esc(e.phone)+"</div>":"")+
@@ -661,7 +665,7 @@ function drawMVenues(){
   var f=venues.filter(function(v){return v.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
   if(!venues.length){el.innerHTML="<div class="ebig"><div class="abi">🏨</div><div class="att">No Venues</div></div>";return;}
   el.innerHTML=f.map(function(v){
-    return "<div class="mrow"><div class="av" style="background:#e3eaff;color:#1565c0;font-size:9px;">V"+(venues.indexOf(v)+1)+"</div>"+
+    return "<div class='mrow"><div class='av' style='background:#e3eaff;color:#1565c0;font-size:9px;">V"+(venues.indexOf(v)+1)+"</div>"+
       "<div style="flex:1;min-width:0;"><div class="en" style="font-size:12px;">"+esc(v.name)+"</div>"+(v.vip?"<span style="font-size:9px;background:#f9a825;color:#fff;border-radius:4px;padding:1px 6px;font-weight:700;">VIP</span>":"")+
       "</div><button class="editbtn" onclick="editVenue('"+v.id+"')">E</button>"+
       "<button class="delbtn" onclick="delVenue('"+v.id+"')">X</button></div>";
@@ -670,7 +674,7 @@ function drawMVenues(){
 
 function drawMRoles(){
   var el=document.getElementById("mrlist");
-  el.innerHTML=ROLES.map(function(r,i){var c=cc(r);return "<div class="mrow"><div class="av" style="background:"+c+"18;color:"+c+";border:2px solid "+c+"33;font-size:10px;">"+(i+1)+"</div><div style="flex:1;"><div class="en" style="color:"+c+"">"+esc(r)+"</div></div>"+(r!=="Manager"?"<button class="delbtn" onclick="delRole('"+esc(r)+"')">X</button>":"<span style="font-size:10px;color:#1a237e;padding:0 6px;">Lock</span>")+"</div>";}).join("");
+  el.innerHTML=ROLES.map(function(r,i){var c=cc(r);return "<div class='mrow"><div class='av' style='background:"+c+"18;color:"+c+";border:2px solid "+c+"33;font-size:10px;">"+(i+1)+"</div><div style="flex:1;"><div class='en' style='color:"+c+"">"+esc(r)+"</div></div>"+(r!=="Manager"?"<button class='delbtn' onclick='delRole('"+esc(r)+"')">X</button>":"<span style="font-size:10px;color:#1a237e;padding:0 6px;">Lock</span>")+"</div>";}).join("");
 }
 
 // ── LEAVE ─────────────────────────────────────────────────────────────────────
@@ -687,11 +691,11 @@ function drawLeave(){
   if(lTab==="a"){
     var av=staff.filter(function(e){return !lvMap[e.id]&&aids.indexOf(e.id)<0&&oids.indexOf(e.id)<0&&e.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
     if(!av.length){el.innerHTML="<div class="empty">No undeployed staff.</div>";return;}
-    el.innerHTML=av.map(function(e){var c=cc(e.role);return "<div class="mrow"><div class="av" style="background:"+c+"18;color:"+c+";border:2px solid "+c+"33;">"+ini(e.name)+"</div><div style="flex:1;min-width:0;"><div class="en">"+esc(e.name)+"</div><div class="er" style="color:"+c+"">"+esc(e.role)+"</div></div><button class="togbtn" style="color:#c62828;border-color:#c62828;background:transparent;" onclick="markLeave('"+e.id+"')">Mark</button></div>";}).join("");
+    el.innerHTML=av.map(function(e){var c=cc(e.role);return '<div class="mrow"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div><div style="flex:1;min-width:0;"><div class="en">'+esc(e.name)+'</div><div class="er" style="color:'+c+'">'+esc(e.role)+'</div></div><button class="togbtn" style="color:#c62828;border-color:#c62828;background:transparent;" onclick="markLeave(\''+e.id+'\')">Mark</button></div>';}).join('');
   } else {
     var mk=Object.values(lvMap).filter(function(a){return a.emp.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
     if(!mk.length){el.innerHTML="<div class="empty">No staff on leave.</div>";return;}
-    el.innerHTML=mk.map(function(a){var c=cc(a.emp.role);return "<div class="ac" style="background:#fff5f5;border:1.5px solid #ffcdd2;margin-bottom:7px;"><div class="av" style="background:"+c+"18;color:"+c+";border:2px solid "+c+"33;">"+ini(a.emp.name)+"</div><div style="flex:1;min-width:0;"><div class="en">"+esc(a.emp.name)+"</div><div class="er" style="color:"+c+"">"+esc(a.emp.role)+"</div></div><button class="rmbtn" onclick="unLeave('"+a.emp.id+"')">x</button></div>";}).join("");
+    el.innerHTML=mk.map(function(a){var c=cc(a.emp.role);return '<div class="ac" style="background:#fff5f5;border:1.5px solid #ffcdd2;margin-bottom:7px;"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(a.emp.name)+'</div><div style="flex:1;min-width:0;"><div class="en">'+esc(a.emp.name)+'</div><div class="er" style="color:'+c+'">'+esc(a.emp.role)+'</div></div><button class="rmbtn" onclick="unLeave(\''+a.emp.id+'\')">x</button></div>';}).join('');
   }
 }
 
@@ -709,11 +713,11 @@ function drawOffice(){
   if(oTab==="a"){
     var av=staff.filter(function(e){return !offMap[e.id]&&aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&e.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
     if(!av.length){el.innerHTML="<div class="empty">No undeployed staff.</div>";return;}
-    el.innerHTML=av.map(function(e){var c=cc(e.role);return "<div class="mrow"><div class="av" style="background:"+c+"18;color:"+c+";border:2px solid "+c+"33;">"+ini(e.name)+"</div><div style="flex:1;min-width:0;"><div class="en">"+esc(e.name)+"</div><div class="er" style="color:"+c+"">"+esc(e.role)+"</div></div><button class="togbtn" style="color:#e65100;border-color:#e65100;background:transparent;" onclick="markOffice('"+e.id+"')">Mark</button></div>";}).join("");
+    el.innerHTML=av.map(function(e){var c=cc(e.role);return '<div class="mrow"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div><div style="flex:1;min-width:0;"><div class="en">'+esc(e.name)+'</div><div class="er" style="color:'+c+'">'+esc(e.role)+'</div></div><button class="togbtn" style="color:#e65100;border-color:#e65100;background:transparent;" onclick="markOffice(\''+e.id+'\')">Mark</button></div>';}).join('');
   } else {
     var mk=Object.values(offMap).filter(function(a){return a.emp.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
     if(!mk.length){el.innerHTML="<div class="empty">No staff in office.</div>";return;}
-    el.innerHTML=mk.map(function(a){var c=cc(a.emp.role);return "<div class="ac" style="background:#fff8f0;border:1.5px solid #ffe0b2;margin-bottom:7px;"><div class="av" style="background:"+c+"18;color:"+c+";border:2px solid "+c+"33;">"+ini(a.emp.name)+"</div><div style="flex:1;min-width:0;"><div class="en">"+esc(a.emp.name)+"</div><div class="er" style="color:"+c+"">"+esc(a.emp.role)+"</div></div><button class="rmbtn" onclick="unOffice('"+a.emp.id+"')">x</button></div>";}).join("");
+    el.innerHTML=mk.map(function(a){var c=cc(a.emp.role);return '<div class="ac" style="background:#fff8f0;border:1.5px solid #ffe0b2;margin-bottom:7px;"><div class="av" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(a.emp.name)+'</div><div style="flex:1;min-width:0;"><div class="en">'+esc(a.emp.name)+'</div><div class="er" style="color:'+c+'">'+esc(a.emp.role)+'</div></div><button class="rmbtn" onclick="unOffice(\''+a.emp.id+'\')">x</button></div>';}).join('');
   }
 }
 

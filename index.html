@@ -115,7 +115,7 @@ input,select,button{font-family:inherit;}
     <label style="font-size:11px;color:#555;font-weight:700;display:block;margin-bottom:4px;">Password</label>
     <input id="LP" type="password" autocomplete="current-password" placeholder="Enter password" style="width:100%;background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:8px;color:#111;padding:10px 12px;font-size:16px;outline:none;margin-bottom:16px;box-sizing:border-box;display:block;"/>
     <div id="LE" style="color:#c62828;font-size:12px;text-align:center;margin-bottom:10px;display:none;">Wrong username or password</div>
-    <button type="button" id="LB" style="width:100%;background:#1565c0;border:none;color:#fff;border-radius:9px;padding:14px 0;font-size:16px;font-weight:700;cursor:pointer;display:block;box-sizing:border-box;">Login</button>
+    <button type="button" id="LB" onclick="doLogin()" style="width:100%;background:#1565c0;border:none;color:#fff;border-radius:9px;padding:14px 0;font-size:16px;font-weight:700;cursor:pointer;display:block;box-sizing:border-box;-webkit-appearance:none;">Login</button>
   </div>
   <div style="font-size:10px;color:#90caf9;margin-top:20px;">GAVS 2026</div>
 </div>
@@ -1260,16 +1260,6 @@ document.addEventListener('touchend',function(ev){
 });
 
 g('DP').addEventListener('change',function(){applyPinned();drawStats();updateADate();});
-// Login button - most reliable approach for iOS
-var lbtn=g('LB');
-if(lbtn){
-  lbtn.addEventListener('click',function(e){e.preventDefault();doLogin();},false);
-  lbtn.addEventListener('touchend',function(e){e.preventDefault();doLogin();},false);
-}
-var lpw=g('LP');
-if(lpw){lpw.addEventListener('keyup',function(e){if(e.keyCode===13||e.key==='Enter'){e.preventDefault();doLogin();}},false);}
-var lus=g('LU');
-if(lus){lus.addEventListener('keyup',function(e){if(e.keyCode===13||e.key==='Enter'){if(g('LP'))g('LP').focus();}},false);}
 </script>
 </body>
 </html>

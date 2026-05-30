@@ -101,6 +101,232 @@ input,select,button{font-family:inherit;}
 .bdg{border-radius:4px;padding:1px 5px;font-size:9px;font-weight:800;}
 .pinb{background:#7986cb;color:#fff;}
 .mgrb{background:#1a237e;color:#fff;}
+
+/* ── DESKTOP LAYOUT ─────────────────────────────────────────── */
+@media (min-width: 768px) {
+  body { font-size: 15px; }
+  .hdr-title { font-size: 18px !important; }
+  .hdr-sub { font-size: 10px !important; }
+  .nb { min-width: 80px !important; font-size: 11px !important; padding: 10px 4px !important; }
+  .nb span:first-child { font-size: 20px !important; }
+  .screen { padding: 20px 24px 40px !important; }
+  .ptitle { font-size: 22px !important; }
+
+  /* Desktop assign layout: left staff panel + right venue grid */
+  #desk-layout {
+    display: flex;
+    gap: 20px;
+    height: calc(100vh - 140px);
+  }
+  #desk-staff-panel {
+    width: 300px;
+    flex-shrink: 0;
+    background: #fff;
+    border-radius: 16px;
+    border: 1.5px solid #e3eaff;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(21,101,192,0.08);
+  }
+  #desk-staff-panel .panel-hdr {
+    background: #1565c0;
+    color: #fff;
+    padding: 14px 16px;
+    font-size: 14px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  #desk-staff-panel .panel-hdr .cnt {
+    background: rgba(255,255,255,0.25);
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 12px;
+    margin-left: auto;
+  }
+  #desk-staff-search {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e3eaff;
+    flex-shrink: 0;
+  }
+  #desk-staff-search input {
+    width: 100%;
+    border: 1.5px solid #bbdefb;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    outline: none;
+    color: #111;
+  }
+  #desk-role-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e3eaff;
+    flex-shrink: 0;
+    max-height: 80px;
+    overflow-y: auto;
+  }
+  #desk-staff-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .desk-staff-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8faff;
+    border: 1.5px solid #e3eaff;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    cursor: grab;
+    transition: all 0.15s;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .desk-staff-card:hover {
+    background: #e3f2fd;
+    border-color: #90caf9;
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(21,101,192,0.15);
+  }
+  .desk-staff-card.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+  }
+  .desk-staff-card .drag-handle {
+    color: #bbb;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .desk-staff-card .av-lg {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .desk-staff-card .info { flex: 1; min-width: 0; }
+  .desk-staff-card .sname { font-size: 13px; font-weight: 700; color: #111; }
+  .desk-staff-card .srole { font-size: 11px; margin-top: 1px; }
+  .desk-staff-card .sphone { font-size: 10px; color: #888; margin-top: 1px; }
+
+  #desk-venue-panel {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    align-content: start;
+  }
+  .desk-venue-box {
+    background: #fff;
+    border: 2px solid #e3eaff;
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+    box-shadow: 0 2px 8px rgba(21,101,192,0.06);
+    min-height: 160px;
+  }
+  .desk-venue-box.vip { border-color: #f9a825; }
+  .desk-venue-box.drag-over {
+    border-color: #1565c0 !important;
+    background: #f0f4ff;
+    box-shadow: 0 0 0 3px rgba(21,101,192,0.2);
+  }
+  .desk-venue-hdr {
+    background: #1565c0;
+    color: #fff;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .desk-venue-box.vip .desk-venue-hdr { background: linear-gradient(135deg, #1565c0, #f9a825); }
+  .desk-venue-hdr .vname-lg { font-size: 13px; font-weight: 700; flex: 1; line-height: 1.3; }
+  .desk-venue-hdr .vcnt { background: rgba(255,255,255,0.25); border-radius: 10px; padding: 2px 8px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .desk-venue-body { padding: 10px; min-height: 80px; }
+  .desk-venue-drop-hint {
+    border: 2px dashed #e3eaff;
+    border-radius: 8px;
+    padding: 14px;
+    text-align: center;
+    color: #bbb;
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+  .desk-assigned-staff {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: #f8faff;
+    border: 1px solid #e3eaff;
+    border-radius: 8px;
+    padding: 7px 10px;
+    margin-bottom: 5px;
+    font-size: 12px;
+  }
+  .desk-assigned-staff.mgr-row { background: #fffde7; border-color: #ffe082; }
+  .desk-assigned-staff .rm { background: #ffebee; border: none; color: #c62828; border-radius: 5px; width: 22px; height: 22px; cursor: pointer; font-size: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-left: auto; }
+  .desk-tsel { background: #f0f4ff; border: 1px solid #bbdefb; border-radius: 5px; color: #0d47a1; padding: 2px 6px; font-size: 11px; cursor: pointer; }
+
+  /* Desktop action bar */
+  #desk-action-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  #desk-action-bar input[type=date] {
+    background: #f0f4ff;
+    border: 1.5px solid #bbdefb;
+    border-radius: 9px;
+    color: #0d47a1;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+  }
+  #desk-action-bar button {
+    padding: 9px 18px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    white-space: nowrap;
+  }
+  #desk-vsearch {
+    flex: 1;
+    background: #fff;
+    border: 1.5px solid #bbdefb;
+    border-radius: 9px;
+    padding: 9px 14px;
+    font-size: 13px;
+    outline: none;
+    min-width: 150px;
+  }
+}
+/* Hide desktop layout on mobile */
+@media (max-width: 767px) {
+  #desk-layout, #desk-action-bar { display: none !important; }
+  #mobile-assign { display: block; }
+}
+@media (min-width: 768px) {
+  #mobile-assign { display: none !important; }
+}
 </style>
 </head>
 <body>
@@ -159,14 +385,48 @@ input,select,button{font-family:inherit;}
 
 
 <div class="screen active" id="screen-assign">
-  <div class="phdr"><span style="font-size:26px;">🏨</span><div><div class="ptitle">Assign Duties</div><div style="font-size:11px;color:#888;" id="ADATE"></div></div></div>
-  <div style="display:flex;gap:8px;margin-bottom:9px;">
-    <button onclick="showCopyFrom()" style="flex:1;background:#e3f2fd;border:1.5px solid #90caf9;color:#1565c0;border-radius:9px;padding:9px 0;font-size:11px;font-weight:700;cursor:pointer;">📅 Copy from Date</button>
-    <button onclick="showSaveDraft()" style="flex:1;background:#fff8e1;border:1.5px solid #ffe082;color:#f57f17;border-radius:9px;padding:9px 0;font-size:11px;font-weight:700;cursor:pointer;">💾 Save as Draft</button>
-    <button onclick="go('drafts')" style="flex:1;background:#f3e5f5;border:1.5px solid #ce93d8;color:#6a1b9a;border-radius:9px;padding:9px 0;font-size:11px;font-weight:700;cursor:pointer;">📂 Drafts</button>
+
+  <!-- ── DESKTOP LAYOUT ─────────────────────────────────────── -->
+  <div id="desk-action-bar">
+    <div style="font-size:20px;font-weight:800;color:#0d47a1;">🏨 Assign Duties</div>
+    <div style="font-size:13px;color:#1565c0;font-weight:600;" id="ADATE2"></div>
+    <input type="text" id="desk-vsearch" placeholder="🔍 Search venues..." oninput="drawDeskVenues()"/>
+    <button onclick="showCopyFrom()" style="background:#e3f2fd;color:#1565c0;">📅 Copy from Date</button>
+    <button onclick="showSaveDraft()" style="background:#fff8e1;color:#f57f17;">💾 Save as Draft</button>
+    <button onclick="go('drafts')" style="background:#f3e5f5;color:#6a1b9a;">📂 Drafts</button>
+    <button onclick="saveToCloud()" style="background:#e8f5e9;color:#1b5e20;">☁️ Save to Cloud</button>
   </div>
-  <input class="sbar" id="AS2" placeholder="Search venues..." oninput="drawAssign()"/>
-  <div id="AL2"></div>
+
+  <div id="desk-layout">
+    <!-- LEFT: Staff Panel -->
+    <div id="desk-staff-panel">
+      <div class="panel-hdr">
+        <span>👥</span> Available Staff
+        <span class="cnt" id="desk-avail-cnt">0</span>
+      </div>
+      <div id="desk-staff-search">
+        <input type="text" id="desk-ssearch" placeholder="Search staff..." oninput="drawDeskStaff()"/>
+      </div>
+      <div id="desk-role-filter"></div>
+      <div id="desk-staff-list"></div>
+    </div>
+
+    <!-- RIGHT: Venue Grid -->
+    <div id="desk-venue-panel"></div>
+  </div>
+
+  <!-- ── MOBILE LAYOUT ──────────────────────────────────────── -->
+  <div id="mobile-assign">
+    <div class="phdr"><span style="font-size:26px;">🏨</span><div><div class="ptitle">Assign Duties</div><div style="font-size:11px;color:#888;" id="ADATE"></div></div></div>
+    <div style="display:flex;gap:8px;margin-bottom:9px;">
+      <button onclick="showCopyFrom()" style="flex:1;background:#e3f2fd;border:1.5px solid #90caf9;color:#1565c0;border-radius:9px;padding:9px 0;font-size:11px;font-weight:700;cursor:pointer;">📅 Copy</button>
+      <button onclick="showSaveDraft()" style="flex:1;background:#fff8e1;border:1.5px solid #ffe082;color:#f57f17;border-radius:9px;padding:9px 0;font-size:11px;font-weight:700;cursor:pointer;">💾 Draft</button>
+      <button onclick="go('drafts')" style="flex:1;background:#f3e5f5;border:1.5px solid #ce93d8;color:#6a1b9a;border-radius:9px;padding:9px 0;font-size:11px;font-weight:700;cursor:pointer;">📂 Drafts</button>
+    </div>
+    <input class="sbar" id="AS2" placeholder="Search venues..." oninput="drawAssign()"/>
+    <div id="AL2"></div>
+  </div>
+
 </div>
 
 <div class="screen" id="screen-detail">
@@ -565,6 +825,7 @@ function initApp(){
   drawStats();
   updateADate();
   drawAssign();
+  setTimeout(function(){drawDeskAssign();},100);
   fillRDD();
   fillPDD();
   // Then sync from Firebase in background
@@ -587,7 +848,7 @@ function go(s){
   var sc=g('screen-'+s);if(sc)sc.classList.add('active');
   var nb=g('nb-'+(s==='detail'?'assign':s));if(nb)nb.classList.add('on');
   drawStats();
-  if(s==='assign')drawAssign();
+  if(s==='assign'){drawAssign();setTimeout(function(){drawDeskAssign();},50);}
   else if(s==='detail')drawDetail();
   else if(s==='manage')drawManage();
   else if(s==='leave'){lTab='a';styleLT();drawLeave();}
@@ -747,7 +1008,7 @@ function addE(eid){
   delete lvMap[eid];delete offMap[eid];
   asgn[curV][eid]={emp:e,duty:'6:00 AM',pinned:e.pv===curV};
   var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===curV){v=venues[i];break;}}
-  toast(e.name+' added to '+(v?v.name:'venue'));drawDetail();drawStats();saveToCloud();
+  toast(e.name+' added to '+(v?v.name:'venue'));drawDetail();drawStats();drawDeskAssign();saveToCloud();
 }
 function remV(eid,vid){if(asgn[vid])delete asgn[vid][eid];drawDetail();drawStats();saveToCloud();}
 function clearVen(){if(curV)asgn[curV]={};toast('Cleared','w');drawDetail();drawStats();saveToCloud();}
@@ -1137,11 +1398,190 @@ function changePass(){
 }
 
 
+
+// ── DESKTOP DRAG & DROP ───────────────────────────────────────────────────────
+var deskDragEid = null;
+var deskCurRole = 'All';
+
+function drawDeskAssign(){
+  var isDesktop = window.innerWidth >= 768;
+  if(!isDesktop) return;
+  drawDeskStaff();
+  drawDeskVenues();
+  var el2 = document.getElementById('ADATE2');
+  if(el2) el2.textContent = 'Date: ' + fd(getD());
+}
+
+function drawDeskStaff(){
+  var q = (document.getElementById('desk-ssearch')||{}).value||'';
+  var aids = getAids(), lids = Object.keys(lvMap), oids = Object.keys(offMap);
+  var av = staff.filter(function(e){
+    return aids.indexOf(e.id)<0 && lids.indexOf(e.id)<0 && oids.indexOf(e.id)<0 &&
+      e.name.toLowerCase().indexOf(q.toLowerCase())>=0 &&
+      (deskCurRole==='All' || e.role===deskCurRole);
+  });
+
+  // Role filter pills
+  var rf = '<button onclick="deskSetRole(\'All\')" style="background:'+(deskCurRole==='All'?'#1565c0':'#f0f4ff')+';color:'+(deskCurRole==='All'?'#fff':'#1565c0')+';border:none;border-radius:12px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">All</button>';
+  ROLES.forEach(function(r){
+    var c=cc(r),on=deskCurRole===r;
+    rf+='<button onclick="deskSetRole(\''+esc(r)+'\')" style="background:'+(on?c:'#f0f4ff')+';color:'+(on?'#fff':c)+';border:none;border-radius:12px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap;">'+esc(r)+'</button>';
+  });
+  var rfEl = document.getElementById('desk-role-filter');
+  if(rfEl) rfEl.innerHTML = rf;
+
+  var cntEl = document.getElementById('desk-avail-cnt');
+  if(cntEl) cntEl.textContent = av.length;
+
+  var el = document.getElementById('desk-staff-list');
+  if(!el) return;
+  if(!staff.length){
+    el.innerHTML = '<div style="text-align:center;color:#bbb;padding:30px;font-size:13px;">No staff yet.<br>Go to Manage tab.</div>';
+    return;
+  }
+  if(!av.length){
+    el.innerHTML = '<div style="text-align:center;color:#bbb;padding:30px;font-size:13px;">All staff deployed!</div>';
+    return;
+  }
+  var h='';
+  av.forEach(function(e){
+    var c=cc(e.role);
+    h+='<div class="desk-staff-card" draggable="true" id="dsc-'+e.id+'" ondragstart="deskDragStart(event,\''+e.id+'\')" ondragend="deskDragEnd(event)">';
+    h+='<span class="drag-handle">⠿</span>';
+    h+='<div class="av-lg" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;">'+ini(e.name)+'</div>';
+    h+='<div class="info">';
+    h+='<div class="sname">'+esc(e.name)+(isMgr(e)?'<span style="background:#1a237e;color:#fff;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:800;margin-left:4px;">MGR</span>':'')+'</div>';
+    h+='<div class="srole" style="color:'+c+';">'+esc(e.role)+'</div>';
+    if(e.phone) h+='<div class="sphone">📞 '+esc(e.phone)+'</div>';
+    if(e.pv){var pv=null;for(var i=0;i<venues.length;i++){if(venues[i].id===e.pv){pv=venues[i];break;}}if(pv)h+='<div class="sphone" style="color:#7986cb;">📌 '+esc(pv.name)+'</div>';}
+    h+='</div></div>';
+  });
+  el.innerHTML = h;
+}
+
+function deskSetRole(r){deskCurRole=r;drawDeskStaff();}
+
+function deskDragStart(ev, eid){
+  deskDragEid = eid;
+  ev.dataTransfer.effectAllowed = 'move';
+  ev.dataTransfer.setData('text/plain', eid);
+  setTimeout(function(){
+    var el = document.getElementById('dsc-'+eid);
+    if(el) el.classList.add('dragging');
+  }, 0);
+}
+
+function deskDragEnd(ev){
+  if(deskDragEid){
+    var el = document.getElementById('dsc-'+deskDragEid);
+    if(el) el.classList.remove('dragging');
+  }
+  // Remove all drag-over highlights
+  document.querySelectorAll('.desk-venue-box').forEach(function(b){b.classList.remove('drag-over');});
+}
+
+function deskDragOver(ev, vid){
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.desk-venue-box').forEach(function(b){b.classList.remove('drag-over');});
+  var box = document.getElementById('dvb-'+vid);
+  if(box) box.classList.add('drag-over');
+}
+
+function deskDragLeave(vid){
+  var box = document.getElementById('dvb-'+vid);
+  if(box) box.classList.remove('drag-over');
+}
+
+function deskDrop(ev, vid){
+  ev.preventDefault();
+  var eid = ev.dataTransfer.getData('text/plain') || deskDragEid;
+  if(!eid) return;
+  var box = document.getElementById('dvb-'+vid);
+  if(box) box.classList.remove('drag-over');
+  // Add staff to venue
+  var e=null;for(var i=0;i<staff.length;i++){if(staff[i].id===eid){e=staff[i];break;}}
+  if(!e) return;
+  if(!asgn[vid]) asgn[vid]={};
+  Object.keys(asgn).forEach(function(v){if(asgn[v]&&asgn[v][eid])delete asgn[v][eid];});
+  delete lvMap[eid]; delete offMap[eid];
+  asgn[vid][eid]={emp:e,duty:'6:00 AM',pinned:e.pv===vid};
+  var v=null;for(var i=0;i<venues.length;i++){if(venues[i].id===vid){v=venues[i];break;}}
+  toast(e.name+' → '+(v?v.name:'venue'));
+  deskDragEid = null;
+  drawDeskStaff();
+  drawDeskVenues();
+  drawStats();
+  saveToCloud();
+}
+
+function deskRemoveStaff(eid, vid){
+  if(asgn[vid]) delete asgn[vid][eid];
+  drawDeskStaff();
+  drawDeskVenues();
+  drawStats();
+  saveToCloud();
+}
+
+function deskVdu(eid, vid, val){
+  if(asgn[vid]&&asgn[vid][eid]){asgn[vid][eid].duty=val;saveToCloud();}
+}
+
+function drawDeskVenues(){
+  var q = (document.getElementById('desk-vsearch')||{}).value||'';
+  var el = document.getElementById('desk-venue-panel');
+  if(!el) return;
+  var fv = venues.filter(function(v){return v.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
+  var vips = fv.filter(function(v){return v.vip;}), rest = fv.filter(function(v){return !v.vip;});
+  var list = vips.concat(rest);
+  var h='';
+  list.forEach(function(v){
+    var t = getTeam(v.id);
+    var mgrs = t.filter(function(a){return isMgr(a.emp);});
+    var others = t.filter(function(a){return !isMgr(a.emp);});
+    var sorted = mgrs.concat(others);
+    h+='<div class="desk-venue-box'+(v.vip?' vip':'')+'" id="dvb-'+v.id+'"';
+    h+=' ondragover="deskDragOver(event,\''+v.id+'\')"';
+    h+=' ondragleave="deskDragLeave(\''+v.id+'\')"';
+    h+=' ondrop="deskDrop(event,\''+v.id+'\')">';
+    // Header
+    h+='<div class="desk-venue-hdr">';
+    h+=(v.vip?'<span style="font-size:14px;">⭐</span>':'<span style="font-size:14px;">🏨</span>');
+    h+='<div class="vname-lg">'+esc(v.name)+'</div>';
+    if(v.vip) h+='<span style="background:rgba(255,60,60,0.2);color:#ff6060;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:800;">VIP</span>';
+    h+='<span class="vcnt">'+t.length+' staff</span>';
+    h+='</div>';
+    // Body
+    h+='<div class="desk-venue-body">';
+    if(!t.length){
+      h+='<div class="desk-venue-drop-hint">⬇ Drop staff here</div>';
+    } else {
+      sorted.forEach(function(a){
+        var c=cc(a.emp.role);
+        var isMG=isMgr(a.emp);
+        h+='<div class="desk-assigned-staff'+(isMG?' mgr-row':'')+'">';
+        h+='<div class="av-lg" style="background:'+c+'18;color:'+c+';border:2px solid '+c+'33;width:28px;height:28px;font-size:10px;font-weight:800;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+ini(a.emp.name)+'</div>';
+        h+='<div style="flex:1;min-width:0;">';
+        h+='<div style="font-weight:'+(isMG?'800':'600')+';color:'+(isMG?'#1a237e':'#111')+';font-size:12px;">'+esc(a.emp.name)+'</div>';
+        h+='<div style="font-size:10px;color:'+c+';">'+esc(a.emp.role)+'</div>';
+        h+='</div>';
+        h+='<select class="desk-tsel" onchange="deskVdu(\''+a.emp.id+'\',\''+v.id+'\',this.value)">';
+        h+=TIMES.map(function(t){return'<option'+(t===a.duty?' selected':'')+'>'+t+'</option>';}).join('');
+        h+='</select>';
+        h+='<button class="rm" onclick="deskRemoveStaff(\''+a.emp.id+'\',\''+v.id+'\')">✕</button>';
+        h+='</div>';
+      });
+    }
+    h+='</div></div>';
+  });
+  el.innerHTML = h;
+}
+
 // ── ASSIGN SCREEN helpers ─────────────────────────────────────────────────────
 function updateADate(){
   var d=getD();
-  var el=g('ADATE');
-  if(el)el.textContent='Date: '+fd(d);
+  var el=g('ADATE');if(el)el.textContent='Date: '+fd(d);
+  var el2=g('ADATE2');if(el2)el2.textContent='Date: '+fd(d);
 }
 
 // ── BULK SET TIME ─────────────────────────────────────────────────────────────

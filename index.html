@@ -391,7 +391,15 @@ function saveToCloud(){
 // ── LOAD FROM FIREBASE ────────────────────────────────────────────────────────
 function loadFromCloud(callback){
   showLoadingOverlay(true);
+  // Timeout fallback - if Firebase takes >8 seconds, load anyway
+  var timeout = setTimeout(function(){
+    console.warn('Firebase timeout - loading without cloud data');
+    DB_LOADED = true;
+    showLoadingOverlay(false);
+    if(callback) callback();
+  }, 8000);
   db.collection('gavs_data').doc('main').get().then(function(doc){
+    clearTimeout(timeout);
     if(doc.exists){
       var d = doc.data();
       // Restore staff
@@ -474,7 +482,9 @@ function loadFromCloud(callback){
     showLoadingOverlay(false);
     if(callback) callback();
   }).catch(function(e){
+    clearTimeout(timeout);
     console.error('Load error:', e);
+    toast('Cloud sync error - working offline','w');
     DB_LOADED = true;
     showLoadingOverlay(false);
     if(callback) callback();

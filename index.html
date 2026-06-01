@@ -97,8 +97,8 @@ input,select,button{font-family:inherit;}
 .lo-row:hover{border-color:#90caf9;}
 .tsel{background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:6px;color:#0d47a1;padding:3px 8px;font-size:11px;cursor:pointer;}
 /* Assign duties desktop */
-.assign-layout{display:flex;gap:20px;height:calc(100vh - 215px);}
-@media(max-width:900px){.assign-layout{flex-direction:column;height:auto;}}
+.assign-layout{display:flex;gap:20px;height:calc(100vh - 215px);min-height:600px;}
+@media(max-width:900px){.assign-layout{flex-direction:column;height:auto;}.sp{width:100%;max-height:260px;}.vp{min-height:400px;}.vgrid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));}}
 /* Staff panel */
 .sp{width:280px;flex-shrink:0;background:#fff;border-radius:14px;border:1.5px solid #e3eaff;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 12px rgba(21,101,192,0.08);}
 .sp-hdr{background:#1565c0;color:#fff;padding:12px 14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px;flex-shrink:0;}
@@ -141,11 +141,11 @@ input,select,button{font-family:inherit;}
 .vgrid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-content:start;padding-bottom:20px;}
 @media(max-width:900px){.vgrid{grid-template-columns:1fr;}}
 /* Venue box */
-.vbox{background:#fff;border:2px solid #e3eaff;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(21,101,192,0.05);transition:border-color 0.2s,box-shadow 0.2s;}
+.vbox{background:#fff;border:2px solid #e3eaff;border-radius:14px;overflow:visible;box-shadow:0 2px 8px rgba(21,101,192,0.05);transition:border-color 0.2s,box-shadow 0.2s;}
 .vbox.vip{border-color:#f9a825;}
 .vbox.drag-over{border-color:#1565c0!important;background:#f0f4ff;box-shadow:0 0 0 3px rgba(21,101,192,0.2);}
-.vbox-hdr{background:#1565c0;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;}
-.vbox.vip .vbox-hdr{background:linear-gradient(135deg,#1565c0 50%,#e65100);}
+.vbox-hdr{background:#1565c0;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;border-radius:12px 12px 0 0;}
+.vbox.vip .vbox-hdr{background:linear-gradient(135deg,#1565c0 50%,#e65100);border-radius:12px 12px 0 0;}
 .vbox-name{font-size:13px;font-weight:700;flex:1;line-height:1.3;}
 .vbox-cnt{background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;}
 .vbox-close{background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -358,13 +358,44 @@ input,select,button{font-family:inherit;}
 <!-- REPORT -->
 <div class="screen" id="screen-report">
   <div class="phdr"><span style="font-size:28px;">📋</span>
-    <div><div class="ptitle">Duty Report</div>
-      <div style="font-size:13px;color:#1565c0;font-weight:600;" id="RD"></div>
-      <div style="font-size:11px;color:#888;" id="RP"></div>
-    </div>
+    <div><div class="ptitle">Reports</div></div>
   </div>
-  <div id="RB"></div>
-  <button class="pdfbtn" id="btnPDF">⬇ Download PDF</button>
+  <!-- Report type tabs -->
+  <div class="mtabs" style="margin-bottom:16px;">
+    <button class="mtab on" data-rtab="daily">📅 Daily Duty Report</button>
+    <button class="mtab" data-rtab="venue">🏨 Venue History Report</button>
+  </div>
+  <!-- Daily Report -->
+  <div id="rp-daily">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+      <div style="font-size:14px;font-weight:700;color:#1565c0;" id="RD"></div>
+      <div style="font-size:12px;color:#888;" id="RP"></div>
+      <button class="pdfbtn" id="btnPDF" style="margin:0;width:auto;padding:10px 24px;font-size:13px;">⬇ Download PDF</button>
+    </div>
+    <div id="RB" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;"></div>
+  </div>
+  <!-- Venue History Report -->
+  <div id="rp-venue" class="hide">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:12px;align-items:end;flex-wrap:wrap;">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Select Venue</label>
+          <select class="sel" id="VHV" style="margin-bottom:0;"></select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">From Date</label>
+          <input type="date" id="VHF" class="inp" style="margin-bottom:0;"/>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">To Date</label>
+          <input type="date" id="VHT" class="inp" style="margin-bottom:0;"/>
+        </div>
+        <button class="bigbtn" id="btnVHR" style="width:auto;padding:10px 20px;white-space:nowrap;">View Report</button>
+      </div>
+    </div>
+    <div id="VHB"></div>
+    <button class="pdfbtn hide" id="btnVHPDF">⬇ Download Venue History PDF</button>
+  </div>
 </div>
 
 <!-- STAFF REPORT -->
@@ -534,7 +565,7 @@ function go(s){
   else if(s==='manage'){drawManage();}
   else if(s==='leave'){drawLeave();}
   else if(s==='office'){drawOffice();}
-  else if(s==='report'){drawReport();}
+  else if(s==='report'){drawReport();populateVHVenue();}
   else if(s==='staffrep'){drawSR();}
   else if(s==='drafts'){showDraftList();}
 }
@@ -566,7 +597,7 @@ function initApp(){
 }
 
 function initActiveVids(){
-  activeVids=[];
+  // Always show venues with pinned staff or existing assignments
   venues.forEach(function(v){
     var hasPinned=staff.some(function(e){return e.pv===v.id;});
     var hasAsgn=asgn[v.id]&&Object.keys(asgn[v.id]).length>0;
@@ -603,6 +634,8 @@ function applyPinned(){
     Object.keys(asgn).forEach(function(vid){if(vid!==e.pv&&asgn[vid]&&asgn[vid][e.id])delete asgn[vid][e.id];});
     if(!asgn[e.pv])asgn[e.pv]={};
     if(!asgn[e.pv][e.id]){asgn[e.pv][e.id]={emp:e,duty:e.fixedDuty||'6:00 AM',pinned:true,isFixed:true};}
+    // Always add pinned venue to active list
+    if(activeVids.indexOf(e.pv)<0)activeVids.push(e.pv);
   });
 }
 
@@ -659,6 +692,11 @@ function drawStaffPanel(){
   ROLES.forEach(function(r){
     var grp=groups[r];if(!grp||!grp.length)return;
     var c=cc(r);
+    // Split into available and deployed
+    var availGrp=grp.filter(function(e){return aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&oids.indexOf(e.id)<0;});
+    var depGrp=grp.filter(function(e){return aids.indexOf(e.id)>=0||lids.indexOf(e.id)>=0||oids.indexOf(e.id)>=0;});
+    var sortedGrp=availGrp.concat(depGrp);
+
     // Role heading
     var hdr=document.createElement('div');
     hdr.className='rg-hdr';
@@ -666,7 +704,7 @@ function drawStaffPanel(){
     hdr.innerHTML=esc(r)+' <div class="rg-line"></div>';
     el.appendChild(hdr);
 
-    grp.forEach(function(e){
+    sortedGrp.forEach(function(e){
       var isD=aids.indexOf(e.id)>=0;
       var isL=lids.indexOf(e.id)>=0;
       var isO=oids.indexOf(e.id)>=0;
@@ -771,7 +809,7 @@ function onGreyStaffClick(eid){
 g('V_SRCH').addEventListener('input',function(){
   var q=this.value.trim();
   var dd=g('V_DD');
-  if(q.length<2){dd.classList.remove('show');dd.innerHTML='';return;}
+  if(q.length<1){dd.classList.remove('show');dd.innerHTML='';return;}
   var matches=venues.filter(function(v){
     return v.name.toLowerCase().indexOf(q.toLowerCase())>=0&&activeVids.indexOf(v.id)<0;
   }).slice(0,15);
@@ -802,12 +840,92 @@ document.addEventListener('click',function(ev){
 function drawVenueGrid(){
   var el=g('V_GRID');if(!el)return;
   el.innerHTML='';
+
+  // ── Leave drop zone ─────────────────────────────────────────
+  var lvBox=document.createElement('div');
+  var lvCount=Object.keys(lvMap).length;
+  lvBox.style.cssText='background:#fff5f5;border:2px dashed #ef9a9a;border-radius:14px;overflow:hidden;min-height:100px;';
+  lvBox.id='drop-leave';
+  var lvHdr=document.createElement('div');
+  lvHdr.style.cssText='background:#c62828;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
+  lvHdr.innerHTML='<span style="font-size:16px;">🌴</span><span style="font-size:13px;font-weight:700;flex:1;">On Leave</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+lvCount+' staff</span>';
+  lvBox.appendChild(lvHdr);
+  var lvBody=document.createElement('div');lvBody.style.cssText='padding:10px;min-height:60px;';
+  var lvList=Object.values(lvMap);
+  if(!lvList.length){
+    lvBody.innerHTML='<div style="text-align:center;color:#ef9a9a;font-size:12px;padding:12px;">Drag staff here to mark On Leave</div>';
+  } else {
+    lvList.forEach(function(a){
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:6px;background:#ffebee;border-radius:7px;padding:5px 8px;margin-bottom:5px;font-size:12px;';
+      var c=cc(a.emp.role);
+      row.innerHTML='<div style="width:24px;height:24px;border-radius:5px;background:'+c+'18;color:'+c+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;">'+ini(a.emp.name)+'</div>'+
+        '<div style="flex:1;font-weight:600;color:#c62828;">'+esc(a.emp.name)+'</div>';
+      var rm=document.createElement('button');
+      rm.style.cssText='background:#ffcdd2;border:none;color:#c62828;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+      rm.textContent='✕';
+      rm.addEventListener('click',(function(eid){return function(){unLeave(eid);};})(a.emp.id));
+      row.appendChild(rm);
+      lvBody.appendChild(row);
+    });
+  }
+  lvBox.appendChild(lvBody);
+  // Drag over
+  lvBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#c62828';this.style.background='#ffebee';});
+  lvBox.addEventListener('dragleave',function(){this.style.borderColor='#ef9a9a';this.style.background='#fff5f5';});
+  lvBox.addEventListener('drop',function(ev){
+    ev.preventDefault();this.style.borderColor='#ef9a9a';this.style.background='#fff5f5';
+    var eid=ev.dataTransfer.getData('text/plain')||touchDragEid;
+    if(eid)markLeave(eid);
+  });
+  el.appendChild(lvBox);
+
+  // ── Office Duty drop zone ───────────────────────────────────
+  var offBox=document.createElement('div');
+  var offCount=Object.keys(offMap).length;
+  offBox.style.cssText='background:#fff8f0;border:2px dashed #ffcc80;border-radius:14px;overflow:hidden;min-height:100px;';
+  offBox.id='drop-office';
+  var offHdr=document.createElement('div');
+  offHdr.style.cssText='background:#e65100;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
+  offHdr.innerHTML='<span style="font-size:16px;">🏢</span><span style="font-size:13px;font-weight:700;flex:1;">Office Duty</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+offCount+' staff</span>';
+  offBox.appendChild(offHdr);
+  var offBody=document.createElement('div');offBody.style.cssText='padding:10px;min-height:60px;';
+  var offList=Object.values(offMap);
+  if(!offList.length){
+    offBody.innerHTML='<div style="text-align:center;color:#ffcc80;font-size:12px;padding:12px;">Drag staff here for Office Duty</div>';
+  } else {
+    offList.forEach(function(a){
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:6px;background:#fff3e0;border-radius:7px;padding:5px 8px;margin-bottom:5px;font-size:12px;';
+      var c=cc(a.emp.role);
+      row.innerHTML='<div style="width:24px;height:24px;border-radius:5px;background:'+c+'18;color:'+c+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;">'+ini(a.emp.name)+'</div>'+
+        '<div style="flex:1;font-weight:600;color:#e65100;">'+esc(a.emp.name)+'</div>';
+      var rm=document.createElement('button');
+      rm.style.cssText='background:#ffe0b2;border:none;color:#e65100;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+      rm.textContent='✕';
+      rm.addEventListener('click',(function(eid){return function(){unOffice(eid);};})(a.emp.id));
+      row.appendChild(rm);
+      offBody.appendChild(row);
+    });
+  }
+  offBox.appendChild(offBody);
+  offBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#e65100';this.style.background='#fff3e0';});
+  offBox.addEventListener('dragleave',function(){this.style.borderColor='#ffcc80';this.style.background='#fff8f0';});
+  offBox.addEventListener('drop',function(ev){
+    ev.preventDefault();this.style.borderColor='#ffcc80';this.style.background='#fff8f0';
+    var eid=ev.dataTransfer.getData('text/plain')||touchDragEid;
+    if(eid)markOffice(eid);
+  });
+  el.appendChild(offBox);
+
+  // ── Venue boxes ─────────────────────────────────────────────
   activeVids.forEach(function(vid){
     var v=getV(vid);if(!v)return;
     var hasPinned=staff.some(function(e){return e.pv===vid;});
     el.appendChild(makeVenueBox(v,hasPinned));
   });
-  // Add new venue box
+
+  // ── Add new venue box ────────────────────────────────────────
   var addBox=document.createElement('div');
   addBox.className='add-vbox';
   addBox.innerHTML='<div style="font-size:36px;color:#ef9a9a;margin-bottom:8px;">+</div><div style="font-size:14px;font-weight:700;color:#c62828;">Add New Venue</div><div style="font-size:11px;color:#e57373;margin-top:4px;">Click to create</div>';
@@ -842,6 +960,20 @@ function makeVenueBox(v,hasPinned){
   if(v.vip){var vipBdg=document.createElement('span');vipBdg.style.cssText='background:rgba(255,60,60,0.25);color:#ff6060;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:800;flex-shrink:0;';vipBdg.textContent='VIP';hdr.appendChild(vipBdg);}
   hdr.appendChild(cnt);
 
+  // VIP button
+  var vipBtn=document.createElement('button');
+  vipBtn.style.cssText='background:'+(v.vip?'#f9a825':'rgba(255,255,255,0.15)')+';border:1px solid '+(v.vip?'#f9a825':'rgba(255,255,255,0.4)')+';color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;';
+  vipBtn.textContent='⭐ VIP';
+  vipBtn.title='Toggle VIP';
+  vipBtn.addEventListener('click',function(){v.vip=!v.vip;saveCloud();drawVenueGrid();});
+  hdr.appendChild(vipBtn);
+  // All Same Time button
+  var allTimeBtn=document.createElement('button');
+  allTimeBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;';
+  allTimeBtn.textContent='⏰';
+  allTimeBtn.title='Set same time for all staff';
+  allTimeBtn.addEventListener('click',(function(vid){return function(){showBulkTime(vid);};})(v.id));
+  hdr.appendChild(allTimeBtn);
   if(!hasPinned){
     var cls=document.createElement('button');cls.className='vbox-close';cls.textContent='✕';cls.title='Remove from view';
     cls.addEventListener('click',function(){activeVids=activeVids.filter(function(id){return id!==v.id;});drawVenueGrid();});
@@ -868,21 +1000,30 @@ function makeVenueBox(v,hasPinned){
     if(mgrs.length){
       var mgrHdr=makeRoleHdr('Manager',cc('Manager'));
       body.appendChild(mgrHdr);
-      mgrs.forEach(function(a){
-        body.appendChild(makeMgrRow(a,v.id));
-      });
+      mgrs.forEach(function(a){body.appendChild(makeMgrRow(a,v.id));});
     }
 
-    // Others - 3 col
-    ROLES.forEach(function(r){
-      if(r==='Manager')return;
-      var grp=roleGroups[r];if(!grp||!grp.length)return;
-      var c=cc(r);
-      body.appendChild(makeRoleHdr(r,c));
-      var grid=document.createElement('div');grid.className='v3grid';
-      grp.forEach(function(a){grid.appendChild(makeV3Card(a,v.id,c));});
-      body.appendChild(grid);
-    });
+    // Non-managers: collect role groups, display 3 role columns side by side
+    var activeRoles=ROLES.filter(function(r){return r!=='Manager'&&roleGroups[r]&&roleGroups[r].length;});
+    if(activeRoles.length){
+      // Outer flex container - role groups side by side
+      var roleRow=document.createElement('div');
+      roleRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;';
+      activeRoles.forEach(function(r){
+        var grp=roleGroups[r];var c=cc(r);
+        var col=document.createElement('div');
+        col.style.cssText='flex:1;min-width:90px;';
+        // Role heading
+        var rh=document.createElement('div');
+        rh.style.cssText='font-size:8px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+c+';padding:4px 2px 3px;border-bottom:1px solid '+c+'22;margin-bottom:3px;';
+        rh.textContent=r;
+        col.appendChild(rh);
+        // Staff cards
+        grp.forEach(function(a){col.appendChild(makeV3Card(a,v.id,c));});
+        roleRow.appendChild(col);
+      });
+      body.appendChild(roleRow);
+    }
   }
   box.appendChild(body);
   return box;
@@ -913,16 +1054,32 @@ function makeMgrRow(a,vid){
 
 function makeV3Card(a,vid,c){
   var d=document.createElement('div');d.className='v3card';
+  // Name row
   var top=document.createElement('div');top.className='v3top';
   var av=document.createElement('div');av.className='av-sm';
-  av.style.cssText='background:'+c+'18;color:'+c+';border:2px solid '+c+'33;width:22px;height:22px;font-size:9px;border-radius:5px;flex-shrink:0;';
+  av.style.cssText='background:'+c+'18;color:'+c+';border:1px solid '+c+'33;width:20px;height:20px;font-size:8px;border-radius:4px;flex-shrink:0;';
   av.textContent=ini(a.emp.name);
-  var nm=document.createElement('div');nm.className='v3name';nm.style.color=c;nm.textContent=a.emp.name;nm.title=a.emp.name;
+  var nm=document.createElement('div');nm.className='v3name';nm.style.color='#111';
+  nm.style.fontSize='11px';nm.textContent=a.emp.name;nm.title=a.emp.name;
   var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';
   rm.addEventListener('click',(function(eid,vid2){return function(){remV(eid,vid2);};})(a.emp.id,vid));
   top.appendChild(av);top.appendChild(nm);top.appendChild(rm);
-  var ts=makeTselEl(a.duty,a.isFixed,function(val){if(asgn[vid]&&asgn[vid][a.emp.id]){asgn[vid][a.emp.id].duty=val;asgn[vid][a.emp.id].isFixed=false;saveCloud();}});
-  d.appendChild(top);d.appendChild(ts);
+  // Compact time row
+  var trow=document.createElement('div');trow.style.cssText='display:flex;align-items:center;gap:2px;margin-top:2px;';
+  if(a.isFixed){var lk=document.createElement('span');lk.style.cssText='font-size:8px;';lk.textContent='🔒';trow.appendChild(lk);}
+  var sel=document.createElement('select');
+  sel.style.cssText='flex:1;background:#f0f4ff;border:1px solid #bbdefb;border-radius:4px;color:#0d47a1;padding:1px 2px;font-size:9px;cursor:pointer;';
+  TIMES.forEach(function(t){var o=document.createElement('option');o.textContent=t;if(t===a.duty)o.selected=true;sel.appendChild(o);});
+  var capturedEid=a.emp.id;var capturedVid=vid;
+  sel.addEventListener('change',function(){
+    if(asgn[capturedVid]&&asgn[capturedVid][capturedEid]){
+      asgn[capturedVid][capturedEid].duty=this.value;
+      asgn[capturedVid][capturedEid].isFixed=false;
+      saveCloud();
+    }
+  });
+  trow.appendChild(sel);
+  d.appendChild(top);d.appendChild(trow);
   return d;
 }
 
@@ -953,22 +1110,99 @@ function remV(eid,vid){
   drawStaffPanel();drawVenueGrid();drawStats();saveCloud();
 }
 
-function promptAddVenue(){
+function showBulkTime(vid){
+  var t=Object.values(asgn[vid]||{});
+  if(!t.length){toast('No staff assigned to this venue','w');return;}
+  var v=getV(vid);
+  var opts=TIMES.map(function(tm){return'<option>'+tm+'</option>';}).join('');
   showModal(
-    '<div class="mt">Add New Venue</div>'+
-    '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:6px;">Venue Name</label>'+
-    '<input id="QVN" class="inp" placeholder="Enter venue name..."/>'+
-    '<button class="mbtn blue" id="m-yes">+ Add Venue</button>'+
+    '<div class="mt">⏰ Set Same Time for All</div>'+
+    '<div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">Set one duty time for all <strong>'+t.length+'</strong> staff at <strong>'+esc(v?v.name:'venue')+'</strong></div>'+
+    '<select id="BTIME" class="sel">'+opts+'</select>'+
+    '<button class="mbtn blue" id="m-yes">Apply to All Staff</button>'+
     '<button class="mcancel" id="m-no">Cancel</button>'
   );
   g('m-yes').onclick=function(){
+    var val=g('BTIME').value;
+    Object.keys(asgn[vid]||{}).forEach(function(eid){
+      if(asgn[vid][eid])asgn[vid][eid].duty=val;
+    });
+    closeModal();toast('All staff set to '+val);drawVenueGrid();saveCloud();
+  };
+  g('m-no').onclick=closeModal;
+}
+
+function promptAddVenue(){
+  showModal(
+    '<div class="mt">Add Venue</div>'+
+    '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:6px;">Search or create venue</label>'+
+    '<div style="position:relative;">'+
+    '<input id="QVN" class="inp" placeholder="Type venue name..." style="margin-bottom:4px;"/>'+
+    '<div id="QVNDD" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #90caf9;border-radius:9px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(21,101,192,0.15);display:none;"></div>'+
+    '</div>'+
+    '<button class="mbtn blue" id="m-yes">+ Add as New Venue</button>'+
+    '<button class="mcancel" id="m-no">Cancel</button>'
+  );
+  // Live search
+  g('QVN').addEventListener('input',function(){
+    var q=this.value.trim();
+    var dd=g('QVNDD');
+    if(!q){dd.style.display='none';return;}
+    // Find matching venues not already in activeVids
+    var matches=venues.filter(function(v){
+      return v.name.toLowerCase().indexOf(q.toLowerCase())>=0 && activeVids.indexOf(v.id)<0;
+    }).slice(0,10);
+    // Also find matching venues already in list
+    var alreadyIn=venues.filter(function(v){
+      return v.name.toLowerCase().indexOf(q.toLowerCase())>=0 && activeVids.indexOf(v.id)>=0;
+    }).slice(0,5);
+    dd.innerHTML='';
+    if(matches.length){
+      var hdr=document.createElement('div');
+      hdr.style.cssText='font-size:10px;font-weight:700;color:#888;padding:6px 12px 2px;text-transform:uppercase;letter-spacing:0.08em;';
+      hdr.textContent='Add to workspace';
+      dd.appendChild(hdr);
+      matches.forEach(function(v){
+        var item=document.createElement('div');
+        item.style.cssText='padding:9px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f4ff;color:#0d47a1;';
+        item.textContent='🏨 '+v.name;
+        item.addEventListener('mouseenter',function(){this.style.background='#e3f2fd';});
+        item.addEventListener('mouseleave',function(){this.style.background='';});
+        item.addEventListener('click',(function(vid,vname){return function(){
+          activeVids.push(vid);
+          closeModal();toast(vname+' added!');
+          drawVenueGrid();
+        };})(v.id,v.name));
+        dd.appendChild(item);
+      });
+    }
+    if(alreadyIn.length){
+      var hdr2=document.createElement('div');
+      hdr2.style.cssText='font-size:10px;font-weight:700;color:#888;padding:6px 12px 2px;text-transform:uppercase;letter-spacing:0.08em;border-top:'+(matches.length?'1px solid #e3eaff':'none')+';';
+      hdr2.textContent='Already in workspace';
+      dd.appendChild(hdr2);
+      alreadyIn.forEach(function(v){
+        var item=document.createElement('div');
+        item.style.cssText='padding:9px 14px;font-size:13px;border-bottom:1px solid #f0f4ff;color:#888;';
+        item.textContent='✓ '+v.name;
+        dd.appendChild(item);
+      });
+    }
+    dd.style.display=(matches.length||alreadyIn.length)?'block':'none';
+  });
+  g('m-yes').onclick=function(){
     var n=(g('QVN').value||'').trim();
     if(!n){toast('Enter venue name','w');return;}
-    if(venues.find(function(v){return v.name.toLowerCase()===n.toLowerCase();})){toast('Venue already exists!','e');return;}
-    var v={id:mkId(),name:n,vip:false};
-    venues.push(v);activeVids.push(v.id);
-    closeModal();toast(n+' added!');
-    drawVenueGrid();populateVenueDD();saveCloud();
+    var existing=venues.find(function(v){return v.name.toLowerCase()===n.toLowerCase();});
+    if(existing){
+      if(activeVids.indexOf(existing.id)<0)activeVids.push(existing.id);
+      closeModal();toast(n+' added to workspace!');drawVenueGrid();
+    } else {
+      var v={id:mkId(),name:n,vip:false};
+      venues.push(v);activeVids.push(v.id);
+      closeModal();toast(n+' created!');
+      drawVenueGrid();populateVenueDD();saveCloud();
+    }
   };
   g('QVN').addEventListener('keydown',function(e){if(e.key==='Enter')g('m-yes').click();});
   g('m-no').onclick=closeModal;
@@ -1311,7 +1545,7 @@ function markLeave(eid){
   lvMap[eid]={emp:e,duty:'6:00 AM'};
   toast(e.name+' on leave');
   drawLeave();drawStats();
-  if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
+  if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}else{drawVenueGrid();}
   saveCloud();
 }
 function unLeave(eid){
@@ -1344,7 +1578,7 @@ function markOffice(eid){
   offMap[eid]={emp:e,duty:'6:00 AM'};
   toast(e.name+' on office duty');
   drawOffice();drawStats();
-  if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
+  if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}else{drawVenueGrid();}
   saveCloud();
 }
 function unOffice(eid){
@@ -1455,6 +1689,18 @@ function saveLog(){
   dlog[d]=log;
 }
 
+// Report tab switching
+document.querySelectorAll('[data-rtab]').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('[data-rtab]').forEach(function(b){b.classList.remove('on');});
+    this.classList.add('on');
+    var tab=this.getAttribute('data-rtab');
+    g('rp-daily').classList.toggle('hide',tab!=='daily');
+    g('rp-venue').classList.toggle('hide',tab!=='venue');
+    if(tab==='venue')populateVHVenue();
+  });
+});
+
 function drawReport(){
   saveLog();
   var d=getD(),ndd=nd(d);
@@ -1466,32 +1712,155 @@ function drawReport(){
     var mgrs=t.filter(function(a){return isMgr(a.emp);}),rest=t.filter(function(a){return !isMgr(a.emp);});
     h+='<div class="pvcard">'+(v.vip?'<div style="font-size:10px;font-weight:800;color:#f9a825;margin-bottom:6px;">⭐ VIP EVENT</div>':'')+
       '<div class="pvname">'+esc(v.name)+'</div>'+
-      '<div style="font-size:12px;color:#1565c0;font-weight:600;margin-bottom:10px;">'+t.length+' staff</div>';
+      '<div style="font-size:12px;color:#1565c0;font-weight:600;margin-bottom:8px;">'+t.length+' staff</div>';
     mgrs.concat(rest).forEach(function(a,i){
       var c=cc(a.emp.role),isMG=isMgr(a.emp);
       h+='<div class="prow"'+(isMG?' style="background:#e8eaf6;border-radius:6px;"':'')+'>'+
         '<span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;">';
-      h+=isMG?'<div style="font-weight:800;font-size:13px;color:#1a237e;">'+esc(a.emp.name)+(a.emp.phone?' Ph: '+esc(a.emp.phone):'')+'</div>':
-        '<div style="font-weight:700;font-size:13px;color:#111;">'+esc(a.emp.name)+'</div>';
-      h+='<span style="font-size:10px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 5px;">'+esc(a.emp.role)+'</span></div>';
-      h+='<div style="font-size:12px;font-weight:700;color:#0d47a1;flex-shrink:0;">'+esc(a.duty)+'</div></div>';
+      h+=isMG?'<div style="font-weight:800;font-size:12px;color:#1a237e;">'+esc(a.emp.name)+(a.emp.phone?' Ph:'+esc(a.emp.phone):'')+'</div>':
+        '<div style="font-weight:700;font-size:12px;color:#111;">'+esc(a.emp.name)+'</div>';
+      h+='<span style="font-size:9px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 4px;">'+esc(a.emp.role)+'</span></div>';
+      h+='<div style="font-size:11px;font-weight:700;color:#0d47a1;flex-shrink:0;">'+esc(a.duty)+'</div></div>';
     });
     h+='</div>';
   });
   if(lv2.length){
     h+='<div class="pvcard" style="border-left:4px solid #c62828;"><div class="pvname" style="color:#c62828;margin-bottom:8px;">On Leave - '+lv2.length+' staff</div>';
-    lv2.forEach(function(a,i){var c=cc(a.emp.role);h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;"><div style="font-weight:700;">'+esc(a.emp.name)+'</div><span style="font-size:10px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 5px;">'+esc(a.emp.role)+'</span></div></div>';});
+    lv2.forEach(function(a,i){var c=cc(a.emp.role);h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;">'+esc(a.emp.name)+'</div><span style="font-size:9px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 4px;">'+esc(a.emp.role)+'</span></div></div>';});
     h+='</div>';
   }
   if(ov.length){
     h+='<div class="pvcard" style="border-left:4px solid #e65100;"><div class="pvname" style="color:#e65100;margin-bottom:8px;">Office Duty - '+ov.length+' staff</div>';
-    ov.forEach(function(a,i){var c=cc(a.emp.role);h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;"><div style="font-weight:700;">'+esc(a.emp.name)+'</div><span style="font-size:10px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 5px;">'+esc(a.emp.role)+'</span></div></div>';});
+    ov.forEach(function(a,i){var c=cc(a.emp.role);h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;">'+esc(a.emp.name)+'</div><span style="font-size:9px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 4px;">'+esc(a.emp.role)+'</span></div></div>';});
     h+='</div>';
   }
-  if(!h)h='<div style="text-align:center;color:#bbb;padding:50px;font-size:14px;">No staff deployed yet.</div>';
+  if(!h)h='<div style="grid-column:1/-1;text-align:center;color:#bbb;padding:50px;font-size:14px;">No staff deployed yet.</div>';
   g('RB').innerHTML=h;
 }
 g('btnPDF').addEventListener('click',makePDF);
+
+// ── VENUE HISTORY REPORT ───────────────────────────────────────
+function populateVHVenue(){
+  var el=g('VHV');if(!el)return;
+  var cur=el.value;
+  el.innerHTML='<option value="">-- Select Venue --</option>'+
+    venues.map(function(v){return'<option value="'+v.id+'"'+(v.id===cur?' selected':'')+'>'+esc(v.name)+'</option>';}).join('');
+  // Set default date range to current month
+  var now=new Date();
+  var firstDay=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+  var lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);
+  if(g('VHF')&&!g('VHF').value)g('VHF').value=firstDay;
+  if(g('VHT')&&!g('VHT').value)g('VHT').value=lastDay;
+}
+
+g('btnVHR').addEventListener('click',drawVenueHistory);
+g('btnVHPDF').addEventListener('click',makeVHPDF);
+
+function drawVenueHistory(){
+  var vid=(g('VHV')||{}).value||'';
+  var fromDate=(g('VHF')||{}).value||'';
+  var toDate=(g('VHT')||{}).value||'';
+  var el=g('VHB');if(!el)return;
+  if(!vid){toast('Select a venue','w');return;}
+  if(!fromDate||!toDate){toast('Select date range','w');return;}
+  if(fromDate>toDate){toast('From date must be before To date','w');return;}
+  var v=getV(vid);if(!v)return;
+  var h='<div class="pvcard" style="grid-column:1/-1;">';
+  h+='<div class="pvname">'+esc(v.name)+'</div>';
+  h+='<div style="font-size:12px;color:#1565c0;font-weight:600;margin-bottom:14px;">'+fd(fromDate)+' → '+fd(toDate)+'</div>';
+  // Table header
+  h+='<div style="display:grid;grid-template-columns:120px 1fr;gap:0;border:1px solid #e3eaff;border-radius:9px;overflow:hidden;">';
+  h+='<div style="background:#1565c0;color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Date</div>';
+  h+='<div style="background:#1565c0;color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Staff Assigned</div>';
+  // Iterate dates
+  var cur=new Date(fromDate);var end=new Date(toDate);var rowIdx=0;
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    var log=dlog[ds];
+    var names=[];
+    // Check if this is today and we have live data
+    var today=new Date().toISOString().slice(0,10);
+    if(ds===today){
+      Object.keys(asgn).forEach(function(avid){if(avid===vid&&asgn[avid]){Object.values(asgn[avid]).forEach(function(a){names.push(a.emp.name+(isMgr(a.emp)?'[M]':'')+'@'+a.duty);});}});
+    }
+    if(log&&log.venues&&log.venues[vid]){
+      Object.keys(log.venues[vid]).forEach(function(eid){
+        var emp=getS(eid);
+        if(emp&&names.findIndex(function(n){return n.indexOf(emp.name)>=0;})<0){
+          names.push(emp.name+(isMgr(emp)?'[M]':'')+'@'+log.venues[vid][eid]);
+        }
+      });
+    }
+    var bg=rowIdx%2===0?'#f8faff':'#fff';
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cur.getDay()];
+    h+='<div style="background:'+bg+';padding:8px 12px;font-size:12px;font-weight:600;color:#1565c0;border-top:1px solid #e3eaff;">'+dn+', '+fd(ds)+'</div>';
+    h+='<div style="background:'+bg+';padding:8px 12px;font-size:12px;border-top:1px solid #e3eaff;">';
+    if(names.length){
+      h+=names.map(function(n){
+        var parts=n.split('@');var nm=parts[0];var duty=parts[1]||'';
+        var isMgrFlag=nm.indexOf('[M]')>=0;
+        nm=nm.replace('[M]','');
+        return'<span style="display:inline-block;background:'+(isMgrFlag?'#e8eaf6':'#f0f4ff')+';border-radius:4px;padding:1px 7px;margin:1px;font-size:11px;color:'+(isMgrFlag?'#1a237e':'#1565c0')+';">'+esc(nm)+(isMgrFlag?' [MGR]':'')+(duty?' '+duty:'')+'</span>';
+      }).join('');
+    } else {
+      h+='<span style="color:#bbb;font-size:11px;">No assignments</span>';
+    }
+    h+='</div>';
+    cur.setDate(cur.getDate()+1);rowIdx++;
+  }
+  h+='</div></div>';
+  el.innerHTML=h;
+  g('btnVHPDF').classList.remove('hide');
+}
+
+function makeVHPDF(){
+  var vid=(g('VHV')||{}).value||'';
+  var fromDate=(g('VHF')||{}).value||'';
+  var toDate=(g('VHT')||{}).value||'';
+  var v=getV(vid);
+  if(!v||!fromDate||!toDate||!window.jspdf){toast('Error','e');return;}
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,mg=12,y=mg;
+  function cp(n){if(y+n>283){doc.addPage();y=mg;}}
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,13,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Venue History Report',pw/2+10,21,{align:'center'});y=40;
+  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,20,3,3,'F');
+  doc.setTextColor(13,71,161);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(v.name,mg+5,y+9);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(80,80,80);doc.text(fd(fromDate)+' to '+fd(toDate),mg+5,y+17);y+=26;
+  // Table header
+  doc.setFillColor(21,101,192);doc.rect(mg,y,pw-mg*2,8,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+  doc.text('Date',mg+3,y+5.5);doc.text('Staff Assigned',mg+50,y+5.5);y+=9;
+  var cur=new Date(fromDate);var end=new Date(toDate);var rowIdx=0;
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    var log=dlog[ds];var names=[];
+    var today=new Date().toISOString().slice(0,10);
+    if(ds===today){Object.keys(asgn).forEach(function(avid){if(avid===vid&&asgn[avid]){Object.values(asgn[avid]).forEach(function(a){names.push(a.emp.name+(isMgr(a.emp)?' [M]':'')+' '+a.duty);});}});}
+    if(log&&log.venues&&log.venues[vid]){Object.keys(log.venues[vid]).forEach(function(eid){var emp=getS(eid);if(emp&&names.findIndex(function(n){return n.indexOf(emp.name)>=0;})<0){names.push(emp.name+(isMgr(emp)?' [M]':'')+' '+log.venues[vid][eid]);}});}
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cur.getDay()];
+    var nameStr=names.length?names.join(', '):'No assignments';
+    // Calculate row height
+    var maxW=pw-mg*2-52;
+    var lines=doc.splitTextToSize(nameStr,maxW);
+    var rh=Math.max(8,lines.length*5+4);
+    cp(rh);
+    if(rowIdx%2===0){doc.setFillColor(248,250,255);}else{doc.setFillColor(255,255,255);}
+    doc.rect(mg,y,pw-mg*2,rh,'F');
+    doc.setDrawColor(220,230,255);doc.rect(mg,y,pw-mg*2,rh,'S');
+    doc.setTextColor(21,101,192);doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text(dn+' '+String(cur.getDate()).padStart(2,'0')+'/'+String(cur.getMonth()+1).padStart(2,'0'),mg+3,y+5);
+    doc.setTextColor(names.length?30:150,names.length?30:150,names.length?30:150);
+    doc.setFont('helvetica',names.length?'normal':'italic');
+    doc.text(lines,mg+50,y+5);
+    y+=rh;cur.setDate(cur.getDate()+1);rowIdx++;
+  }
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | '+v.name,mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_Venue_History_'+v.name.replace(/ /g,'_')+'_'+fromDate+'_to_'+toDate+'.pdf');toast('Venue history PDF downloaded!');
+}
 
 // ── PDF ───────────────────────────────────────────────────────
 function makePDF(){
@@ -1886,6 +2255,68 @@ g('DP').addEventListener('change',function(){
   updateADate();applyPinned();drawStats();
   if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
 });
+
+// ── TOUCH DRAG & DROP FOR IPAD / MOBILE ──────────────────────
+var touchDragEid = null;
+var touchGhost = null;
+
+document.addEventListener('touchstart', function(ev) {
+  var card = ev.target.closest('.scard.avail');
+  if(!card) return;
+  touchDragEid = card.getAttribute('data-eid');
+  var e = getS(touchDragEid);
+  if(!e) return;
+  var c = cc(e.role);
+  var touch = ev.touches[0];
+  // Create ghost element
+  touchGhost = document.createElement('div');
+  touchGhost.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;background:#fff;border:2px solid '+c+';border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 6px 22px rgba(0,0,0,0.2);font-family:sans-serif;font-size:13px;color:#111;white-space:nowrap;opacity:0.9;';
+  touchGhost.innerHTML = '<div style="width:28px;height:28px;border-radius:7px;background:'+c+'22;color:'+c+';display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;">'+ini(e.name)+'</div><div><div style="font-weight:700;">'+esc(e.name)+'</div><div style="font-size:11px;color:'+c+';">'+esc(e.role)+'</div></div>';
+  touchGhost.style.left = (touch.clientX - 50) + 'px';
+  touchGhost.style.top = (touch.clientY - 30) + 'px';
+  document.body.appendChild(touchGhost);
+  if(navigator.vibrate) navigator.vibrate(30);
+  card.style.opacity = '0.3';
+}, {passive: true});
+
+document.addEventListener('touchmove', function(ev) {
+  if(!touchDragEid || !touchGhost) return;
+  ev.preventDefault();
+  var touch = ev.touches[0];
+  touchGhost.style.left = (touch.clientX - 50) + 'px';
+  touchGhost.style.top = (touch.clientY - 30) + 'px';
+  // Highlight venue box under finger
+  document.querySelectorAll('.vbox').forEach(function(b){b.classList.remove('drag-over');});
+  var el = document.elementFromPoint(touch.clientX, touch.clientY);
+  if(el) {
+    var vbox = el.closest('.vbox');
+    if(vbox) vbox.classList.add('drag-over');
+  }
+}, {passive: false});
+
+document.addEventListener('touchend', function(ev) {
+  if(!touchDragEid) return;
+  // Remove ghost
+  if(touchGhost) { try{document.body.removeChild(touchGhost);}catch(x){} touchGhost = null; }
+  // Restore card opacity
+  var card = document.querySelector('.scard[data-eid="'+touchDragEid+'"]');
+  if(card) card.style.opacity = '';
+  // Find where finger landed
+  var touch = ev.changedTouches[0];
+  document.querySelectorAll('.vbox').forEach(function(b){b.classList.remove('drag-over');});
+  var el = document.elementFromPoint(touch.clientX, touch.clientY);
+  if(el) {
+    var vbox = el.closest('.vbox');
+    if(vbox) {
+      var vid = vbox.id.replace('vb-','');
+      if(vid) {
+        dropStaff(touchDragEid, vid);
+        if(navigator.vibrate) navigator.vibrate([20,10,20]);
+      }
+    }
+  }
+  touchDragEid = null;
+}, {passive: true});
 
 // ── FIREBASE SAVE / LOAD ──────────────────────────────────────
 function saveCloud(){

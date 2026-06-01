@@ -71,6 +71,8 @@ input,select,button{font-family:inherit;}
 /* Manage */
 .mtabs{display:flex;border-bottom:2px solid #e3eaff;margin-bottom:20px;}
 .mtab{background:transparent;border:none;color:#888;padding:11px 24px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
+.rtab{background:transparent;border:none;color:#888;padding:11px 24px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
+.rtab.on{color:#1565c0;border-bottom:2px solid #1565c0;font-weight:800;}
 .mtab.on{color:#1565c0;border-bottom:2px solid #1565c0;font-weight:800;}
 .mgrid{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start;}
 @media(max-width:900px){.mgrid{grid-template-columns:1fr;}}
@@ -163,7 +165,7 @@ input,select,button{font-family:inherit;}
 @media(max-width:600px){.v3grid{grid-template-columns:repeat(2,1fr);}}
 .v3card{background:#f8faff;border:1px solid #e3eaff;border-radius:8px;padding:6px 7px;}
 .v3top{display:flex;align-items:center;gap:4px;margin-bottom:3px;}
-.v3name{font-size:11px;font-weight:700;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+.v3name{font-size:10px;font-weight:700;color:#111;flex:1;min-width:0;word-break:break-word;line-height:1.2;}
 .v3rm{background:#ffebee;border:none;color:#c62828;border-radius:4px;width:17px;height:17px;cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .v3sel{width:100%;background:#f0f4ff;border:1px solid #bbdefb;border-radius:5px;color:#0d47a1;padding:2px 4px;font-size:10px;cursor:pointer;}
 .lockico{font-size:9px;}
@@ -224,7 +226,6 @@ input,select,button{font-family:inherit;}
     <button class="nb" data-screen="leave"><span class="ni">🌴</span><span>Leave</span></button>
     <button class="nb" data-screen="office"><span class="ni">🏢</span><span>Office Duty</span></button>
     <button class="nb" data-screen="report"><span class="ni">📄</span><span>Report</span></button>
-    <button class="nb" data-screen="staffrep"><span class="ni">📊</span><span>Staff Rep</span></button>
     <button class="nb" data-screen="drafts"><span class="ni">📂</span><span>Drafts</span></button>
     <button class="nb" data-screen="settings"><span class="ni">🔧</span><span>Settings</span></button>
   </div>
@@ -278,6 +279,7 @@ input,select,button{font-family:inherit;}
       </div>
       <div>
         <input class="inp" id="MSS" placeholder="Search staff..."/>
+        <div id="MSR_PILLS" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
         <div id="MSL"></div>
       </div>
     </div>
@@ -361,9 +363,11 @@ input,select,button{font-family:inherit;}
     <div><div class="ptitle">Reports</div></div>
   </div>
   <!-- Report type tabs -->
-  <div class="mtabs" style="margin-bottom:16px;">
-    <button class="mtab on" data-rtab="daily">📅 Daily Duty Report</button>
-    <button class="mtab" data-rtab="venue">🏨 Venue History Report</button>
+  <div class="mtabs" style="margin-bottom:16px;overflow-x:auto;flex-wrap:nowrap;">
+    <button class="rtab on" data-rtab="daily">📅 Daily Duty</button>
+    <button class="rtab" data-rtab="venue">🏨 Venue History</button>
+    <button class="rtab" data-rtab="staff">📊 Staff Report</button>
+    <button class="rtab" data-rtab="lohistory">🌴 Leave & Office</button>
   </div>
   <!-- Daily Report -->
   <div id="rp-daily">
@@ -396,21 +400,40 @@ input,select,button{font-family:inherit;}
     <div id="VHB"></div>
     <button class="pdfbtn hide" id="btnVHPDF">⬇ Download Venue History PDF</button>
   </div>
-</div>
 
-<!-- STAFF REPORT -->
-<div class="screen" id="screen-staffrep">
-  <div class="phdr"><span style="font-size:28px;">📊</span><div><div class="ptitle">Staff Monthly Report</div></div></div>
-  <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
-    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;">
-      <select class="sel" id="SRE" style="margin-bottom:0;"><option value="">-- Select Employee --</option></select>
-      <select class="sel" id="SRM" style="margin-bottom:0;"></select>
-      <select class="sel" id="SRY" style="margin-bottom:0;"></select>
+  <!-- Staff Monthly Report panel -->
+  <div id="rp-staff" class="hide">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;">
+        <select class="sel" id="SRE" style="margin-bottom:0;"><option value="">-- Select Employee --</option></select>
+        <select class="sel" id="SRM" style="margin-bottom:0;"></select>
+        <select class="sel" id="SRY" style="margin-bottom:0;"></select>
+      </div>
     </div>
+    <div id="SRS"></div>
+    <div id="SRB"></div>
+    <button class="pdfbtn hide" id="SRPB">⬇ Download Staff PDF</button>
   </div>
-  <div id="SRS"></div>
-  <div id="SRB"></div>
-  <button class="pdfbtn hide" id="SRPB">⬇ Download Staff PDF</button>
+
+  <!-- Leave & Office History panel -->
+  <div id="rp-lohistory" class="hide">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">From Date</label>
+          <input type="date" id="LOF" class="inp" style="margin-bottom:0;"/>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">To Date</label>
+          <input type="date" id="LOT" class="inp" style="margin-bottom:0;"/>
+        </div>
+        <button class="bigbtn" id="btnLOR" style="width:auto;padding:10px 20px;">View Report</button>
+      </div>
+    </div>
+    <div id="LOB"></div>
+    <button class="pdfbtn hide" id="btnLOPDF">⬇ Download Leave & Office PDF</button>
+  </div>
+
 </div>
 
 <!-- DRAFTS -->
@@ -565,8 +588,8 @@ function go(s){
   else if(s==='manage'){drawManage();}
   else if(s==='leave'){drawLeave();}
   else if(s==='office'){drawOffice();}
-  else if(s==='report'){drawReport();populateVHVenue();}
-  else if(s==='staffrep'){drawSR();}
+  else if(s==='report'){drawReport();}
+  // staffrep merged into report tab
   else if(s==='drafts'){showDraftList();}
 }
 
@@ -1060,7 +1083,7 @@ function makeV3Card(a,vid,c){
   av.style.cssText='background:'+c+'18;color:'+c+';border:1px solid '+c+'33;width:20px;height:20px;font-size:8px;border-radius:4px;flex-shrink:0;';
   av.textContent=ini(a.emp.name);
   var nm=document.createElement('div');nm.className='v3name';nm.style.color='#111';
-  nm.style.fontSize='11px';nm.textContent=a.emp.name;nm.title=a.emp.name;
+  nm.style.cssText='font-size:10px;font-weight:700;color:#111;flex:1;min-width:0;word-break:break-word;line-height:1.2;';nm.textContent=a.emp.name;nm.title=a.emp.name;
   var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';
   rm.addEventListener('click',(function(eid,vid2){return function(){remV(eid,vid2);};})(a.emp.id,vid));
   top.appendChild(av);top.appendChild(nm);top.appendChild(rm);
@@ -1244,10 +1267,11 @@ function showCopyFrom(){
 }
 
 // ── MANAGE ────────────────────────────────────────────────────
-var curMtab='staff';
+var curMtab='staff';var mStaffRole='All';
 document.querySelectorAll('.mtab').forEach(function(btn){
   btn.addEventListener('click',function(){
     curMtab=this.getAttribute('data-mtab');
+    mStaffRole='All'; // Reset role filter when switching tabs
     document.querySelectorAll('.mtab').forEach(function(b){b.classList.remove('on');});
     this.classList.add('on');
     ['staff','venues','roles'].forEach(function(t){
@@ -1337,12 +1361,38 @@ function addRole(){
 function drawMStaff(){
   var q=(g('MSS')||{}).value||'';
   var el=g('MSL');if(!el)return;
+
+  // Draw role filter pills
+  var pillEl=g('MSR_PILLS');
+  if(pillEl){
+    pillEl.innerHTML='';
+    var allBtn=document.createElement('button');
+    allBtn.style.cssText='border:none;border-radius:20px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;background:'+(mStaffRole==='All'?'#1565c0':'#e3eaff')+';color:'+(mStaffRole==='All'?'#fff':'#1565c0')+';';
+    allBtn.textContent='All ('+staff.length+')';
+    allBtn.addEventListener('click',function(){mStaffRole='All';drawMStaff();});
+    pillEl.appendChild(allBtn);
+    ROLES.forEach(function(r){
+      var c=cc(r);
+      var count=staff.filter(function(e){return e.role===r;}).length;
+      if(!count)return;
+      var btn=document.createElement('button');
+      btn.style.cssText='border:none;border-radius:20px;padding:5px 14px;font-size:11px;font-weight:700;cursor:pointer;background:'+(mStaffRole===r?c:'rgba(0,0,0,0.06)')+';color:'+(mStaffRole===r?'#fff':c)+';';
+      btn.textContent=r+' ('+count+')';
+      btn.addEventListener('click',(function(role){return function(){mStaffRole=role;drawMStaff();};})(r));
+      pillEl.appendChild(btn);
+    });
+  }
+
   el.innerHTML='';
   if(!staff.length){
     el.innerHTML='<div style="text-align:center;padding:40px;color:#bbb;"><div style="font-size:40px;">👤</div><div style="font-size:15px;color:#1565c0;font-weight:700;margin-top:10px;">No Staff Yet</div></div>';
     return;
   }
-  var f=staff.filter(function(e){return e.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
+  var f=staff.filter(function(e){
+    var matchQ=e.name.toLowerCase().indexOf(q.toLowerCase())>=0;
+    var matchR=mStaffRole==='All'||e.role===mStaffRole;
+    return matchQ&&matchR;
+  });
   f.forEach(function(e){
     var c=cc(e.role);var pv=e.pv?getV(e.pv):null;
     var row=document.createElement('div');row.className='srow';
@@ -1690,14 +1740,24 @@ function saveLog(){
 }
 
 // Report tab switching
-document.querySelectorAll('[data-rtab]').forEach(function(btn){
+document.querySelectorAll('.rtab').forEach(function(btn){
   btn.addEventListener('click',function(){
-    document.querySelectorAll('[data-rtab]').forEach(function(b){b.classList.remove('on');});
+    document.querySelectorAll('.rtab').forEach(function(b){b.classList.remove('on');});
     this.classList.add('on');
     var tab=this.getAttribute('data-rtab');
     g('rp-daily').classList.toggle('hide',tab!=='daily');
     g('rp-venue').classList.toggle('hide',tab!=='venue');
+    g('rp-staff').classList.toggle('hide',tab!=='staff');
+    g('rp-lohistory').classList.toggle('hide',tab!=='lohistory');
     if(tab==='venue')populateVHVenue();
+    if(tab==='staff'){populateSRDrops();drawSR();}
+    if(tab==='lohistory'){
+      var now=new Date();
+      var first=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+      var last=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);
+      if(g('LOF')&&!g('LOF').value)g('LOF').value=first;
+      if(g('LOT')&&!g('LOT').value)g('LOT').value=last;
+    }
   });
 });
 
@@ -2086,9 +2146,28 @@ function showDraftList(){
       '<span style="font-size:11px;background:#e8f5e9;color:#1b5e20;border-radius:5px;padding:2px 8px;font-weight:700;">'+ac+' staff</span>'+
       '<span style="font-size:11px;background:#f3e5f5;color:#6a1b9a;border-radius:5px;padding:2px 8px;font-weight:700;">v'+vc+' latest</span>'+
       '</div>';
-    var openBtn=document.createElement('button');openBtn.className='bigbtn';openBtn.textContent='Open Draft';
+    var btns=document.createElement('div');btns.style.cssText='display:flex;gap:8px;';
+    var openBtn=document.createElement('button');openBtn.className='bigbtn';openBtn.style.flex='1';openBtn.textContent='Open Draft';
     openBtn.addEventListener('click',(function(id){return function(){openDraft(id);};})(dr.id));
-    card.appendChild(openBtn);
+    var delBtn=document.createElement('button');
+    delBtn.style.cssText='background:#ffebee;border:1.5px solid #ffcdd2;color:#c62828;border-radius:9px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;';
+    delBtn.textContent='🗑️';delBtn.title='Delete draft';
+    delBtn.addEventListener('click',(function(id,name){return function(ev){
+      ev.stopPropagation();
+      showModal(
+        '<div class="mt" style="color:#c62828;">Delete Draft?</div>'+
+        '<div style="text-align:center;font-size:15px;color:#333;margin-bottom:18px;">Delete <strong>'+esc(name)+'</strong> and all versions?</div>'+
+        '<button class="mbtn red" id="m-yes">Yes, Delete</button>'+
+        '<button class="mcancel" id="m-no">Cancel</button>'
+      );
+      g('m-yes').onclick=function(){
+        drafts=drafts.filter(function(x){return x.id!==id;});
+        closeModal();toast('Draft deleted','w');showDraftList();saveCloud();
+      };
+      g('m-no').onclick=closeModal;
+    };})(dr.id,dr.name));
+    btns.appendChild(openBtn);btns.appendChild(delBtn);
+    card.appendChild(btns);
     grid.appendChild(card);
   });
   el.appendChild(grid);
@@ -2255,6 +2334,157 @@ g('DP').addEventListener('change',function(){
   updateADate();applyPinned();drawStats();
   if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
 });
+
+
+// ── LEAVE & OFFICE HISTORY REPORT ────────────────────────────
+g('btnLOR').addEventListener('click', drawLOHistory);
+g('btnLOPDF').addEventListener('click', makeLOPDF);
+
+function drawLOHistory(){
+  var fromDate=(g('LOF')||{}).value||'';
+  var toDate=(g('LOT')||{}).value||'';
+  var el=g('LOB');if(!el)return;
+  if(!fromDate||!toDate){toast('Select date range','w');return;}
+  if(fromDate>toDate){toast('From date must be before To date','w');return;}
+
+  var h='';
+  // Leave section
+  h+='<div class="pvcard" style="margin-bottom:16px;">';
+  h+='<div class="pvname" style="color:#c62828;margin-bottom:12px;">🌴 On Leave</div>';
+  h+='<div style="border:1px solid #ffcdd2;border-radius:9px;overflow:hidden;">';
+  h+='<div style="display:grid;grid-template-columns:140px 1fr;background:#c62828;">';
+  h+='<div style="color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Date</div>';
+  h+='<div style="color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Staff on Leave</div>';
+  h+='</div>';
+  var cur=new Date(fromDate);var end=new Date(toDate);var ri=0;
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    var log=dlog[ds];var names=[];
+    var today=new Date().toISOString().slice(0,10);
+    if(ds===today){Object.values(lvMap).forEach(function(a){names.push(a.emp.name);});}
+    else if(log&&log.leave){log.leave.forEach(function(l){var emp=getS(l.id);if(emp)names.push(emp.name+(l.duty?' @ '+l.duty:''));});}
+    var bg=ri%2===0?'#fff5f5':'#fff';
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cur.getDay()];
+    h+='<div style="display:grid;grid-template-columns:140px 1fr;background:'+bg+';border-top:1px solid #ffcdd2;">';
+    h+='<div style="padding:8px 12px;font-size:12px;font-weight:600;color:#c62828;">'+dn+', '+fd(ds)+'</div>';
+    h+='<div style="padding:8px 12px;font-size:12px;">';
+    if(names.length){
+      h+=names.map(function(n){return'<span style="display:inline-block;background:#ffebee;border-radius:4px;padding:1px 8px;margin:1px;font-size:11px;color:#c62828;">'+esc(n)+'</span>';}).join('');
+    }else{
+      h+='<span style="color:#bbb;font-size:11px;">No one on leave</span>';
+    }
+    h+='</div></div>';
+    cur.setDate(cur.getDate()+1);ri++;
+  }
+  h+='</div></div>';
+
+  // Office Duty section
+  h+='<div class="pvcard">';
+  h+='<div class="pvname" style="color:#e65100;margin-bottom:12px;">🏢 Office Duty</div>';
+  h+='<div style="border:1px solid #ffe0b2;border-radius:9px;overflow:hidden;">';
+  h+='<div style="display:grid;grid-template-columns:140px 1fr;background:#e65100;">';
+  h+='<div style="color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Date</div>';
+  h+='<div style="color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Staff on Office Duty</div>';
+  h+='</div>';
+  var cur2=new Date(fromDate);var ri2=0;
+  while(cur2<=end){
+    var ds2=cur2.toISOString().slice(0,10);
+    var log2=dlog[ds2];var names2=[];
+    var today2=new Date().toISOString().slice(0,10);
+    if(ds2===today2){Object.values(offMap).forEach(function(a){names2.push(a.emp.name);});}
+    else if(log2&&log2.office){log2.office.forEach(function(o){var emp=getS(o.id);if(emp)names2.push(emp.name+(o.duty?' @ '+o.duty:''));});}
+    var bg2=ri2%2===0?'#fff8f0':'#fff';
+    var dn2=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cur2.getDay()];
+    h+='<div style="display:grid;grid-template-columns:140px 1fr;background:'+bg2+';border-top:1px solid #ffe0b2;">';
+    h+='<div style="padding:8px 12px;font-size:12px;font-weight:600;color:#e65100;">'+dn2+', '+fd(ds2)+'</div>';
+    h+='<div style="padding:8px 12px;font-size:12px;">';
+    if(names2.length){
+      h+=names2.map(function(n){return'<span style="display:inline-block;background:#fff3e0;border-radius:4px;padding:1px 8px;margin:1px;font-size:11px;color:#e65100;">'+esc(n)+'</span>';}).join('');
+    }else{
+      h+='<span style="color:#bbb;font-size:11px;">No one on office duty</span>';
+    }
+    h+='</div></div>';
+    cur2.setDate(cur2.getDate()+1);ri2++;
+  }
+  h+='</div></div>';
+
+  el.innerHTML=h;
+  g('btnLOPDF').classList.remove('hide');
+}
+
+function makeLOPDF(){
+  var fromDate=(g('LOF')||{}).value||'';
+  var toDate=(g('LOT')||{}).value||'';
+  if(!fromDate||!toDate||!window.jspdf){toast('Error','e');return;}
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,mg=12,y=mg;
+  function cp(n){if(y+n>283){doc.addPage();y=mg;}}
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,13,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Leave & Office Duty History Report',pw/2+10,21,{align:'center'});y=40;
+  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,14,3,3,'F');
+  doc.setTextColor(13,71,161);doc.setFontSize(10);doc.setFont('helvetica','bold');
+  doc.text('Period: '+fd(fromDate)+' to '+fd(toDate),pw/2,y+9,{align:'center'});y+=20;
+
+  // ON LEAVE section
+  doc.setFillColor(198,40,40);doc.rect(mg,y,pw-mg*2,10,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
+  doc.text('ON LEAVE',mg+5,y+7);y+=11;
+  doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,7,'F');
+  doc.setTextColor(13,71,161);doc.setFontSize(7);doc.setFont('helvetica','bold');
+  doc.text('Date',mg+3,y+5);doc.text('Staff on Leave',mg+55,y+5);y+=8;
+  var cur=new Date(fromDate);var end=new Date(toDate);var ri=0;
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);var log=dlog[ds];var names=[];
+    var today=new Date().toISOString().slice(0,10);
+    if(ds===today){Object.values(lvMap).forEach(function(a){names.push(a.emp.name);});}
+    else if(log&&log.leave){log.leave.forEach(function(l){var emp=getS(l.id);if(emp)names.push(emp.name);});}
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cur.getDay()];
+    var nameStr=names.length?names.join(', '):'No one on leave';
+    var lines=doc.splitTextToSize(nameStr,pw-mg*2-57);
+    var rh=Math.max(7,lines.length*5+3);cp(rh);
+    if(ri%2===0){doc.setFillColor(255,245,245);}else{doc.setFillColor(255,255,255);}
+    doc.rect(mg,y,pw-mg*2,rh,'F');doc.setDrawColor(255,205,210);doc.rect(mg,y,pw-mg*2,rh,'S');
+    doc.setTextColor(198,40,40);doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text(dn+' '+fd(ds),mg+3,y+5);
+    doc.setTextColor(names.length?30:150,names.length?30:150,names.length?30:150);
+    doc.setFont('helvetica',names.length?'normal':'italic');
+    doc.text(lines,mg+55,y+5);
+    y+=rh;cur.setDate(cur.getDate()+1);ri++;
+  }
+  y+=8;
+  // OFFICE DUTY section
+  cp(16);
+  doc.setFillColor(230,81,0);doc.rect(mg,y,pw-mg*2,10,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
+  doc.text('OFFICE DUTY',mg+5,y+7);y+=11;
+  doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,7,'F');
+  doc.setTextColor(13,71,161);doc.setFontSize(7);doc.setFont('helvetica','bold');
+  doc.text('Date',mg+3,y+5);doc.text('Staff on Office Duty',mg+55,y+5);y+=8;
+  var cur2=new Date(fromDate);var ri2=0;
+  while(cur2<=end){
+    var ds2=cur2.toISOString().slice(0,10);var log2=dlog[ds2];var names2=[];
+    var today2=new Date().toISOString().slice(0,10);
+    if(ds2===today2){Object.values(offMap).forEach(function(a){names2.push(a.emp.name);});}
+    else if(log2&&log2.office){log2.office.forEach(function(o){var emp=getS(o.id);if(emp)names2.push(emp.name);});}
+    var dn2=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cur2.getDay()];
+    var nameStr2=names2.length?names2.join(', '):'No one on office duty';
+    var lines2=doc.splitTextToSize(nameStr2,pw-mg*2-57);
+    var rh2=Math.max(7,lines2.length*5+3);cp(rh2);
+    if(ri2%2===0){doc.setFillColor(255,248,240);}else{doc.setFillColor(255,255,255);}
+    doc.rect(mg,y,pw-mg*2,rh2,'F');doc.setDrawColor(255,224,178);doc.rect(mg,y,pw-mg*2,rh2,'S');
+    doc.setTextColor(230,81,0);doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text(dn2+' '+fd(ds2),mg+3,y+5);
+    doc.setTextColor(names2.length?30:150,names2.length?30:150,names2.length?30:150);
+    doc.setFont('helvetica',names2.length?'normal':'italic');
+    doc.text(lines2,mg+55,y+5);
+    y+=rh2;cur2.setDate(cur2.getDate()+1);ri2++;
+  }
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | Leave & Office History | '+fd(fromDate)+' to '+fd(toDate),mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_Leave_Office_'+fromDate+'_to_'+toDate+'.pdf');toast('PDF downloaded!');
+}
 
 // ── TOUCH DRAG & DROP FOR IPAD / MOBILE ──────────────────────
 var touchDragEid = null;

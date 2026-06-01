@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <title>GAVS - Staff Deployment</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}html{touch-action:manipulation;}button,a,input,select{touch-action:manipulation;}
 body{background:#f0f4ff;font-family:"Segoe UI",Arial,sans-serif;color:#111;font-size:14px;}
 input,select,button{font-family:inherit;}
 .hide{display:none!important;}
@@ -223,8 +223,6 @@ input,select,button{font-family:inherit;}
   <div class="nav">
     <button class="nb on" data-screen="assign"><span class="ni">🏨</span><span>Assign Duties</span></button>
     <button class="nb" data-screen="manage"><span class="ni">⚙️</span><span>Manage</span></button>
-    <button class="nb" data-screen="leave"><span class="ni">🌴</span><span>Leave</span></button>
-    <button class="nb" data-screen="office"><span class="ni">🏢</span><span>Office Duty</span></button>
     <button class="nb" data-screen="report"><span class="ni">📄</span><span>Report</span></button>
     <button class="nb" data-screen="drafts"><span class="ni">📂</span><span>Drafts</span></button>
     <button class="nb" data-screen="settings"><span class="ni">🔧</span><span>Settings</span></button>
@@ -999,7 +997,18 @@ function makeVenueBox(v,hasPinned){
   hdr.appendChild(allTimeBtn);
   if(!hasPinned){
     var cls=document.createElement('button');cls.className='vbox-close';cls.textContent='✕';cls.title='Remove from view';
-    cls.addEventListener('click',function(){activeVids=activeVids.filter(function(id){return id!==v.id;});drawVenueGrid();});
+    cls.addEventListener('click',(function(vid2,vname,vt){return function(){
+    var msg=vt?vt+' staff assigned. They will stay assigned but venue will be removed from view.':'Venue can be re-added anytime by searching.';
+    showModal(
+      '<div class="mt">Remove Venue from View?</div>'+
+      '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:8px;"><strong>'+esc(vname)+'</strong></div>'+
+      '<div style="text-align:center;font-size:13px;color:#888;margin-bottom:18px;">'+msg+'</div>'+
+      '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
+      '<button class="mcancel" id="m-no">Cancel</button>'
+    );
+    g('m-yes').onclick=function(){activeVids=activeVids.filter(function(id){return id!==vid2;});closeModal();drawVenueGrid();};
+    g('m-no').onclick=closeModal;
+  };})(v.id,v.name,getTeam(v.id).length));
     hdr.appendChild(cls);
   }
   box.appendChild(hdr);
@@ -1059,19 +1068,16 @@ function makeRoleHdr(r,c){
 }
 
 function makeMgrRow(a,vid){
-  var c=cc('Manager');
   var d=document.createElement('div');d.className='mgr-row';
-  var av=document.createElement('div');av.className='av-sm';
-  av.style.cssText='background:#1a237e18;color:#1a237e;border:2px solid #1a237e33;';
-  av.textContent=ini(a.emp.name);
-  var info=document.createElement('div');info.style.flex='1';info.style.minWidth='0';
-  var nm=document.createElement('div');nm.style.cssText='font-size:12px;font-weight:800;color:#1a237e;';
+  var info=document.createElement('div');info.style.cssText='flex:1;min-width:0;';
+  var nm=document.createElement('div');nm.style.cssText='font-size:12px;font-weight:800;color:#1a237e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
   nm.textContent=a.emp.name+(a.emp.phone?' Ph:'+a.emp.phone:'');
+  nm.title=a.emp.name+(a.emp.phone?' Ph:'+a.emp.phone:'');
   info.appendChild(nm);
   var ts=makeTselEl(a.duty,a.isFixed,function(val){if(asgn[vid]&&asgn[vid][a.emp.id]){asgn[vid][a.emp.id].duty=val;asgn[vid][a.emp.id].isFixed=false;saveCloud();}});
   var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';rm.style.width='22px';rm.style.height='22px';rm.style.fontSize='11px';
   rm.addEventListener('click',(function(eid,vid2){return function(){remV(eid,vid2);};})(a.emp.id,vid));
-  d.appendChild(av);d.appendChild(info);d.appendChild(ts);d.appendChild(rm);
+  d.appendChild(info);d.appendChild(ts);d.appendChild(rm);
   return d;
 }
 

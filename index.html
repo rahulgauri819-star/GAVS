@@ -76,6 +76,49 @@ input,select,button{font-family:inherit;}
 .mtab.on{color:#1565c0;border-bottom:2px solid #1565c0;font-weight:800;}
 .mgrid{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start;}
 @media(max-width:900px){.mgrid{grid-template-columns:1fr;}}
+
+/* ── ASSIGN FULL SCREEN (desktop only) ── */
+@media(min-width:769px){
+  /* When assign is active, hide main header */
+  body.in-assign .hdr{display:none!important;}
+  body.in-assign #AB{position:fixed;inset:0;display:flex!important;flex-direction:column;}
+  body.in-assign .screen{display:none;padding:0;}
+  body.in-assign #screen-assign{display:flex!important;flex-direction:column;flex:1;overflow:hidden;background:#f0f4ff;}
+}
+/* Assign compact topbar */
+.atb{background:#1565c0;display:flex;align-items:center;gap:6px;padding:6px 14px;flex-shrink:0;overflow-x:auto;}
+.atb-logo{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.atb-logo img{height:28px;width:auto;}
+.atb-title{font-size:12px;font-weight:800;color:#fff;white-space:nowrap;}
+.atb-sub{font-size:7px;color:#bbdefb;text-transform:uppercase;letter-spacing:0.08em;}
+.atb-stat{background:rgba(255,255,255,0.15);border-radius:7px;padding:3px 8px;text-align:center;flex-shrink:0;}
+.atb-stat-v{font-size:13px;font-weight:800;color:#fff;line-height:1;}
+.atb-stat-l{font-size:7px;color:#bbdefb;}
+.atb-sep{width:1px;background:rgba(255,255,255,0.2);height:22px;flex-shrink:0;margin:0 2px;}
+.atb-date{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35);border-radius:7px;color:#fff;padding:5px 10px;font-size:12px;outline:none;font-weight:600;flex-shrink:0;}
+.atb-btn{padding:5px 11px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);color:#fff;white-space:nowrap;flex-shrink:0;}
+.atb-btn:hover{background:rgba(255,255,255,0.2);}
+.atb-nb{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:7px;padding:5px 10px;font-size:14px;cursor:pointer;flex-shrink:0;}
+.atb-nb:hover{background:rgba(255,255,255,0.2);}
+.atb-nb.atb-on{background:rgba(255,255,255,0.25);border-color:#fff;}
+.atb-flex{flex:1;}
+/* Assign main area */
+.assign-area{display:flex;flex:1;overflow:hidden;}
+/* Staff panel inside assign */
+.asp{width:260px;flex-shrink:0;background:#fff;border-right:1px solid #e3eaff;display:flex;flex-direction:column;overflow:hidden;}
+/* Venue panel inside assign */
+.avp{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px 12px;}
+/* Mobile: normal layout */
+@media(max-width:768px){
+  body.in-assign .hdr{display:block!important;}
+  body.in-assign #AB{position:static;display:block!important;}
+  body.in-assign .screen{display:none;padding:12px 14px 70px;}
+  body.in-assign #screen-assign{display:block!important;flex-direction:unset;overflow:unset;background:unset;}
+  .atb{display:none!important;}
+  .assign-area{flex-direction:column;}
+  .asp{width:100%;border-right:none;border-bottom:1px solid #e3eaff;max-height:260px;}
+  .avp{padding:10px;}
+}
 .srow{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid #e3eaff;border-radius:11px;padding:11px 14px;margin-bottom:8px;}
 .srow:hover{border-color:#90caf9;box-shadow:0 2px 8px rgba(21,101,192,0.1);}
 .sr-info{flex:1;min-width:0;}
@@ -232,41 +275,50 @@ input,select,button{font-family:inherit;}
 
 <!-- ASSIGN DUTIES -->
 <div class="screen active" id="screen-assign">
-  <!-- Top bar - compact header for assign screen -->
-  <div class="assign-topbar" id="assign-topbar">
-    <div class="logo-wrap">
-      <img src="gavs_logo.png" alt="" onerror="this.style.display='none'" style="height:28px;width:auto;"/>
-      <div><div class="logo-txt">Grover Audio Visual</div><div class="logo-sub">Staff Deployment</div></div>
+
+  <!-- Compact topbar (desktop only, replaces main header) -->
+  <div class="atb" id="ATB">
+    <div class="atb-logo">
+      <img src="gavs_logo.png" alt="" onerror="this.style.display='none'"/>
+      <div><div class="atb-title">Grover Audio Visual Services</div><div class="atb-sub">Staff Deployment</div></div>
     </div>
-    <div class="stat-chips" id="ASB"></div>
-    <div class="spacer"></div>
-    <input type="date" id="DP2" title="Select date" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);border-radius:7px;color:#fff;padding:5px 10px;font-size:12px;outline:none;font-weight:600;flex-shrink:0;"/>
-    <button class="top-abbtn" id="btnCopy" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.3);">📅 Copy</button>
-    <button class="top-abbtn" id="btnDraft" style="background:rgba(249,168,37,0.2);color:#ffe082;border-color:#f9a825;">💾 Draft</button>
-    <button class="top-abbtn" id="btnDrafts" style="background:rgba(206,147,216,0.2);color:#e1bee7;border-color:#ce93d8;">📂 Drafts</button>
-    <button class="top-abbtn" id="btnSave" style="background:rgba(165,214,167,0.2);color:#c8e6c9;border-color:#a5d6a7;">☁️ Save</button>
-    <div style="width:1px;background:rgba(255,255,255,0.2);height:20px;margin:0 4px;flex-shrink:0;"></div>
-    <button class="tabbtn active-tab" data-screen="assign" title="Assign Duties">🏨</button>
-    <button class="tabbtn" data-screen="manage" title="Manage">⚙️</button>
-    <button class="tabbtn" data-screen="report" title="Report">📄</button>
-    <button class="tabbtn" data-screen="drafts" title="Drafts">📂</button>
-    <button class="tabbtn" data-screen="settings" title="Settings">🔧</button>
+    <div class="atb-sep"></div>
+    <div id="ATB_STATS" style="display:flex;gap:4px;flex-shrink:0;"></div>
+    <div class="atb-sep"></div>
+    <input type="date" id="DP2" class="atb-date"/>
+    <button class="atb-btn" id="btnCopy2" title="Copy from Date">📅 Copy</button>
+    <button class="atb-btn" id="btnDraft2" style="border-color:#f9a825;color:#ffe082;" title="Save as Draft">💾 Draft</button>
+    <button class="atb-btn" id="btnDrafts2" style="border-color:#ce93d8;color:#e1bee7;" title="Drafts">📂 Drafts</button>
+    <button class="atb-btn" id="btnSave2" style="border-color:#a5d6a7;color:#c8e6c9;" title="Save to Cloud">☁️ Save</button>
+    <div class="atb-flex"></div>
+    <div class="atb-sep"></div>
+    <button class="atb-nb atb-on" data-atb-screen="assign" title="Assign Duties">🏨</button>
+    <button class="atb-nb" data-atb-screen="manage" title="Manage">⚙️</button>
+    <button class="atb-nb" data-atb-screen="report" title="Report">📄</button>
+    <button class="atb-nb" data-atb-screen="drafts" title="Drafts">📂</button>
+    <button class="atb-nb" data-atb-screen="settings" title="Settings">🔧</button>
   </div>
-  <!-- Main content -->
-  <div class="assign-main">
-    <div class="assign-sp">
+
+  <!-- Main area: staff panel + venue grid -->
+  <div class="assign-area">
+
+    <!-- Left: Staff Panel -->
+    <div class="asp">
       <div class="sp-hdr">👥 All Staff <span class="sp-cnt" id="SP_CNT">0</span></div>
       <div class="sp-s"><input id="SP_SRCH" type="text" placeholder="Search staff..."/></div>
       <div class="rp-wrap" id="SP_ROLES"></div>
       <div class="sp-list" id="SP_LIST"></div>
     </div>
-    <div class="assign-vp">
+
+    <!-- Right: Venue Grid -->
+    <div class="avp">
       <div class="vs-wrap" style="margin-bottom:8px;">
         <input class="vsi" id="V_SRCH" type="text" placeholder="🔍 Type venue name to add..."/>
         <div class="vdd" id="V_DD"></div>
       </div>
-      <div class="vgrid" id="V_GRID" style="flex:1;overflow-y:auto;align-content:start;"></div>
+      <div class="vgrid" id="V_GRID" style="flex:1;overflow-y:auto;"></div>
     </div>
+
   </div>
 </div>
 
@@ -597,39 +649,35 @@ function go(s){
   document.querySelectorAll('.nb[data-screen="'+s+'"]').forEach(function(x){x.classList.add('on');});
   drawStats();
   if(s==='assign'){
-    document.body.classList.add('assign-mode');
-    // Sync date pickers
-    var dp2=g('DP2');if(dp2&&g('DP'))dp2.value=g('DP').value;
-    updateADate();drawStaffPanel();drawVenueGrid();drawAssignStats();
-    // Update tabbtn active state
-    document.querySelectorAll('.tabbtn').forEach(function(b){
-      b.classList.toggle('active-tab',b.getAttribute('data-screen')===s);
+    document.body.classList.add('in-assign');
+    // sync date
+    var dp2=document.getElementById('DP2');
+    if(dp2&&document.getElementById('DP'))dp2.value=document.getElementById('DP').value;
+    updateADate();drawStaffPanel();drawVenueGrid();updateATBStats();
+    // update topbar nav active state
+    document.querySelectorAll('[data-atb-screen]').forEach(function(b){
+      b.classList.toggle('atb-on',b.getAttribute('data-atb-screen')===s);
     });
   } else {
-    document.body.classList.remove('assign-mode');
-    if(s==='manage'){drawManage();}
-    else if(s==='leave'){drawLeave();}
-    else if(s==='office'){drawOffice();}
-    else if(s==='report'){drawReport();}
-    else if(s==='drafts'){showDraftList();}
+    document.body.classList.remove('in-assign');
+    if(s==='manage')drawManage();
+    else if(s==='leave')drawLeave();
+    else if(s==='office')drawOffice();
+    else if(s==='report')drawReport();
+    else if(s==='drafts')showDraftList();
   }
 }
 
 document.querySelectorAll('.nb').forEach(function(btn){
   btn.addEventListener('click',function(){go(this.getAttribute('data-screen'));});
 });
-// Wire top bar nav buttons (tabbtn)
-document.querySelectorAll('.tabbtn').forEach(function(btn){
-  btn.addEventListener('click',function(){
-    go(this.getAttribute('data-screen'));
-  });
-});
 
 // ── INIT ──────────────────────────────────────────────────────
 function initApp(){
   g('DP').value=new Date().toISOString().slice(0,10);
-  var dp2i=g('DP2');if(dp2i)dp2i.value=g('DP').value;
-  document.body.classList.add('assign-mode');
+  var dp2init=document.getElementById('DP2');
+  if(dp2init)dp2init.value=g('DP').value;
+  document.body.classList.add('in-assign');
   updateADate();
   populateRoleDD();populateVenueDD();populateTimeDD();
   populateSRDrops();
@@ -644,7 +692,7 @@ function initApp(){
     applyPinned();
     drawStats();
     initActiveVids();
-    drawStaffPanel();drawVenueGrid();
+    drawStaffPanel();drawVenueGrid();updateATBStats();
     showLoad(false);
   });
 }
@@ -673,17 +721,6 @@ function drawStats(){
     chip(l,'Leave','#ff8a80')+
     chip(o,'Office','#ffcc80')+
     chip(f,'Free','#ce93d8');
-  drawAssignStats();
-}
-function drawAssignStats(){
-  var el=g('ASB');if(!el)return;
-  var a=getAids().length,l=Object.keys(lvMap).length,o=Object.keys(offMap).length;
-  var f=Math.max(0,staff.length-a-l-o);
-  el.innerHTML=
-    '<div class="ast"><div class="ast-v">'+staff.length+'</div><div class="ast-l">Staff</div></div>'+
-    '<div class="ast"><div class="ast-v" style="color:#90ef90;">'+a+'</div><div class="ast-l">Out</div></div>'+
-    '<div class="ast"><div class="ast-v" style="color:#ff8a80;">'+l+'</div><div class="ast-l">Leave</div></div>'+
-    '<div class="ast"><div class="ast-v" style="color:#ce93d8;">'+f+'</div><div class="ast-l">Free</div></div>';
 }
 function chip(v,l,c){return '<div class="sc"><div class="sc-v" style="color:'+c+';">'+v+'</div><div class="sc-l">'+l+'</div></div>';}
 
@@ -2370,16 +2407,45 @@ g('btnLogout').addEventListener('click',doLogout);
 
 // ── DATE CHANGE ───────────────────────────────────────────────
 g('DP').addEventListener('change',function(){
-  var dp2=g('DP2');if(dp2)dp2.value=this.value;
-  updateADate();applyPinned();drawStats();drawAssignStats();
+  var dp2=document.getElementById('DP2');if(dp2)dp2.value=this.value;
+  updateADate();applyPinned();drawStats();updateATBStats();
   if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
 });
-// DP2 syncs back to DP
-var dp2El=g('DP2');
-if(dp2El){dp2El.addEventListener('change',function(){
-  g('DP').value=this.value;
-  updateADate();applyPinned();drawStats();drawAssignStats();
-  if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
+
+// ATB stats update
+function updateATBStats(){
+  var el=document.getElementById('ATB_STATS');if(!el)return;
+  var a=getAids().length,l=Object.keys(lvMap).length,o=Object.keys(offMap).length;
+  var f=Math.max(0,staff.length-a-l-o);
+  el.innerHTML=
+    '<div class="atb-stat"><div class="atb-stat-v">'+staff.length+'</div><div class="atb-stat-l">Staff</div></div>'+
+    '<div class="atb-stat"><div class="atb-stat-v" style="color:#90ef90;">'+a+'</div><div class="atb-stat-l">Out</div></div>'+
+    '<div class="atb-stat"><div class="atb-stat-v" style="color:#ff8a80;">'+l+'</div><div class="atb-stat-l">Leave</div></div>'+
+    '<div class="atb-stat"><div class="atb-stat-v" style="color:#ce93d8;">'+f+'</div><div class="atb-stat-l">Free</div></div>';
+}
+
+// Wire ATB nav buttons
+document.querySelectorAll('[data-atb-screen]').forEach(function(btn){
+  btn.addEventListener('click',function(){go(this.getAttribute('data-atb-screen'));});
+});
+
+// Wire ATB action buttons (duplicates of main buttons)
+var btnCopy2=document.getElementById('btnCopy2');
+if(btnCopy2)btnCopy2.addEventListener('click',showCopyFrom);
+var btnDraft2=document.getElementById('btnDraft2');
+if(btnDraft2)btnDraft2.addEventListener('click',showSaveDraft);
+var btnDrafts2=document.getElementById('btnDrafts2');
+if(btnDrafts2)btnDrafts2.addEventListener('click',function(){go('drafts');});
+var btnSave2=document.getElementById('btnSave2');
+if(btnSave2)btnSave2.addEventListener('click',function(){saveCloud();toast('Saved to cloud!');});
+
+// DP2 sync back to DP
+var dp2el=document.getElementById('DP2');
+if(dp2el){dp2el.addEventListener('change',function(){
+  var dp=document.getElementById('DP');
+  if(dp)dp.value=this.value;
+  updateADate();applyPinned();drawStats();updateATBStats();
+  drawStaffPanel();drawVenueGrid();
 });}
 
 

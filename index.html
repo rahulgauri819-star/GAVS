@@ -709,6 +709,9 @@ function initActiveVids(){
 function updateADate(){
   var el=g('ADATE');
   if(el)el.textContent='Date: '+fd(getD());
+  // Keep DP2 in sync
+  var dp2=document.getElementById('DP2');
+  if(dp2&&g('DP'))dp2.value=g('DP').value;
 }
 
 // ── STATS ─────────────────────────────────────────────────────
@@ -1316,10 +1319,16 @@ function promptAddVenue(){
 }
 
 // ── ACTION BAR BUTTONS ────────────────────────────────────────
-g('btnCopy').addEventListener('click',showCopyFrom);
-g('btnDraft').addEventListener('click',showSaveDraft);
-g('btnDrafts').addEventListener('click',function(){go('drafts');});
-g('btnSave').addEventListener('click',function(){saveCloud();toast('Saved to cloud!');});
+// Main action buttons - wire both original IDs and ATB IDs
+function wireBtnCopy(el){if(el)el.addEventListener('click',showCopyFrom);}
+function wireBtnDraft(el){if(el)el.addEventListener('click',showSaveDraft);}
+function wireBtnDrafts(el){if(el)el.addEventListener('click',function(){go('drafts');});}
+function wireBtnSave(el){if(el)el.addEventListener('click',function(){saveCloud();toast('Saved to cloud!');});}
+// Wire the ATB buttons (in full-screen topbar)
+wireBtnCopy(document.getElementById('btnCopy2'));
+wireBtnDraft(document.getElementById('btnDraft2'));
+wireBtnDrafts(document.getElementById('btnDrafts2'));
+wireBtnSave(document.getElementById('btnSave2'));
 
 function showCopyFrom(){
   var y=new Date();y.setDate(y.getDate()-1);
@@ -2429,15 +2438,7 @@ document.querySelectorAll('[data-atb-screen]').forEach(function(btn){
   btn.addEventListener('click',function(){go(this.getAttribute('data-atb-screen'));});
 });
 
-// Wire ATB action buttons (duplicates of main buttons)
-var btnCopy2=document.getElementById('btnCopy2');
-if(btnCopy2)btnCopy2.addEventListener('click',showCopyFrom);
-var btnDraft2=document.getElementById('btnDraft2');
-if(btnDraft2)btnDraft2.addEventListener('click',showSaveDraft);
-var btnDrafts2=document.getElementById('btnDrafts2');
-if(btnDrafts2)btnDrafts2.addEventListener('click',function(){go('drafts');});
-var btnSave2=document.getElementById('btnSave2');
-if(btnSave2)btnSave2.addEventListener('click',function(){saveCloud();toast('Saved to cloud!');});
+// ATB buttons wired above
 
 // DP2 sync back to DP
 var dp2el=document.getElementById('DP2');

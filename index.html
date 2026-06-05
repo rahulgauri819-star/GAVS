@@ -108,6 +108,11 @@ input,select,button{font-family:inherit;}
 .asp{width:260px;flex-shrink:0;background:#fff;border-right:1px solid #e3eaff;display:flex;flex-direction:column;overflow:hidden;}
 /* Venue panel inside assign */
 .avp{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px 12px;}
+/* Mobile action bar */
+.mob-ab{display:none;background:#fff;border-bottom:1px solid #e3eaff;padding:8px 12px;gap:6px;overflow-x:auto;flex-wrap:nowrap;}
+.mob-btn{padding:7px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid #e3eaff;background:#f8faff;color:#1565c0;white-space:nowrap;flex-shrink:0;}
+.mob-btn:active{opacity:0.7;}
+
 /* Mobile: normal layout */
 @media(max-width:768px){
   body.in-assign .hdr{display:block!important;}
@@ -115,6 +120,7 @@ input,select,button{font-family:inherit;}
   body.in-assign .screen{display:none;padding:12px 14px 70px;}
   body.in-assign #screen-assign{display:block!important;flex-direction:unset;overflow:unset;background:unset;}
   .atb{display:none!important;}
+  .mob-ab{display:flex!important;}
   .assign-area{flex-direction:column;}
   .asp{width:100%;border-right:none;border-bottom:1px solid #e3eaff;max-height:260px;}
   .avp{padding:10px;}
@@ -275,6 +281,15 @@ input,select,button{font-family:inherit;}
 
 <!-- ASSIGN DUTIES -->
 <div class="screen active" id="screen-assign">
+
+  <!-- Mobile action bar (shown only on mobile, ATB hidden on mobile) -->
+  <div class="mob-ab" id="MOB_AB">
+    <button class="mob-btn" id="mbtnCopy">📅 Copy</button>
+    <button class="mob-btn" id="mbtnDraft" style="border-color:#f9a825;color:#f57f17;">💾 Draft</button>
+    <button class="mob-btn" id="mbtnDrafts" style="border-color:#ce93d8;color:#6a1b9a;">📂 Drafts</button>
+    <button class="mob-btn" id="mbtnSave" style="border-color:#a5d6a7;color:#1b5e20;">☁️ Save</button>
+    <button class="mob-btn" id="mbtnPDF" style="border-color:#90caf9;color:#1565c0;">📄 PDF</button>
+  </div>
 
   <!-- Compact topbar (desktop only, replaces main header) -->
   <div class="atb" id="ATB">
@@ -2494,7 +2509,10 @@ g('btnActivate').addEventListener('click',function(){
   if(ver.offMap)Object.keys(ver.offMap).forEach(function(eid){var emp=getS(eid);if(emp)offMap[eid]={emp:emp,duty:ver.offMap[eid].duty||'6:00 AM'};});
   dr.activated=true;
   toast('Draft activated for '+fd(dr.date));
-  drawStats();saveCloud();
+  drawStats();
+  // Redraw assign screen so changes are immediately visible
+  if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
+  saveCloud();
 });
 
 g('btnDraftPDF').addEventListener('click',function(){

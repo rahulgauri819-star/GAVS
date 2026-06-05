@@ -290,6 +290,7 @@ input,select,button{font-family:inherit;}
     <button class="atb-btn" id="btnDraft2" style="border-color:#f9a825;color:#ffe082;" title="Save as Draft">💾 Draft</button>
     <button class="atb-btn" id="btnDrafts2" style="border-color:#ce93d8;color:#e1bee7;" title="Drafts">📂 Drafts</button>
     <button class="atb-btn" id="btnSave2" style="border-color:#a5d6a7;color:#c8e6c9;" title="Save to Cloud">☁️ Save</button>
+    <button class="atb-btn" id="btnExportPDF" style="border-color:#90caf9;color:#bbdefb;" title="Export Duty PDF">📄 PDF</button>
     <div class="atb-flex"></div>
     <div class="atb-sep"></div>
     <button class="atb-nb atb-on" data-atb-screen="assign" title="Assign Duties">🏨</button>
@@ -435,7 +436,13 @@ input,select,button{font-family:inherit;}
   </div>
   <!-- Daily Report -->
   <div id="rp-daily">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px;">Select Date</label>
+        <input type="date" id="RPD" class="inp" style="margin-bottom:0;width:auto;"/>
+      </div>
+      <button class="bigbtn" id="btnViewReport" style="width:auto;padding:10px 20px;margin-top:18px;">View Report</button>
+      <div style="flex:1;"></div>
       <div style="font-size:14px;font-weight:700;color:#1565c0;" id="RD"></div>
       <div style="font-size:12px;color:#888;" id="RP"></div>
       <button class="pdfbtn" id="btnPDF" style="margin:0;width:auto;padding:10px 24px;font-size:13px;">⬇ Download PDF</button>
@@ -446,9 +453,11 @@ input,select,button{font-family:inherit;}
   <div id="rp-venue" class="hide">
     <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:12px;align-items:end;flex-wrap:wrap;">
-        <div>
-          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Select Venue</label>
-          <select class="sel" id="VHV" style="margin-bottom:0;"></select>
+        <div style="position:relative;">
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Search Venue</label>
+          <input id="VHV_IN" class="inp" placeholder="Type venue name..." style="margin-bottom:0;" autocomplete="off"/>
+          <input type="hidden" id="VHV"/>
+          <div id="VHV_DD" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #90caf9;border-radius:9px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(21,101,192,0.15);display:none;"></div>
         </div>
         <div>
           <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">From Date</label>
@@ -469,7 +478,11 @@ input,select,button{font-family:inherit;}
   <div id="rp-staff" class="hide">
     <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;">
-        <select class="sel" id="SRE" style="margin-bottom:0;"><option value="">-- Select Employee --</option></select>
+        <div style="position:relative;">
+          <input id="SRE_IN" class="inp" placeholder="Search employee..." style="margin-bottom:0;" autocomplete="off"/>
+          <input type="hidden" id="SRE"/>
+          <div id="SRE_DD" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #90caf9;border-radius:9px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(21,101,192,0.15);display:none;"></div>
+        </div>
         <select class="sel" id="SRM" style="margin-bottom:0;"></select>
         <select class="sel" id="SRY" style="margin-bottom:0;"></select>
       </div>
@@ -560,7 +573,6 @@ var staff=[],venues=[],asgn={},lvMap={},offMap={},dlog={};
 var drafts=[],curDraftId=null,curDraftVer=0;
 var activeVids=[];
 var deskRole='All';
-var pDel=null;
 
 function mkId(){return '_'+Math.random().toString(36).slice(2,9);}
 // Init default venues
@@ -663,8 +675,9 @@ function go(s){
     if(s==='manage')drawManage();
     else if(s==='leave')drawLeave();
     else if(s==='office')drawOffice();
-    else if(s==='report')drawReport();
+    else if(s==='report'){drawReport();populateVHVenue();refreshSREmp();}
     else if(s==='drafts')showDraftList();
+    else if(s==='settings'){/* settings screen is static, nothing to init */}
   }
 }
 
@@ -707,9 +720,7 @@ function initActiveVids(){
 }
 
 function updateADate(){
-  var el=g('ADATE');
-  if(el)el.textContent='Date: '+fd(getD());
-  // Keep DP2 in sync
+  // Keep DP2 in sync with DP
   var dp2=document.getElementById('DP2');
   if(dp2&&g('DP'))dp2.value=g('DP').value;
 }
@@ -1344,7 +1355,10 @@ function showCopyFrom(){
     var dt=g('CFDATE').value;
     if(!dt){toast('Select a date','w');return;}
     var log=dlog[dt];
-    if(!log||!Object.keys(log.venues||{}).length){toast('No duties saved for '+fd(dt),'w');closeModal();return;}
+    if(!log||((!Object.keys(log.venues||{}).length)&&(!log.leave||!log.leave.length)&&(!log.office||!log.office.length))){
+      toast('No duties saved for '+fd(dt),'w');closeModal();return;
+    }
+    // Copy venue assignments
     Object.keys(log.venues||{}).forEach(function(vid){
       if(!asgn[vid])asgn[vid]={};
       Object.keys(log.venues[vid]).forEach(function(eid){
@@ -1353,7 +1367,30 @@ function showCopyFrom(){
       });
       if(activeVids.indexOf(vid)<0)activeVids.push(vid);
     });
-    closeModal();toast('Duties copied from '+fd(dt));
+    // Copy leave
+    (log.leave||[]).forEach(function(l){
+      var emp=getS(l.id);
+      if(emp){
+        Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][l.id];});
+        delete offMap[l.id];
+        lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};
+      }
+    });
+    // Copy office duty
+    (log.office||[]).forEach(function(o){
+      var emp=getS(o.id);
+      if(emp){
+        Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][o.id];});
+        delete lvMap[o.id];
+        offMap[o.id]={emp:emp,duty:o.duty||'6:00 AM'};
+      }
+    });
+    closeModal();
+    var copied=[];
+    if(Object.keys(log.venues||{}).length)copied.push('duties');
+    if(log.leave&&log.leave.length)copied.push(log.leave.length+' on leave');
+    if(log.office&&log.office.length)copied.push(log.office.length+' office duty');
+    toast('Copied from '+fd(dt)+': '+copied.join(', '));
     drawStaffPanel();drawVenueGrid();drawStats();saveCloud();
   };
   g('m-no').onclick=closeModal;
@@ -1506,6 +1543,7 @@ function drawMStaff(){
   });
 }
 if(g('MSS'))g('MSS').addEventListener('input',function(){drawMStaff();});
+if(g('SP_SRCH'))g('SP_SRCH').addEventListener('input',function(){drawStaffPanel();});
 
 function drawMVenues(){
   var q=(g('MVS')||{}).value||'';
@@ -1643,26 +1681,52 @@ function confirmDelVenue(vid){
   var v=getV(vid);if(!v)return;
   var tc=getTeam(vid).length;
   showModal(
-    '<div class="mt" style="color:#c62828;">Delete Venue?</div>'+
-    '<div style="text-align:center;font-size:15px;margin-bottom:10px;">Delete <strong>'+esc(v.name)+'</strong>?</div>'+
-    (tc?'<div style="color:#e65100;font-size:13px;text-align:center;margin-bottom:14px;">'+tc+' staff will be unassigned.</div>':'')+
-    '<button class="mbtn red" id="m-yes">Yes, Delete</button>'+
+    '<div class="mt" style="color:#c62828;">🔐 Verify to Delete Venue</div>'+
+    '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:6px;">You are about to delete:</div>'+
+    '<div style="text-align:center;font-size:15px;font-weight:800;color:#c62828;margin-bottom:6px;">'+esc(v.name)+'</div>'+
+    (tc?'<div style="text-align:center;font-size:12px;color:#e65100;margin-bottom:10px;">⚠️ '+tc+' staff will be unassigned.</div>':'')+
+    '<div style="font-size:12px;color:#888;text-align:center;margin-bottom:14px;">Enter your credentials to confirm this action.</div>'+
+    '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Username</label>'+
+    '<input id="DEL_V_U" class="inp" placeholder="Username" autocomplete="off"/>'+
+    '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Password</label>'+
+    '<input id="DEL_V_P" class="inp" type="password" placeholder="Password"/>'+
+    '<div id="DEL_V_ERR" style="color:#c62828;font-size:12px;text-align:center;display:none;background:#ffebee;padding:8px;border-radius:8px;margin-bottom:10px;">Incorrect credentials.</div>'+
+    '<button class="mbtn red" id="m-yes">Verify & Delete</button>'+
     '<button class="mcancel" id="m-no">Cancel</button>'
   );
   g('m-yes').onclick=function(){
+    var u=(g('DEL_V_U').value||'').trim().toLowerCase();
+    var p=(g('DEL_V_P').value||'').trim();
+    var ok=CREDS.some(function(c){return c.u===u&&c.p===p;});
+    if(!ok){g('DEL_V_ERR').style.display='block';g('DEL_V_P').value='';return;}
     venues=venues.filter(function(x){return x.id!==vid;});
     activeVids=activeVids.filter(function(id){return id!==vid;});
     delete asgn[vid];
     staff.forEach(function(e){if(e.pv===vid){e.pv='';e.fixedDuty='6:00 AM';}});
-    closeModal();toast(v.name+' removed','w');
+    closeModal();toast(v.name+' deleted','w');
     drawMVenues();populateVenueDD();
     if(curScreen==='assign')drawVenueGrid();
     saveCloud();
   };
   g('m-no').onclick=closeModal;
+  g('DEL_V_P').addEventListener('keydown',function(e){if(e.key==='Enter')g('m-yes').click();});
 }
 
 function confirmDelRole(r){
+  var staffWithRole=staff.filter(function(e){return e.role===r;});
+  if(staffWithRole.length){
+    var names=staffWithRole.slice(0,5).map(function(e){return'<li style="text-align:left;">'+esc(e.name)+'</li>';}).join('');
+    var more=staffWithRole.length>5?'<li style="color:#888;">...and '+(staffWithRole.length-5)+' more</li>':'';
+    showModal(
+      '<div class="mt" style="color:#c62828;">Cannot Delete Role</div>'+
+      '<div style="font-size:14px;color:#333;margin-bottom:12px;text-align:center;"><strong>'+esc(r)+'</strong> cannot be deleted because <strong>'+staffWithRole.length+'</strong> staff member'+(staffWithRole.length>1?'s have':'has')+' this role:</div>'+
+      '<ul style="margin:0 0 16px 20px;font-size:13px;color:#555;">'+names+more+'</ul>'+
+      '<div style="font-size:12px;color:#888;text-align:center;margin-bottom:16px;">Please reassign or delete these staff members first.</div>'+
+      '<button class="mbtn blue" id="m-no">OK</button>'
+    );
+    g('m-no').onclick=closeModal;
+    return;
+  }
   showModal(
     '<div class="mt" style="color:#c62828;">Delete Role?</div>'+
     '<div style="text-align:center;font-size:15px;margin-bottom:18px;">Delete <strong>'+esc(r)+'</strong>?</div>'+
@@ -1847,13 +1911,41 @@ document.querySelectorAll('.rtab').forEach(function(btn){
 });
 
 function drawReport(){
-  saveLog();
-  var d=getD(),ndd=nd(d);
+  // Always set RPD to today if empty
+  var rpdEl=document.getElementById('RPD');
+  if(rpdEl&&!rpdEl.value)rpdEl.value=getD();
+  // Also init RPD when this function is first called
+  if(rpdEl&&!rpdEl._initialized){rpdEl._initialized=true;rpdEl.value=getD();}
+  var reportDate=rpdEl?rpdEl.value:getD();
+  var isToday=reportDate===getD();
+  // Get data for selected date
+  var reportAsgn={},reportLv=[],reportOff=[];
+  if(isToday){
+    saveLog();
+    Object.keys(asgn).forEach(function(vid){reportAsgn[vid]=asgn[vid];});
+    reportLv=Object.values(lvMap);
+    reportOff=Object.values(offMap);
+  } else {
+    var log=dlog[reportDate];
+    if(log){
+      Object.keys(log.venues||{}).forEach(function(vid){
+        reportAsgn[vid]={};
+        Object.keys(log.venues[vid]).forEach(function(eid){
+          var emp=getS(eid);
+          if(emp)reportAsgn[vid][eid]={emp:emp,duty:log.venues[vid][eid]};
+        });
+      });
+      (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)reportLv.push({emp:emp,duty:l.duty});});
+      (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)reportOff.push({emp:emp,duty:o.duty});});
+    }
+  }
+  var d=reportDate,ndd=nd(d);
   g('RD').textContent='Duty Date: '+fd(ndd);
   g('RP').textContent='Prepared: '+fd(d);
-  var lv2=Object.values(lvMap),ov=Object.values(offMap),h='';
+  var lv2=reportLv,ov=reportOff,h='';
   venues.forEach(function(v){
-    var t=getTeam(v.id);if(!t.length)return;
+    var vm=reportAsgn[v.id];if(!vm||!Object.keys(vm).length)return;
+    var t=Object.values(vm);
     var mgrs=t.filter(function(a){return isMgr(a.emp);}),rest=t.filter(function(a){return !isMgr(a.emp);});
     h+='<div class="pvcard">'+(v.vip?'<div style="font-size:10px;font-weight:800;color:#f9a825;margin-bottom:6px;">⭐ VIP EVENT</div>':'')+
       '<div class="pvname">'+esc(v.name)+'</div>'+
@@ -1879,23 +1971,56 @@ function drawReport(){
     ov.forEach(function(a,i){var c=cc(a.emp.role);h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;">'+esc(a.emp.name)+'</div><span style="font-size:9px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 4px;">'+esc(a.emp.role)+'</span></div></div>';});
     h+='</div>';
   }
-  if(!h)h='<div style="grid-column:1/-1;text-align:center;color:#bbb;padding:50px;font-size:14px;">No staff deployed yet.</div>';
+  if(!h){
+    if(isToday)h='<div style="grid-column:1/-1;text-align:center;color:#bbb;padding:50px;font-size:14px;">No staff deployed yet.</div>';
+    else h='<div style="grid-column:1/-1;text-align:center;padding:50px;"><div style="font-size:40px;margin-bottom:12px;">📭</div><div style="font-size:15px;color:#888;font-weight:600;">No duties saved for '+fd(reportDate)+'</div><div style="font-size:12px;color:#bbb;margin-top:6px;">Make sure you click Save on Assign Duties screen to record daily duties.</div></div>';
+  }
   g('RB').innerHTML=h;
 }
 g('btnPDF').addEventListener('click',makePDF);
+// Wire View Report button
+var btnVR=document.getElementById('btnViewReport');
+if(btnVR)btnVR.addEventListener('click',drawReport);
 
 // ── VENUE HISTORY REPORT ───────────────────────────────────────
 function populateVHVenue(){
-  var el=g('VHV');if(!el)return;
-  var cur=el.value;
-  el.innerHTML='<option value="">-- Select Venue --</option>'+
-    venues.map(function(v){return'<option value="'+v.id+'"'+(v.id===cur?' selected':'')+'>'+esc(v.name)+'</option>';}).join('');
   // Set default date range to current month
   var now=new Date();
   var firstDay=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
   var lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);
   if(g('VHF')&&!g('VHF').value)g('VHF').value=firstDay;
   if(g('VHT')&&!g('VHT').value)g('VHT').value=lastDay;
+  // Wire venue live search
+  var inEl=document.getElementById('VHV_IN');
+  var ddEl=document.getElementById('VHV_DD');
+  var hidEl=g('VHV');
+  if(inEl&&!inEl._wired){
+    inEl._wired=true;
+    inEl.addEventListener('input',function(){
+      var q=this.value.trim();
+      if(!q){ddEl.style.display='none';return;}
+      var matches=venues.filter(function(v){return v.name.toLowerCase().indexOf(q.toLowerCase())>=0;}).slice(0,12);
+      ddEl.innerHTML='';
+      matches.forEach(function(v){
+        var item=document.createElement('div');
+        item.style.cssText='padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f4ff;';
+        item.textContent='🏨 '+v.name;
+        item.addEventListener('mouseenter',function(){this.style.background='#e3f2fd';});
+        item.addEventListener('mouseleave',function(){this.style.background='';});
+        item.addEventListener('click',(function(vid,vname){return function(){
+          inEl.value=vname;hidEl.value=vid;
+          ddEl.style.display='none';
+        };})(v.id,v.name));
+        ddEl.appendChild(item);
+      });
+      ddEl.style.display=matches.length?'block':'none';
+    });
+    function closeVHVDD(ev){
+      if(!inEl.contains(ev.target)&&!ddEl.contains(ev.target))ddEl.style.display='none';
+    }
+    document.addEventListener('click',closeVHVDD);
+    document.addEventListener('touchstart',closeVHVDD,{passive:true});
+  }
 }
 
 g('btnVHR').addEventListener('click',drawVenueHistory);
@@ -2010,8 +2135,30 @@ function makeVHPDF(){
 // ── PDF ───────────────────────────────────────────────────────
 function makePDF(){
   if(!window.jspdf){toast('PDF library loading...','w');return;}
-  var d=getD(),ndd=nd(d);
-  var lv2=Object.values(lvMap),ov=Object.values(offMap);
+  // Use RPD date if set (report screen), otherwise today
+  var rpdEl=document.getElementById('RPD');
+  var d=(rpdEl&&rpdEl.value)?rpdEl.value:getD();
+  var isToday=d===getD();
+  var ndd=nd(d);
+  // Get correct data for the selected date
+  var pdfAsgn={},lv2=[],ov=[];
+  if(isToday){
+    Object.keys(asgn).forEach(function(vid){pdfAsgn[vid]=asgn[vid];});
+    lv2=Object.values(lvMap);ov=Object.values(offMap);
+  } else {
+    var log=dlog[d];
+    if(log){
+      Object.keys(log.venues||{}).forEach(function(vid){
+        pdfAsgn[vid]={};
+        Object.keys(log.venues[vid]||{}).forEach(function(eid){
+          var emp=getS(eid);
+          if(emp)pdfAsgn[vid][eid]={emp:emp,duty:log.venues[vid][eid]};
+        });
+      });
+      (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lv2.push({emp:emp,duty:l.duty||'6:00 AM'});});
+      (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)ov.push({emp:emp,duty:o.duty||'6:00 AM'});});
+    }
+  }
   var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
@@ -2027,7 +2174,8 @@ function makePDF(){
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(130,130,130);
   doc.text('Prepared: '+fd(d),mg,y+6);y+=16;
   venues.forEach(function(v){
-    var t=getTeam(v.id);if(!t.length)return;cp(24);
+    var vm=pdfAsgn[v.id];if(!vm||!Object.keys(vm).length)return;
+    var t=Object.values(vm);if(!t.length)return;cp(24);
     doc.setFillColor(21,101,192);doc.roundedRect(mg,y,pw-mg*2,12,2,2,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
     doc.text(v.name.length>60?v.name.slice(0,59)+'…':v.name,pw/2,y+8,{align:'center'});
@@ -2064,17 +2212,48 @@ function populateSRDrops(){
   refreshSREmp();
 }
 function refreshSREmp(){
-  var el=g('SRE');if(!el)return;
-  var cur=el.value;
-  el.innerHTML='<option value="">-- Select Employee --</option>';
-  staff.forEach(function(e){var o=document.createElement('option');o.value=e.id;o.textContent=e.name+' ('+e.role+')';if(e.id===cur)o.selected=true;el.appendChild(o);});
+  var inEl=document.getElementById('SRE_IN');
+  var ddEl=document.getElementById('SRE_DD');
+  var hidEl=g('SRE');
+  if(inEl&&!inEl._wired){
+    inEl._wired=true;
+    inEl.addEventListener('input',function(){
+      var q=this.value.trim();
+      if(!q){ddEl.style.display='none';hidEl.value='';return;}
+      var matches=staff.filter(function(e){
+        return e.name.toLowerCase().indexOf(q.toLowerCase())>=0||
+               e.role.toLowerCase().indexOf(q.toLowerCase())>=0;
+      }).slice(0,12);
+      ddEl.innerHTML='';
+      matches.forEach(function(e){
+        var c=cc(e.role);
+        var item=document.createElement('div');
+        item.style.cssText='padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f4ff;display:flex;align-items:center;gap:8px;';
+        item.innerHTML='<div style="flex:1;"><div style="font-weight:700;">'+esc(e.name)+'</div><div style="font-size:11px;color:'+c+';">'+esc(e.role)+'</div></div>';
+        item.addEventListener('mouseenter',function(){this.style.background='#e3f2fd';});
+        item.addEventListener('mouseleave',function(){this.style.background='';});
+        item.addEventListener('click',(function(eid,ename){return function(){
+          inEl.value=ename;hidEl.value=eid;
+          ddEl.style.display='none';drawSR();
+        };})(e.id,e.name));
+        ddEl.appendChild(item);
+      });
+      ddEl.style.display=matches.length?'block':'none';
+    });
+    function closeSREDD(ev){
+      if(!inEl.contains(ev.target)&&!ddEl.contains(ev.target))ddEl.style.display='none';
+    }
+    document.addEventListener('click',closeSREDD);
+    document.addEventListener('touchstart',closeSREDD,{passive:true});
+  }
 }
-if(g('SRE'))g('SRE').addEventListener('change',drawSR);
+// SRE now uses live search dropdown - no change listener needed
 if(g('SRM'))g('SRM').addEventListener('change',drawSR);
 if(g('SRY'))g('SRY').addEventListener('change',drawSR);
 
 function drawSR(){
   var eid=(g('SRE')||{}).value||'';
+  if(!eid)return;
   var month=parseInt((g('SRM')||{}).value||'0');
   var year=parseInt((g('SRY')||{}).value||new Date().getFullYear());
   var ss=g('SRS'),sb=g('SRB'),btn=g('SRPB');
@@ -2650,6 +2829,13 @@ document.addEventListener('touchend', function(ev) {
   document.querySelectorAll('.vbox').forEach(function(b){b.classList.remove('drag-over');});
   var el = document.elementFromPoint(touch.clientX, touch.clientY);
   if(el) {
+    // Check leave drop zone
+    var lvZone = el.closest('#drop-leave');
+    if(lvZone){ markLeave(touchDragEid); if(navigator.vibrate)navigator.vibrate([20,10,20]); touchDragEid=null; return; }
+    // Check office drop zone
+    var offZone = el.closest('#drop-office');
+    if(offZone){ markOffice(touchDragEid); if(navigator.vibrate)navigator.vibrate([20,10,20]); touchDragEid=null; return; }
+    // Check venue box
     var vbox = el.closest('.vbox');
     if(vbox) {
       var vid = vbox.id.replace('vb-','');
@@ -2665,6 +2851,7 @@ document.addEventListener('touchend', function(ev) {
 // ── FIREBASE SAVE / LOAD ──────────────────────────────────────
 function saveCloud(){
   if(!DB_LOADED)return;
+  saveLog();
   try{
     var staffData=staff.map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
     var venueData=venues.map(function(v){return{id:v.id,name:v.name,vip:v.vip||false};});
@@ -2763,6 +2950,7 @@ function loadFromCloud(callback){
     } else {
       console.log('No saved data in Firebase yet.');
     }
+    applyPinned();
     DB_LOADED=true;showLoad(false);
     if(callback)callback();
   }).catch(function(err){

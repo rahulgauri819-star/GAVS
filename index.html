@@ -3256,7 +3256,76 @@ document.addEventListener('touchend', function(ev) {
 }, {passive: true});
 
 // ── FIREBASE SAVE / LOAD ──────────────────────────────────────
+var SAVE_PENDING=0;       // count of in-flight save attempts
+var SAVE_RETRY_TIMER=null;
+var LAST_SAVE_FAILED=false;
+
+function showSaveIndicator(state){
+  var el=document.getElementById('SAVE_IND');
+  if(!el){
+    el=document.createElement('div');
+    el.id='SAVE_IND';
+    el.style.cssText='position:fixed;top:10px;right:10px;z-index:99999;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;display:none;box-shadow:0 2px 10px rgba(0,0,0,0.15);transition:opacity 0.2s;';
+    document.body.appendChild(el);
+  }
+  if(state==='saving'){
+    el.textContent='☁️ Saving...';
+    el.style.background='#fff3e0';el.style.color='#e65100';
+    el.style.display='block';el.style.opacity='1';
+  } else if(state==='saved'){
+    el.textContent='✅ Saved';
+    el.style.background='#e8f5e9';el.style.color='#1b5e20';
+    el.style.display='block';el.style.opacity='1';
+    setTimeout(function(){if(SAVE_PENDING===0){el.style.opacity='0';setTimeout(function(){el.style.display='none';},300);}},1200);
+  } else if(state==='error'){
+    el.textContent='⚠️ Save failed - retrying...';
+    el.style.background='#ffebee';el.style.color='#c62828';
+    el.style.display='block';el.style.opacity='1';
+  }
+}
+
+// Warn before closing tab if a save is still in-flight
+window.addEventListener('beforeunload',function(ev){
+  if(SAVE_PENDING>0||LAST_SAVE_FAILED){
+    ev.preventDefault();
+    ev.returnValue='Your data is still saving. Are you sure you want to leave?';
+    return ev.returnValue;
+  }
+});
+
+// CRITICAL: flush any pending debounced save immediately when tab is hidden/closed/backgrounded.
+// This is what actually prevents data loss when someone closes the tab right after typing.
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden'&&SAVE_DEBOUNCE_TIMER){
+    clearTimeout(SAVE_DEBOUNCE_TIMER);
+    SAVE_DEBOUNCE_TIMER=null;
+    actuallySaveCloud();
+  }
+});
+// Also flush on pagehide (covers mobile Safari tab close / app switch better than beforeunload)
+window.addEventListener('pagehide',function(){
+  if(SAVE_DEBOUNCE_TIMER){
+    clearTimeout(SAVE_DEBOUNCE_TIMER);
+    SAVE_DEBOUNCE_TIMER=null;
+    actuallySaveCloud();
+  }
+});
+
+var SAVE_DEBOUNCE_TIMER=null;
 function saveCloud(){
+  if(!DB_LOADED)return;
+  // Debounce: wait 300ms after the LAST change before writing, so rapid actions
+  // (e.g. adding many staff quickly) batch into one reliable write instead of many.
+  // SAVE_PENDING is incremented immediately so beforeunload warning fires right away.
+  SAVE_PENDING++;
+  showSaveIndicator('saving');
+  clearTimeout(SAVE_DEBOUNCE_TIMER);
+  SAVE_DEBOUNCE_TIMER=setTimeout(function(){
+    SAVE_PENDING=Math.max(0,SAVE_PENDING-1); // release the "pending" placeholder, doSaveWithRetry will track the real write
+    actuallySaveCloud();
+  },300);
+}
+function actuallySaveCloud(){
   if(!DB_LOADED)return;
   saveLog();
   try{
@@ -3281,15 +3350,40 @@ function saveCloud(){
           return{v:ver.v,savedAt:ver.savedAt,asgn:va,lvMap:vl,offMap:vo};
         })};
     });
-    db.collection('gavs_data').doc('main').set({
+    var payload={
       staff:staffData,venues:venueData,asgn:asgnData,lvMap:lvData,offMap:offData,
       drafts:draftsData,roles:ROLES,dlog:dlog,activeVids:activeVids,
       vHalls:vHalls,
       vendorAsgn:vendorAsgn,activeVendorVids:activeVendorVids,
       vendorTypes:VENDOR_TYPES,vdlog:vdlog,
       updatedAt:new Date().toISOString()
-    }).catch(function(e){console.error('Save error:',e);});
+    };
+    doSaveWithRetry(payload,0);
   }catch(err){console.error('Save prep error:',err);}
+}
+
+function doSaveWithRetry(payload,attempt){
+  SAVE_PENDING++;
+  showSaveIndicator('saving');
+  db.collection('gavs_data').doc('main').set(payload).then(function(){
+    SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
+    LAST_SAVE_FAILED=false;
+    showSaveIndicator('saved');
+  }).catch(function(e){
+    console.error('Save error (attempt '+attempt+'):',e);
+    SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
+    if(attempt<5){
+      LAST_SAVE_FAILED=true;
+      showSaveIndicator('error');
+      var delay=Math.min(1000*Math.pow(2,attempt),15000); // exponential backoff up to 15s
+      clearTimeout(SAVE_RETRY_TIMER);
+      SAVE_RETRY_TIMER=setTimeout(function(){doSaveWithRetry(payload,attempt+1);},delay);
+    } else {
+      LAST_SAVE_FAILED=true;
+      toast('⚠️ Could not save to cloud after several tries. Check your internet.','e');
+      showSaveIndicator('error');
+    }
+  });
 }
 
 function loadFromCloud(callback){

@@ -106,6 +106,10 @@ input,select,button{font-family:inherit;}
 .assign-area{display:flex;flex:1;overflow:hidden;}
 /* Staff panel inside assign */
 .asp{width:260px;flex-shrink:0;background:#fff;border-right:1px solid #e3eaff;display:flex;flex-direction:column;overflow:hidden;}
+.mode-toggle{display:flex;flex-shrink:0;background:#f0f4ff;padding:6px;gap:6px;}
+.mode-btn{flex:1;padding:8px 0;border-radius:8px;border:none;background:transparent;color:#888;font-size:12px;font-weight:700;cursor:pointer;}
+.mode-btn.mode-on{background:#1565c0;color:#fff;box-shadow:0 2px 6px rgba(21,101,192,0.3);}
+#STAFF_PANEL_WRAP,#VENDOR_PANEL_WRAP{display:flex;flex-direction:column;flex:1;overflow:hidden;}
 /* Venue panel inside assign */
 .avp{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px 12px;}
 /* Mobile action bar */
@@ -271,7 +275,6 @@ input,select,button{font-family:inherit;}
   <div class="stats" id="SB"></div>
   <div class="nav">
     <button class="nb on" data-screen="assign"><span class="ni">🏨</span><span>Assign Duties</span></button>
-    <button class="nb" data-screen="vendors"><span class="ni">📋</span><span>Assign Vendors</span></button>
     <button class="nb" data-screen="manage"><span class="ni">⚙️</span><span>Manage</span></button>
     <button class="nb" data-screen="report"><span class="ni">📄</span><span>Report</span></button>
     <button class="nb" data-screen="drafts"><span class="ni">📂</span><span>Drafts</span></button>
@@ -310,7 +313,6 @@ input,select,button{font-family:inherit;}
     <div class="atb-flex"></div>
     <div class="atb-sep"></div>
     <button class="atb-nb atb-on" data-atb-screen="assign" title="Assign Duties">🏨</button>
-    <button class="atb-nb" data-atb-screen="vendors" title="Assign Vendors">📋</button>
     <button class="atb-nb" data-atb-screen="manage" title="Manage">⚙️</button>
     <button class="atb-nb" data-atb-screen="report" title="Report">📄</button>
     <button class="atb-nb" data-atb-screen="drafts" title="Drafts">📂</button>
@@ -322,10 +324,20 @@ input,select,button{font-family:inherit;}
 
     <!-- Left: Staff Panel -->
     <div class="asp">
-      <div class="sp-hdr">👥 All Staff <span class="sp-cnt" id="SP_CNT">0</span></div>
-      <div class="sp-s"><input id="SP_SRCH" type="text" placeholder="Search staff..."/></div>
-      <div class="rp-wrap" id="SP_ROLES"></div>
-      <div class="sp-list" id="SP_LIST"></div>
+      <div class="mode-toggle" id="MODE_TOGGLE">
+        <button class="mode-btn mode-on" id="modeBtnStaff">👥 Staff</button>
+        <button class="mode-btn" id="modeBtnVendors">📋 Vendors</button>
+      </div>
+      <div id="STAFF_PANEL_WRAP">
+        <div class="sp-hdr">👥 All Staff <span class="sp-cnt" id="SP_CNT">0</span></div>
+        <div class="sp-s"><input id="SP_SRCH" type="text" placeholder="Search staff..."/></div>
+        <div class="rp-wrap" id="SP_ROLES"></div>
+        <div class="sp-list" id="SP_LIST"></div>
+      </div>
+      <div id="VENDOR_PANEL_WRAP" class="hide">
+        <div class="sp-hdr">📋 Vendor Types <span class="sp-cnt" id="VT_CNT">0</span></div>
+        <div class="sp-list" id="VT_LIST" style="padding:10px;"></div>
+      </div>
     </div>
 
     <!-- Right: Venue Grid -->
@@ -340,40 +352,13 @@ input,select,button{font-family:inherit;}
   </div>
 </div>
 
-<!-- ASSIGN VENDORS -->
-<div class="screen" id="screen-vendors">
-  <div class="ab">
-    <div class="ab-date" id="VENDOR_ADATE">Date: —</div>
-    <button class="abbtn" id="btnVCopy" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9;">📅 Copy from Date</button>
-    <button class="abbtn" id="btnVDraft" style="background:#fff8e1;color:#f57f17;border-color:#ffe082;">💾 Save as Draft</button>
-    <button class="abbtn" id="btnVSave" style="background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7;">☁️ Save</button>
-    <button class="abbtn" id="btnVPDF" style="background:#f3e5f5;color:#6a1b9a;border-color:#ce93d8;">📄 PDF</button>
-  </div>
-  <div class="assign-layout">
-    <div class="sp">
-      <div class="sp-hdr">📋 Vendor Types <span class="sp-cnt" id="VT_CNT">0</span></div>
-      <div class="sp-list" id="VT_LIST" style="padding:10px;"></div>
-      <div style="padding:10px;border-top:1px solid #e3eaff;">
-        <input id="NEW_VT" class="inp" placeholder="New vendor type..." style="margin-bottom:8px;"/>
-        <button class="bigbtn" id="btnAddVT">+ Add Vendor Type</button>
-      </div>
-    </div>
-    <div class="vp">
-      <div class="vs-wrap">
-        <input class="vsi" id="VV_SRCH" type="text" placeholder="🔍 Type venue name to add..."/>
-        <div class="vdd" id="VV_DD"></div>
-      </div>
-      <div class="vgrid" id="VENDOR_GRID" style="align-items:start;"></div>
-    </div>
-  </div>
-</div>
-
 <!-- MANAGE -->
 <div class="screen" id="screen-manage">
   <div class="mtabs">
     <button class="mtab on" data-mtab="staff">👥 Staff</button>
     <button class="mtab" data-mtab="venues">🏨 Venues</button>
     <button class="mtab" data-mtab="roles">🏷️ Roles</button>
+    <button class="mtab" data-mtab="vendors">📋 Vendor Types</button>
   </div>
   <div id="mp-staff">
     <div class="mgrid">
@@ -417,6 +402,24 @@ input,select,button{font-family:inherit;}
         </div>
       </div>
       <div><div id="MRL"></div></div>
+    </div>
+  </div>
+
+  <div id="mp-vendors" class="hide">
+    <div class="mgrid">
+      <div>
+        <div class="abt" style="margin-bottom:10px;">VENDOR TYPES</div>
+        <div id="MVT_LIST"></div>
+      </div>
+      <div>
+        <div id="MVT_DETAIL">
+          <div style="text-align:center;padding:60px 20px;color:#bbb;">
+            <div style="font-size:40px;">📋</div>
+            <div style="font-size:14px;font-weight:700;color:#1565c0;margin-top:10px;">Select a Vendor Type</div>
+            <div style="font-size:12px;color:#aaa;margin-top:4px;">to manage its registered companies</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -616,10 +619,27 @@ var DEFAULT_VENUES=['The Leela Palace New Delhi','The Oberoi New Delhi','ITC Mau
 var ROLES=['Manager','Sound Engineer','Lighting Tech','AV Tech','Stage Manager','Camera Operator','Video Tech','Crew Lead','Setup Specialist','Live Stream Tech','Projection Tech','DJ Operator','Truss Rigger'];
 var staff=[],venues=[],asgn={},lvMap={},offMap={},dlog={};
 var vHalls={}; // venueId -> number of halls (per current date, reset on date change like asgn)
-var VENDOR_TYPES=['Labour','Photography','Cinematic','Catering','Decor','Transport']; // editable categories
-var vendorAsgn={}; // venueId -> {vendorType: qty}
-var activeVendorVids=[]; // venues shown in Assign Vendors grid
-var vdlog={}; // per-date vendor log: vdlog[date] = {venues:{vid:{type:qty}}}
+// ── VENDOR SYSTEM ──────────────────────────────────────────
+// 9 fixed vendor type categories
+var VENDOR_TYPES=[
+  {id:'labour',name:'Labour Vendor',icon:'👷',special:false},
+  {id:'genset',name:'Genset Vendor',icon:'🔌',special:false},
+  {id:'ups',name:'UPS Vendor',icon:'🔋',special:false},
+  {id:'photovideo',name:'Photo & Video Vendor',icon:'📷',special:'photovideo'},
+  {id:'led',name:'LED Vendor',icon:'💡',special:false},
+  {id:'av',name:'AV Vendor',icon:'🔊',special:false},
+  {id:'watchout',name:'Watchout Vendor',icon:'👁️',special:false},
+  {id:'fabrication',name:'Fabrication Vendor',icon:'🔧',special:false},
+  {id:'stall',name:'Stall Vendor',icon:'🏪',special:false}
+];
+var PV_SERVICES=['Still Photography','HD Camera','Gimbal Video','Candid Photography','Multicam'];
+// Registered vendor companies per type: vendorCompanies[typeId] = ['ABC Labour Co.', 'XYZ Manpower', ...]
+var vendorCompanies={};
+// Per-day vendor assignments: vendorAsgn[venueId][typeId] = [ {id, company, qty, notes, time, services:{...}} , ... ]
+var vendorAsgn={};
+var activeVendorVids=[]; // legacy - venues that have vendor data, kept in sync with activeVids now
+var vdlog={}; // per-date vendor log: vdlog[date] = {venues:{vid:{typeId:[entries]}}}
+var assignMode='staff'; // 'staff' or 'vendors' - toggle in Assign Duties left panel
 var drafts=[],curDraftId=null,curDraftVer=0;
 var activeVids=[];
 var deskRole='All';
@@ -720,9 +740,6 @@ function go(s){
     document.querySelectorAll('[data-atb-screen]').forEach(function(b){
       b.classList.toggle('atb-on',b.getAttribute('data-atb-screen')===s);
     });
-  } else if(s==='vendors'){
-    document.body.classList.remove('in-assign');
-    updateVendorADate();drawVendorTypes();drawVendorGrid();
   } else {
     document.body.classList.remove('in-assign');
     if(s==='manage')drawManage();
@@ -1009,6 +1026,7 @@ function drawVenueGrid(){
   var el=g('V_GRID');if(!el)return;
   el.innerHTML='';
 
+  if(assignMode==='staff'){
   // ── Leave drop zone ─────────────────────────────────────────
   var lvBox=document.createElement('div');
   var lvCount=Object.keys(lvMap).length;
@@ -1085,6 +1103,7 @@ function drawVenueGrid(){
     if(eid)markOffice(eid);
   });
   el.appendChild(offBox);
+  } // end if assignMode==='staff'
 
   // ── Venue boxes ─────────────────────────────────────────────
   activeVids.forEach(function(vid){
@@ -1112,6 +1131,8 @@ function makeVenueBox(v,hasPinned){
   box.addEventListener('dragleave',function(){this.classList.remove('drag-over');});
   box.addEventListener('drop',function(ev){
     ev.preventDefault();this.classList.remove('drag-over');
+    var vtid=ev.dataTransfer.getData('text/vendortype');
+    if(vtid){addVendorTypeToVenue(vtid,v.id);return;}
     var eid=ev.dataTransfer.getData('text/plain');
     if(eid)dropStaff(eid,v.id);
   });
@@ -1122,7 +1143,15 @@ function makeVenueBox(v,hasPinned){
 
   var icon=document.createElement('span');icon.textContent=v.vip?'⭐':'🏨';
   var nm=document.createElement('div');nm.className='vbox-name';nm.textContent=v.name;
-  var cnt=document.createElement('span');cnt.className='vbox-cnt';cnt.textContent=t.length+' staff';
+  var cnt=document.createElement('span');cnt.className='vbox-cnt';
+  if(assignMode==='vendors'){
+    var vm0=vendorAsgn[v.id]||{};
+    var totalVendorEntries=0;
+    Object.keys(vm0).forEach(function(tid){totalVendorEntries+=(vm0[tid]||[]).length;});
+    cnt.textContent=totalVendorEntries+' vendor'+(totalVendorEntries===1?'':'s');
+  } else {
+    cnt.textContent=t.length+' staff';
+  }
 
   hdr.appendChild(icon);hdr.appendChild(nm);
   if(v.vip){var vipBdg=document.createElement('span');vipBdg.style.cssText='background:rgba(255,60,60,0.25);color:#ff6060;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:800;flex-shrink:0;';vipBdg.textContent='VIP';hdr.appendChild(vipBdg);}
@@ -1168,8 +1197,24 @@ function makeVenueBox(v,hasPinned){
   }
   box.appendChild(hdr);
 
+  // Halls warning - shown when 2+ halls set, regardless of mode
+  var hallsN=vHalls[v.id]||0;
+  if(hallsN>=2){
+    var hallsWarn=document.createElement('div');
+    hallsWarn.style.cssText='background:#fff0f0;color:#c62828;font-size:15px;font-weight:900;text-align:center;padding:7px 10px;border-bottom:2px solid #ffcdd2;letter-spacing:0.02em;';
+    hallsWarn.textContent='⚠️ '+hallsN+' HALLS TODAY';
+    box.appendChild(hallsWarn);
+  }
+
   // Body
   var body=document.createElement('div');body.className='vbox-body';
+
+  if(assignMode==='vendors'){
+    renderVendorBody(body,v);
+    box.appendChild(body);
+    return box;
+  }
+
   if(!t.length){
     var hint=document.createElement('div');hint.className='drop-hint';hint.textContent='⬇ Drop staff here';
     body.appendChild(hint);
@@ -1214,6 +1259,147 @@ function makeVenueBox(v,hasPinned){
   }
   box.appendChild(body);
   return box;
+}
+
+function renderVendorBody(body,v){
+  var vm=vendorAsgn[v.id]||{};
+  var hasAny=Object.keys(vm).some(function(tid){return (vm[tid]||[]).length>0;});
+  if(!hasAny){
+    var hint=document.createElement('div');hint.className='drop-hint';
+    hint.textContent='⬇ Drag a Vendor Type here from the left panel';
+    body.appendChild(hint);
+  }
+  VENDOR_TYPES.forEach(function(vt,i){
+    var entries=(vm[vt.id])||[];
+    if(!entries.length)return;
+    var c=CLRS[i%CLRS.length];
+    var section=document.createElement('div');
+    section.style.cssText='margin-bottom:10px;';
+    var secHdr=document.createElement('div');
+    secHdr.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+c+';padding:4px 0 4px;border-bottom:1px solid '+c+'22;margin-bottom:6px;display:flex;align-items:center;gap:6px;';
+    secHdr.innerHTML=vt.icon+' '+esc(vt.name);
+    var addBtn=document.createElement('button');
+    addBtn.textContent='+ Add';
+    addBtn.style.cssText='margin-left:auto;background:'+c+'18;color:'+c+';border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer;';
+    addBtn.addEventListener('click',(function(vid,typeId){return function(){showVendorEntryModal(vid,typeId,null);};})(v.id,vt.id));
+    secHdr.appendChild(addBtn);
+    section.appendChild(secHdr);
+
+    entries.forEach(function(entry,idx){
+      var row=document.createElement('div');
+      row.style.cssText='background:#f8faff;border:1px solid #e3eaff;border-radius:8px;padding:7px 9px;margin-bottom:5px;';
+      var top=document.createElement('div');top.style.cssText='display:flex;align-items:center;gap:6px;';
+      var nm=document.createElement('div');
+      nm.style.cssText='flex:1;font-size:11px;font-weight:700;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      nm.textContent=entry.company||'(no name)';
+      nm.title=entry.company||'';
+      var qtyBadge=document.createElement('span');
+      qtyBadge.style.cssText='background:'+c+'18;color:'+c+';border-radius:4px;padding:1px 6px;font-size:10px;font-weight:800;flex-shrink:0;';
+      if(vt.special==='photovideo'){
+        var svcCount=Object.keys(entry.services||{}).filter(function(s){return (entry.services[s]||0)>0;}).length;
+        qtyBadge.textContent=svcCount+' svc';
+      } else {
+        qtyBadge.textContent='Qty '+(entry.qty||0);
+      }
+      var editBtn=document.createElement('button');
+      editBtn.className='v3rm';editBtn.textContent='✏️';editBtn.style.cssText='background:#e3f2fd;color:#1565c0;width:20px;height:20px;font-size:9px;';
+      editBtn.addEventListener('click',(function(vid,typeId,i2){return function(){showVendorEntryModal(vid,typeId,i2);};})(v.id,vt.id,idx));
+      var rmBtn=document.createElement('button');
+      rmBtn.className='v3rm';rmBtn.textContent='✕';
+      rmBtn.addEventListener('click',(function(vid,typeId,i2){return function(){
+        vendorAsgn[vid][typeId].splice(i2,1);
+        drawVenueGrid();saveCloud();
+      };})(v.id,vt.id,idx));
+      top.appendChild(nm);top.appendChild(qtyBadge);top.appendChild(editBtn);top.appendChild(rmBtn);
+      row.appendChild(top);
+      if(entry.time||entry.notes){
+        var sub=document.createElement('div');
+        sub.style.cssText='font-size:9px;color:#888;margin-top:3px;display:flex;gap:8px;';
+        if(entry.time)sub.innerHTML+='<span>⏰ '+esc(entry.time)+'</span>';
+        if(entry.notes)sub.innerHTML+='<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📝 '+esc(entry.notes)+'</span>';
+        row.appendChild(sub);
+      }
+      section.appendChild(row);
+    });
+    body.appendChild(section);
+  });
+}
+
+function showVendorEntryModal(vid,typeId,editIdx){
+  var v=getV(vid);var vt=VENDOR_TYPES.find(function(x){return x.id===typeId;});
+  if(!v||!vt)return;
+  var isEdit=editIdx!==null&&editIdx!==undefined;
+  var entry=isEdit?vendorAsgn[vid][typeId][editIdx]:{company:'',qty:1,notes:'',time:'9:00 AM',services:{}};
+  var companies=vendorCompanies[vt.id]||[];
+  var coOptions='<option value="">-- Type or select below --</option>'+
+    companies.map(function(c){return'<option value="'+esc(c)+'"'+(c===entry.company?' selected':'')+'>'+esc(c)+'</option>';}).join('');
+  var timeOptions=TIMES.map(function(t){return'<option'+(t===entry.time?' selected':'')+'>'+t+'</option>';}).join('');
+
+  var servicesHtml='';
+  if(vt.special==='photovideo'){
+    servicesHtml='<label class="lbl">Services Needed</label><div style="margin-bottom:10px;">';
+    PV_SERVICES.forEach(function(svc){
+      var checked=(entry.services&&entry.services[svc])?true:false;
+      var qty=(entry.services&&entry.services[svc])||'';
+      servicesHtml+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f4ff;">'+
+        '<input type="checkbox" class="pv-svc-chk" data-svc="'+esc(svc)+'" '+(checked?'checked':'')+' style="width:16px;height:16px;"/>'+
+        '<span style="flex:1;font-size:13px;">'+esc(svc)+'</span>'+
+        '<input type="number" min="0" class="pv-svc-qty" data-svc="'+esc(svc)+'" value="'+(qty||'')+'" placeholder="Qty" style="width:60px;border:1.5px solid #e0e7ff;border-radius:7px;padding:5px 8px;font-size:12px;"/>'+
+        '</div>';
+    });
+    servicesHtml+='</div>';
+  } else {
+    servicesHtml='<label class="lbl">Quantity Needed</label><input id="VEQTY" type="number" min="1" class="inp" value="'+(entry.qty||1)+'"/>';
+  }
+
+  showModal(
+    '<div class="mt">'+vt.icon+' '+esc(vt.name)+'</div>'+
+    '<div style="font-size:12px;color:#888;text-align:center;margin-bottom:14px;">for <strong>'+esc(v.name)+'</strong></div>'+
+    '<label class="lbl">Vendor Company</label>'+
+    '<select id="VECOSEL" class="sel">'+coOptions+'</select>'+
+    '<input id="VECOTXT" class="inp" placeholder="Or type new company name..." value="'+esc(entry.company||'')+'"/>'+
+    servicesHtml+
+    '<label class="lbl">Timing</label>'+
+    '<select id="VETIME" class="sel">'+timeOptions+'</select>'+
+    '<label class="lbl">Notes (optional)</label>'+
+    '<input id="VENOTES" class="inp" placeholder="Any special instructions..." value="'+esc(entry.notes||'')+'"/>'+
+    '<button class="mbtn blue" id="m-yes">'+(isEdit?'Save Changes':'Add Vendor')+'</button>'+
+    '<button class="mcancel" id="m-no">Cancel</button>'
+  );
+  g('VECOSEL').addEventListener('change',function(){if(this.value)g('VECOTXT').value=this.value;});
+  g('m-yes').onclick=function(){
+    var company=(g('VECOTXT').value||'').trim()||g('VECOSEL').value;
+    if(!company){toast('Enter or select a vendor company','w');return;}
+    var time=g('VETIME').value;
+    var notes=(g('VENOTES').value||'').trim();
+    var newEntry={company:company,time:time,notes:notes};
+    if(vt.special==='photovideo'){
+      var services={};
+      document.querySelectorAll('.pv-svc-chk').forEach(function(chk){
+        if(chk.checked){
+          var svc=chk.getAttribute('data-svc');
+          var qtyInp=document.querySelector('.pv-svc-qty[data-svc="'+svc+'"]');
+          var q=parseInt(qtyInp.value)||1;
+          services[svc]=q;
+        }
+      });
+      if(!Object.keys(services).length){toast('Select at least one service','w');return;}
+      newEntry.services=services;
+    } else {
+      var qty=parseInt(g('VEQTY').value)||1;
+      newEntry.qty=qty;
+    }
+    // register company if new
+    if(!vendorCompanies[vt.id])vendorCompanies[vt.id]=[];
+    if(vendorCompanies[vt.id].indexOf(company)<0)vendorCompanies[vt.id].push(company);
+    if(!vendorAsgn[vid])vendorAsgn[vid]={};
+    if(!vendorAsgn[vid][typeId])vendorAsgn[vid][typeId]=[];
+    if(isEdit)vendorAsgn[vid][typeId][editIdx]=newEntry;
+    else vendorAsgn[vid][typeId].push(newEntry);
+    closeModal();toast(company+' '+(isEdit?'updated':'added')+'!');
+    drawVenueGrid();saveCloud();
+  };
+  g('m-no').onclick=closeModal;
 }
 
 function makeRoleHdr(r,c){
@@ -1486,7 +1672,7 @@ document.querySelectorAll('.mtab').forEach(function(btn){
     mStaffRole='All'; // Reset role filter when switching tabs
     document.querySelectorAll('.mtab').forEach(function(b){b.classList.remove('on');});
     this.classList.add('on');
-    ['staff','venues','roles'].forEach(function(t){
+    ['staff','venues','roles','vendors'].forEach(function(t){
       var el=g('mp-'+t);
       if(el)el.classList.toggle('hide',t!==curMtab);
     });
@@ -1498,6 +1684,7 @@ function drawManage(){
   populateRoleDD();populateVenueDD();populateTimeDD();
   if(curMtab==='staff')drawMStaff();
   else if(curMtab==='venues')drawMVenues();
+  else if(curMtab==='vendors')drawMVendorTypes();
   else drawMRoles();
 }
 
@@ -2877,313 +3064,169 @@ function makeLOPDF(){
 }
 
 
+
 // ════════════════════════════════════════════════════════════
-// ASSIGN VENDORS
+// MANAGE → VENDOR TYPES & COMPANIES
 // ════════════════════════════════════════════════════════════
-function updateVendorADate(){
-  var el=document.getElementById('VENDOR_ADATE');
-  if(el)el.textContent='Date: '+fd(getD());
+var curMVT=null; // currently selected vendor type id in Manage
+
+function drawMVendorTypes(){
+  var el=g('MVT_LIST');if(!el)return;
+  el.innerHTML='';
+  VENDOR_TYPES.forEach(function(vt,i){
+    var c=CLRS[i%CLRS.length];
+    var compCount=(vendorCompanies[vt.id]||[]).length;
+    var row=document.createElement('div');
+    row.className='srow';
+    row.style.cursor='pointer';
+    if(curMVT===vt.id)row.style.cssText+='border-color:'+c+';box-shadow:0 2px 8px '+c+'33;';
+    var info=document.createElement('div');info.className='sr-info';
+    info.innerHTML='<div class="sr-name" style="color:'+c+';">'+vt.icon+' '+esc(vt.name)+'</div>'+
+      '<div class="sr-sub">'+compCount+' compan'+(compCount===1?'y':'ies')+' registered</div>';
+    row.appendChild(info);
+    var arrow=document.createElement('div');arrow.style.cssText='color:#ccc;font-size:16px;';arrow.textContent='›';
+    row.appendChild(arrow);
+    row.addEventListener('click',(function(id){return function(){curMVT=id;drawMVTDetail();drawMVendorTypes();};})(vt.id));
+    el.appendChild(row);
+  });
+  if(curMVT)drawMVTDetail();
 }
 
-function drawVendorTypes(){
+function drawMVTDetail(){
+  var el=g('MVT_DETAIL');if(!el)return;
+  var vt=VENDOR_TYPES.find(function(x){return x.id===curMVT;});
+  if(!vt){
+    el.innerHTML='<div style="text-align:center;padding:60px 20px;color:#bbb;"><div style="font-size:40px;">📋</div><div style="font-size:14px;font-weight:700;color:#1565c0;margin-top:10px;">Select a Vendor Type</div></div>';
+    return;
+  }
+  var companies=vendorCompanies[vt.id]||[];
+  var h='<div class="addbox"><div class="abt">'+vt.icon+' '+esc(vt.name)+' — Companies</div>'+
+    '<input class="inp" id="NEW_VCO" placeholder="e.g. ABC Labour Co."/>'+
+    '<button class="bigbtn" id="btnAddVCO">+ Add Company</button>'+
+    '</div><div id="VCO_LIST"></div>';
+  el.innerHTML=h;
+  var listEl=document.getElementById('VCO_LIST');
+  if(!companies.length){
+    listEl.innerHTML='<div style="text-align:center;padding:30px;color:#bbb;font-size:13px;">No companies added yet.</div>';
+  } else {
+    companies.forEach(function(co,i){
+      var row=document.createElement('div');row.className='srow';
+      var info=document.createElement('div');info.className='sr-info';
+      info.innerHTML='<div class="sr-name">'+esc(co)+'</div>';
+      var db=document.createElement('button');db.className='ibtn db';db.textContent='🗑️';
+      db.addEventListener('click',(function(idx){return function(){
+        vendorCompanies[vt.id].splice(idx,1);
+        toast(co+' removed','w');drawMVTDetail();drawMVendorTypes();saveCloud();
+      };})(i));
+      row.appendChild(info);row.appendChild(db);
+      listEl.appendChild(row);
+    });
+  }
+  document.getElementById('btnAddVCO').addEventListener('click',function(){
+    var n=(document.getElementById('NEW_VCO').value||'').trim();
+    if(!n){toast('Enter company name','w');return;}
+    if(!vendorCompanies[vt.id])vendorCompanies[vt.id]=[];
+    if(vendorCompanies[vt.id].indexOf(n)>=0){toast('Already exists','w');return;}
+    vendorCompanies[vt.id].push(n);
+    toast(n+' added!');drawMVTDetail();drawMVendorTypes();saveCloud();
+  });
+  document.getElementById('NEW_VCO').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('btnAddVCO').click();});
+}
+
+
+// ════════════════════════════════════════════════════════════
+// ASSIGN DUTIES — STAFF / VENDORS MODE TOGGLE
+// ════════════════════════════════════════════════════════════
+var modeBtnStaff=document.getElementById('modeBtnStaff');
+var modeBtnVendors=document.getElementById('modeBtnVendors');
+if(modeBtnStaff)modeBtnStaff.addEventListener('click',function(){switchAssignMode('staff');});
+if(modeBtnVendors)modeBtnVendors.addEventListener('click',function(){switchAssignMode('vendors');});
+
+function switchAssignMode(mode){
+  assignMode=mode;
+  var staffWrap=document.getElementById('STAFF_PANEL_WRAP');
+  var vendorWrap=document.getElementById('VENDOR_PANEL_WRAP');
+  if(staffWrap)staffWrap.classList.toggle('hide',mode!=='staff');
+  if(vendorWrap)vendorWrap.classList.toggle('hide',mode!=='vendors');
+  if(modeBtnStaff)modeBtnStaff.classList.toggle('mode-on',mode==='staff');
+  if(modeBtnVendors)modeBtnVendors.classList.toggle('mode-on',mode==='vendors');
+  if(mode==='vendors'){drawVendorTypeList();}
+  drawVenueGrid(); // redraw venue boxes to show staff or vendor content
+}
+
+function drawVendorTypeList(){
   var el=document.getElementById('VT_LIST');if(!el)return;
   var cntEl=document.getElementById('VT_CNT');if(cntEl)cntEl.textContent=VENDOR_TYPES.length;
   el.innerHTML='';
-  var icons={'Labour':'👷','Photography':'📷','Cinematic':'🎥','Catering':'🍽️','Decor':'🎉','Transport':'🚐'};
   VENDOR_TYPES.forEach(function(vt,i){
     var c=CLRS[i%CLRS.length];
-    var row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:8px;background:#f8faff;border:1.5px solid #e3eaff;border-radius:9px;padding:9px 11px;margin-bottom:6px;';
-    var icon=icons[vt]||'📦';
-    row.innerHTML='<span style="font-size:16px;">'+icon+'</span><div style="flex:1;font-size:13px;font-weight:700;color:'+c+';">'+esc(vt)+'</div>';
-    var rm=document.createElement('button');
-    rm.className='ibtn db';rm.textContent='🗑️';rm.style.cssText='width:26px;height:26px;font-size:11px;';
-    rm.addEventListener('click',(function(type){return function(){confirmDelVendorType(type);};})(vt));
-    row.appendChild(rm);
-    el.appendChild(row);
+    var card=document.createElement('div');
+    card.className='scard avail';
+    card.draggable=true;
+    card.setAttribute('data-vtid',vt.id);
+    card.style.cssText='cursor:grab;';
+    var info=document.createElement('div');info.className='sci';
+    var nm=document.createElement('div');nm.className='scn';nm.textContent=vt.icon+' '+vt.name;
+    var sub=document.createElement('div');sub.className='scr';sub.style.color=c;
+    var compCount=(vendorCompanies[vt.id]||[]).length;
+    sub.textContent=compCount+' compan'+(compCount===1?'y':'ies')+' registered';
+    info.appendChild(nm);info.appendChild(sub);
+    var dh=document.createElement('span');dh.className='dh';dh.textContent='⠿';
+    card.appendChild(dh);card.appendChild(info);
+    el.appendChild(card);
+  });
+  // drag wiring (delegated)
+  el.addEventListener('dragstart',function(ev){
+    var card=ev.target.closest('.scard[data-vtid]');
+    if(!card)return;
+    ev.dataTransfer.setData('text/vendortype',card.getAttribute('data-vtid'));
+    ev.dataTransfer.effectAllowed='move';
   });
 }
 
-function confirmDelVendorType(vt){
-  // check if used anywhere in current vendorAsgn
-  var used=Object.keys(vendorAsgn).some(function(vid){return vendorAsgn[vid]&&vendorAsgn[vid][vt];});
-  showModal(
-    '<div class="mt" style="color:#c62828;">Delete Vendor Type?</div>'+
-    '<div style="text-align:center;font-size:14px;margin-bottom:'+(used?'8px':'18px')+';">Delete <strong>'+esc(vt)+'</strong>?</div>'+
-    (used?'<div style="font-size:12px;color:#e65100;text-align:center;margin-bottom:16px;">⚠️ Currently assigned to one or more venues today. Those assignments will be removed.</div>':'')+
-    '<button class="mbtn red" id="m-yes">Yes, Delete</button>'+
-    '<button class="mcancel" id="m-no">Cancel</button>'
-  );
-  g('m-yes').onclick=function(){
-    VENDOR_TYPES=VENDOR_TYPES.filter(function(x){return x!==vt;});
-    Object.keys(vendorAsgn).forEach(function(vid){if(vendorAsgn[vid])delete vendorAsgn[vid][vt];});
-    closeModal();toast(vt+' removed','w');
-    drawVendorTypes();drawVendorGrid();saveCloud();
-  };
-  g('m-no').onclick=closeModal;
-}
+// Touch drag for vendor type cards (iPad/mobile)
+var touchVTypeId=null;
+document.addEventListener('touchstart',function(ev){
+  var card=ev.target.closest('#VT_LIST .scard[data-vtid]');
+  if(!card)return;
+  touchVTypeId=card.getAttribute('data-vtid');
+  var vt=VENDOR_TYPES.find(function(x){return x.id===touchVTypeId;});
+  if(!vt)return;
+  var touch=ev.touches[0];
+  touchGhost=document.createElement('div');
+  touchGhost.style.cssText='position:fixed;z-index:9999;pointer-events:none;background:#fff;border:2px solid #1565c0;border-radius:10px;padding:8px 12px;font-size:13px;color:#111;white-space:nowrap;box-shadow:0 6px 22px rgba(0,0,0,0.2);opacity:0.9;';
+  touchGhost.textContent=vt.icon+' '+vt.name;
+  touchGhost.style.left=(touch.clientX-50)+'px';touchGhost.style.top=(touch.clientY-30)+'px';
+  document.body.appendChild(touchGhost);
+  if(navigator.vibrate)navigator.vibrate(30);
+  card.style.opacity='0.3';
+},{passive:true});
 
-var btnAddVT=document.getElementById('btnAddVT');
-if(btnAddVT)btnAddVT.addEventListener('click',function(){
-  var n=(document.getElementById('NEW_VT').value||'').trim();
-  if(!n){toast('Enter vendor type name','w');return;}
-  if(VENDOR_TYPES.indexOf(n)>=0){toast('Already exists','w');return;}
-  VENDOR_TYPES.push(n);
-  document.getElementById('NEW_VT').value='';
-  toast(n+' added!');drawVendorTypes();saveCloud();
-});
-
-// Venue search for vendors grid
-var vvSrch=document.getElementById('VV_SRCH');
-if(vvSrch)vvSrch.addEventListener('input',function(){
-  var q=this.value.trim();
-  var dd=document.getElementById('VV_DD');
-  if(q.length<1){dd.classList.remove('show');dd.innerHTML='';return;}
-  var matches=venues.filter(function(v){
-    return v.name.toLowerCase().indexOf(q.toLowerCase())>=0&&activeVendorVids.indexOf(v.id)<0;
-  }).slice(0,15);
-  dd.innerHTML='';
-  if(!matches.length){
-    var d=document.createElement('div');d.className='vdd-item';d.textContent='No venues found';d.style.color='#aaa';
-    dd.appendChild(d);
-  } else {
-    matches.forEach(function(v){
-      var d=document.createElement('div');d.className='vdd-item';d.textContent='🏨 '+v.name;
-      d.addEventListener('click',(function(vid){return function(){
-        if(activeVendorVids.indexOf(vid)<0)activeVendorVids.push(vid);
-        vvSrch.value='';dd.classList.remove('show');dd.innerHTML='';
-        drawVendorGrid();
-      };})(v.id));
-      dd.appendChild(d);
-    });
-  }
-  dd.classList.add('show');
-});
-document.addEventListener('click',function(ev){
-  var vvdd=document.getElementById('VV_DD');
-  if(vvSrch&&vvdd&&!vvSrch.contains(ev.target)&&!vvdd.contains(ev.target)){
-    vvdd.classList.remove('show');
-  }
-});
-
-function drawVendorGrid(){
-  var el=document.getElementById('VENDOR_GRID');if(!el)return;
-  el.innerHTML='';
-  // Auto-include venues that already have vendor assignments
-  Object.keys(vendorAsgn).forEach(function(vid){
-    if(vendorAsgn[vid]&&Object.keys(vendorAsgn[vid]).length&&activeVendorVids.indexOf(vid)<0){
-      activeVendorVids.push(vid);
+document.addEventListener('touchend',function(ev){
+  if(!touchVTypeId)return;
+  if(touchGhost){try{document.body.removeChild(touchGhost);}catch(x){}touchGhost=null;}
+  var card=document.querySelector('#VT_LIST .scard[data-vtid="'+touchVTypeId+'"]');
+  if(card)card.style.opacity='';
+  var touch=ev.changedTouches[0];
+  document.querySelectorAll('.vbox').forEach(function(b){b.classList.remove('drag-over');});
+  var elAt=document.elementFromPoint(touch.clientX,touch.clientY);
+  if(elAt){
+    var vbox=elAt.closest('.vbox');
+    if(vbox){
+      var vid=vbox.id.replace('vb-','');
+      if(vid)addVendorTypeToVenue(touchVTypeId,vid);
     }
-  });
-  activeVendorVids.forEach(function(vid){
-    var v=getV(vid);if(!v)return;
-    el.appendChild(makeVendorBox(v));
-  });
-  var addBox=document.createElement('div');
-  addBox.className='add-vbox';
-  addBox.innerHTML='<div style="font-size:36px;color:#ef9a9a;margin-bottom:8px;">+</div><div style="font-size:14px;font-weight:700;color:#c62828;">Add Venue</div><div style="font-size:11px;color:#e57373;margin-top:4px;">For vendor assignment</div>';
-  addBox.addEventListener('click',function(){
-    var inp=document.getElementById('VV_SRCH');if(inp)inp.focus();
-  });
-  el.appendChild(addBox);
-}
-
-function makeVendorBox(v){
-  var box=document.createElement('div');
-  box.className='vbox';
-  box.id='vvb-'+v.id;
-
-  var hdr=document.createElement('div');
-  hdr.className='vbox-hdr';
-  var icon=document.createElement('span');icon.textContent='🏨';
-  var nm=document.createElement('div');nm.className='vbox-name';nm.textContent=v.name;
-  hdr.appendChild(icon);hdr.appendChild(nm);
-
-  var vm=vendorAsgn[v.id]||{};
-  var totalQty=Object.values(vm).reduce(function(a,b){return a+b;},0);
-  var cnt=document.createElement('span');cnt.className='vbox-cnt';cnt.textContent=totalQty+' total';
-  hdr.appendChild(cnt);
-
-  var cls=document.createElement('button');cls.className='vbox-close';cls.textContent='✕';cls.title='Remove from view';
-  cls.addEventListener('click',(function(vid2,vname){return function(){
-    showModal(
-      '<div class="mt">Remove Venue from Vendor View?</div>'+
-      '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:8px;"><strong>'+esc(vname)+'</strong></div>'+
-      '<div style="text-align:center;font-size:13px;color:#888;margin-bottom:18px;">Vendor assignments will stay saved; venue can be re-added anytime.</div>'+
-      '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
-      '<button class="mcancel" id="m-no">Cancel</button>'
-    );
-    g('m-yes').onclick=function(){activeVendorVids=activeVendorVids.filter(function(id){return id!==vid2;});closeModal();drawVendorGrid();};
-    g('m-no').onclick=closeModal;
-  };})(v.id,v.name));
-  hdr.appendChild(cls);
-  box.appendChild(hdr);
-
-  var body=document.createElement('div');body.className='vbox-body';
-  var icons={'Labour':'👷','Photography':'📷','Cinematic':'🎥','Catering':'🍽️','Decor':'🎉','Transport':'🚐'};
-
-  VENDOR_TYPES.forEach(function(vt,i){
-    var c=CLRS[i%CLRS.length];
-    var qty=vm[vt]||0;
-    var row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0f4ff;';
-    var icon=icons[vt]||'📦';
-    var lbl=document.createElement('div');
-    lbl.style.cssText='flex:1;font-size:12px;font-weight:700;color:'+c+';';
-    lbl.innerHTML=icon+' '+esc(vt);
-    row.appendChild(lbl);
-
-    var minus=document.createElement('button');
-    minus.textContent='−';
-    minus.style.cssText='width:24px;height:24px;border-radius:6px;border:1px solid #e3eaff;background:#f8faff;color:#1565c0;font-size:14px;font-weight:700;cursor:pointer;';
-    minus.addEventListener('click',(function(vid2,type){return function(){
-      var cur=(vendorAsgn[vid2]&&vendorAsgn[vid2][type])||0;
-      if(cur>0){
-        cur--;
-        if(!vendorAsgn[vid2])vendorAsgn[vid2]={};
-        if(cur===0)delete vendorAsgn[vid2][type];else vendorAsgn[vid2][type]=cur;
-        drawVendorGrid();saveCloud();
-      }
-    };})(v.id,vt));
-
-    var qtyDisp=document.createElement('div');
-    qtyDisp.style.cssText='width:32px;text-align:center;font-size:14px;font-weight:800;color:'+(qty>0?c:'#ccc')+';';
-    qtyDisp.textContent=qty;
-
-    var plus=document.createElement('button');
-    plus.textContent='+';
-    plus.style.cssText='width:24px;height:24px;border-radius:6px;border:1px solid #e3eaff;background:#f8faff;color:#1565c0;font-size:14px;font-weight:700;cursor:pointer;';
-    plus.addEventListener('click',(function(vid2,type){return function(){
-      if(!vendorAsgn[vid2])vendorAsgn[vid2]={};
-      vendorAsgn[vid2][type]=((vendorAsgn[vid2][type])||0)+1;
-      drawVendorGrid();saveCloud();
-    };})(v.id,vt));
-
-    row.appendChild(minus);row.appendChild(qtyDisp);row.appendChild(plus);
-    body.appendChild(row);
-  });
-
-  if(!VENDOR_TYPES.length){
-    var hint=document.createElement('div');hint.className='drop-hint';hint.textContent='No vendor types yet. Add some on the left.';
-    body.appendChild(hint);
   }
+  touchVTypeId=null;
+},{passive:true});
 
-  box.appendChild(body);
-  return box;
-}
-
-// ── Vendor action buttons ──────────────────────────────────────
-function saveVendorLog(){
-  var d=getD();
-  var log={venues:{}};
-  Object.keys(vendorAsgn).forEach(function(vid){
-    if(!vendorAsgn[vid]||!Object.keys(vendorAsgn[vid]).length)return;
-    log.venues[vid]=Object.assign({},vendorAsgn[vid]);
-  });
-  vdlog[d]=log;
-}
-
-var btnVSave=document.getElementById('btnVSave');
-if(btnVSave)btnVSave.addEventListener('click',function(){saveVendorLog();saveCloud();toast('Vendors saved to cloud!');});
-
-var btnVCopy=document.getElementById('btnVCopy');
-if(btnVCopy)btnVCopy.addEventListener('click',function(){
-  var y=new Date();y.setDate(y.getDate()-1);
-  showModal(
-    '<div class="mt">📅 Copy Vendors from Date</div>'+
-    '<div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">Copy all vendor assignments from a past date.</div>'+
-    '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:6px;">Select Date</label>'+
-    '<input id="VCFDATE" type="date" class="inp" value="'+y.toISOString().slice(0,10)+'"/>'+
-    '<button class="mbtn blue" id="m-yes">Copy Vendors</button>'+
-    '<button class="mcancel" id="m-no">Cancel</button>'
-  );
-  g('m-yes').onclick=function(){
-    var dt=g('VCFDATE').value;
-    if(!dt){toast('Select a date','w');return;}
-    var log=vdlog[dt];
-    if(!log||!Object.keys(log.venues||{}).length){toast('No vendor data for '+fd(dt),'w');closeModal();return;}
-    Object.keys(log.venues).forEach(function(vid){
-      vendorAsgn[vid]=Object.assign({},log.venues[vid]);
-      if(activeVendorVids.indexOf(vid)<0)activeVendorVids.push(vid);
-    });
-    closeModal();toast('Vendors copied from '+fd(dt));
-    drawVendorGrid();saveCloud();
-  };
-  g('m-no').onclick=closeModal;
-});
-
-var btnVDraft=document.getElementById('btnVDraft');
-if(btnVDraft)btnVDraft.addEventListener('click',function(){
-  showModal(
-    '<div class="mt">💾 Save Vendor Draft</div>'+
-    '<div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">Save current vendor assignments for '+fd(getD())+'</div>'+
-    '<label class="lbl">Draft Name (optional)</label>'+
-    '<input id="VDRAFTNAME" class="inp" placeholder="e.g. Annual Conference Vendors..."/>'+
-    '<button class="mbtn blue" id="m-yes">Save Draft</button>'+
-    '<button class="mcancel" id="m-no">Cancel</button>'
-  );
-  g('m-yes').onclick=function(){
-    var name=(g('VDRAFTNAME').value||'').trim()||('Vendor Draft '+fd(getD()));
-    var snap={v:1,savedAt:new Date().toISOString(),vendorAsgn:JSON.parse(JSON.stringify(vendorAsgn))};
-    var ex=null;
-    for(var i=0;i<drafts.length;i++){if(drafts[i].name===name&&drafts[i].date===getD()&&drafts[i].isVendor){ex=drafts[i];break;}}
-    if(ex){snap.v=ex.versions.length+1;ex.versions.push(snap);toast('Vendor draft updated to v'+snap.v);}
-    else{drafts.push({id:mkId(),name:name,date:getD(),createdAt:new Date().toISOString(),versions:[snap],activated:false,isVendor:true});toast('Vendor draft saved as v1');}
-    closeModal();saveCloud();
-  };
-  g('m-no').onclick=closeModal;
-});
-
-var btnVPDF=document.getElementById('btnVPDF');
-if(btnVPDF)btnVPDF.addEventListener('click',makeVendorPDF);
-
-function makeVendorPDF(){
-  if(!window.jspdf){toast('PDF library loading...','w');return;}
-  saveVendorLog();
-  var d=getD(),ndd=nd(d);
-  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  var pw=210,mg=12,y=mg;
-  function cp(n){if(y+n>283){doc.addPage();y=mg;}}
-  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
-  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
-  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
-  doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
-  doc.setFontSize(8);doc.setFont('helvetica','normal');
-  doc.text('Vendor Deployment Report',pw/2+10,22,{align:'center'});
-  y=42;
-  doc.setTextColor(13,71,161);doc.setFontSize(11);doc.setFont('helvetica','bold');
-  doc.text('Vendor Date: '+fd(ndd),mg,y);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(130,130,130);
-  doc.text('Prepared: '+fd(d),mg,y+6);y+=16;
-  var hasData=false;
-  venues.forEach(function(v){
-    var vm=vendorAsgn[v.id];if(!vm||!Object.keys(vm).length)return;
-    hasData=true;
-    var entries=Object.keys(vm).map(function(t){return{type:t,qty:vm[t]};});
-    cp(14+entries.length*7);
-    doc.setFillColor(21,101,192);doc.roundedRect(mg,y,pw-mg*2,12,2,2,'F');
-    doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
-    doc.text(v.name,pw/2,y+8,{align:'center'});
-    var total=entries.reduce(function(s,e){return s+e.qty;},0);
-    doc.setFontSize(8);doc.text(total+' total',pw-mg-3,y+8,{align:'right'});y+=13;
-    entries.forEach(function(e,i){
-      cp(7);
-      if(i%2===0){doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,6.5,'F');}
-      doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(8);
-      doc.text(e.type,mg+5,y+4.5);
-      doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(9);
-      doc.text(String(e.qty),pw-mg-5,y+4.5,{align:'right'});
-      y+=6.5;
-    });
-    y+=4;
-  });
-  if(!hasData){
-    doc.setTextColor(150,150,150);doc.setFontSize(11);doc.setFont('helvetica','italic');
-    doc.text('No vendor assignments for this date.',pw/2,y+10,{align:'center'});
-  }
-  var pc=doc.internal.getNumberOfPages();
-  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | Vendors | '+fd(d),mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
-  doc.save('GAVS_Vendors_'+ndd+'.pdf');toast('Vendor PDF downloaded!');
+function addVendorTypeToVenue(typeId,vid){
+  if(!vendorAsgn[vid])vendorAsgn[vid]={};
+  if(!vendorAsgn[vid][typeId])vendorAsgn[vid][typeId]=[];
+  if(activeVids.indexOf(vid)<0)activeVids.push(vid);
+  var vt=VENDOR_TYPES.find(function(x){return x.id===typeId;});
+  toast((vt?vt.name:'Vendor type')+' added to venue');
+  drawVenueGrid();saveCloud();
 }
 
 // ── TOUCH DRAG & DROP FOR IPAD / MOBILE ──────────────────────
@@ -3354,8 +3397,8 @@ function actuallySaveCloud(){
       staff:staffData,venues:venueData,asgn:asgnData,lvMap:lvData,offMap:offData,
       drafts:draftsData,roles:ROLES,dlog:dlog,activeVids:activeVids,
       vHalls:vHalls,
-      vendorAsgn:vendorAsgn,activeVendorVids:activeVendorVids,
-      vendorTypes:VENDOR_TYPES,vdlog:vdlog,
+      vendorAsgn:vendorAsgn,vendorCompanies:vendorCompanies,
+      vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,
       updatedAt:new Date().toISOString()
     };
     doSaveWithRetry(payload,0);
@@ -3433,8 +3476,9 @@ function loadFromCloud(callback){
       if(d.dlog)dlog=d.dlog;
       if(d.vHalls)vHalls=d.vHalls;
       if(d.vendorAsgn)vendorAsgn=d.vendorAsgn;
-      if(d.activeVendorVids)activeVendorVids=d.activeVendorVids;
-      if(d.vendorTypes&&d.vendorTypes.length)VENDOR_TYPES=d.vendorTypes;
+      if(d.vendorCompanies)vendorCompanies=d.vendorCompanies;
+      // Only override the fixed 9 categories if saved data has the new object structure (not old string array)
+      if(d.vendorTypesCustom&&d.vendorTypesCustom.length&&typeof d.vendorTypesCustom[0]==='object'){VENDOR_TYPES=d.vendorTypesCustom;}
       if(d.vdlog)vdlog=d.vdlog;
       // Restore drafts
       if(d.drafts){

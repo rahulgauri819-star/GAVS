@@ -297,6 +297,7 @@ input,select,button{font-family:inherit;}
     <button class="mob-btn" id="mbtnDrafts" style="border-color:#ce93d8;color:#6a1b9a;">📂 Drafts</button>
     <button class="mob-btn" id="mbtnSave" style="border-color:#a5d6a7;color:#1b5e20;">☁️ Save</button>
     <button class="mob-btn" id="mbtnPDF" style="border-color:#90caf9;color:#1565c0;">📄 PDF</button>
+    <button class="mob-btn" id="mbtnMultiView" style="border-color:#ce93d8;color:#6a1b9a;">🔀 Multi-View</button>
   </div>
 
   <!-- Compact topbar (desktop only, replaces main header) -->
@@ -314,6 +315,7 @@ input,select,button{font-family:inherit;}
     <button class="atb-btn" id="btnDrafts2" style="border-color:#ce93d8;color:#e1bee7;" title="Drafts">📂 Drafts</button>
     <button class="atb-btn" id="btnSave2" style="border-color:#a5d6a7;color:#c8e6c9;" title="Save to Cloud">☁️ Save</button>
     <button class="atb-btn" id="btnExportPDF" style="border-color:#90caf9;color:#bbdefb;" title="Export Duty PDF">📄 PDF</button>
+    <button class="atb-btn" id="btnMultiView" style="border-color:#ce93d8;color:#e1bee7;" title="Show Staff + Vendors Together">🔀 Multi-View</button>
     <div class="atb-flex"></div>
     <div class="atb-sep"></div>
     <button class="atb-nb atb-on" data-atb-screen="assign" title="Assign Duties">🏨</button>
@@ -725,6 +727,7 @@ var vendorAsgn={};
 var activeVendorVids=[]; // legacy - venues that have vendor data, kept in sync with activeVids now
 var vdlog={}; // per-date vendor log: vdlog[date] = {venues:{vid:{typeId:[entries]}}}
 var assignMode='staff'; // 'staff' or 'vendors' - toggle in Assign Duties left panel
+var multiViewMode=false; // when true, venue boxes show BOTH staff and vendors together regardless of assignMode
 var drafts=[],curDraftId=null,curDraftVer=0;
 var activeVids=[];
 var deskRole='All';
@@ -1234,13 +1237,15 @@ function makeVenueBox(v,hasPinned){
   var icon=document.createElement('span');icon.textContent=v.vip?'⭐':'🏨';
   var nm=document.createElement('div');nm.className='vbox-name';nm.textContent=v.name;
   var cnt=document.createElement('span');cnt.className='vbox-cnt';
-  if(assignMode==='vendors'){
-    var vm0=vendorAsgn[v.id]||{};
-    var totalVendorEntries=0;
-    Object.keys(vm0).forEach(function(tid){
-      var arr=vm0[tid];
-      if(Array.isArray(arr))totalVendorEntries+=arr.length;
-    });
+  var vm0=vendorAsgn[v.id]||{};
+  var totalVendorEntries=0;
+  Object.keys(vm0).forEach(function(tid){
+    var arr=vm0[tid];
+    if(Array.isArray(arr))totalVendorEntries+=arr.length;
+  });
+  if(multiViewMode){
+    cnt.textContent=t.length+' staff · '+totalVendorEntries+' vendor'+(totalVendorEntries===1?'':'s');
+  } else if(assignMode==='vendors'){
     cnt.textContent=totalVendorEntries+' vendor'+(totalVendorEntries===1?'':'s');
   } else {
     cnt.textContent=t.length+' staff';
@@ -1302,12 +1307,33 @@ function makeVenueBox(v,hasPinned){
   // Body
   var body=document.createElement('div');body.className='vbox-body';
 
+  // Multi-View: show BOTH staff and vendor sections together, regardless of the left panel toggle
+  if(multiViewMode){
+    renderStaffBody(body,v,t);
+    var divider=document.createElement('div');
+    divider.style.cssText='height:2px;background:linear-gradient(90deg,#1565c0,#6a1b9a);margin:10px -10px;border-radius:2px;';
+    body.appendChild(divider);
+    var vendorLbl=document.createElement('div');
+    vendorLbl.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#6a1b9a;margin-bottom:6px;';
+    vendorLbl.textContent='📋 Vendors';
+    body.appendChild(vendorLbl);
+    renderVendorBody(body,v);
+    box.appendChild(body);
+    return box;
+  }
+
   if(assignMode==='vendors'){
     renderVendorBody(body,v);
     box.appendChild(body);
     return box;
   }
 
+  renderStaffBody(body,v,t);
+  box.appendChild(body);
+  return box;
+}
+
+function renderStaffBody(body,v,t){
   if(!t.length){
     var hint=document.createElement('div');hint.className='drop-hint';hint.textContent='⬇ Drop staff here';
     body.appendChild(hint);
@@ -1328,16 +1354,17 @@ function makeVenueBox(v,hasPinned){
       mgrs.forEach(function(a){body.appendChild(makeMgrRow(a,v.id));});
     }
 
-    // Non-managers: collect role groups, display 3 role columns side by side
+    // Non-managers: collect role groups, display in masonry/Pinterest-style columns
+    // (CSS multi-column instead of flex, so a short column doesn't waste space stretched
+    // to match a tall neighbor - same fix as the outer venue grid)
     var activeRoles=ROLES.filter(function(r){return r!=='Manager'&&roleGroups[r]&&roleGroups[r].length;});
     if(activeRoles.length){
-      // Outer flex container - role groups side by side
       var roleRow=document.createElement('div');
-      roleRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;';
+      roleRow.style.cssText='column-width:100px;column-gap:6px;margin-top:6px;';
       activeRoles.forEach(function(r){
         var grp=roleGroups[r];var c=cc(r);
         var col=document.createElement('div');
-        col.style.cssText='flex:1;min-width:90px;';
+        col.style.cssText='break-inside:avoid;display:inline-block;width:100%;margin-bottom:8px;';
         // Role heading
         var rh=document.createElement('div');
         rh.style.cssText='font-size:8px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+c+';padding:4px 2px 3px;border-bottom:1px solid '+c+'22;margin-bottom:3px;';
@@ -1350,21 +1377,25 @@ function makeVenueBox(v,hasPinned){
       body.appendChild(roleRow);
     }
   }
-  box.appendChild(body);
-  return box;
 }
 
 function renderVendorBody(body,v){
   var vm=vendorAsgn[v.id]||{};
   // Defensive: normalize any non-array entries (stale/malformed data) into empty arrays
   Object.keys(vm).forEach(function(tid){if(!Array.isArray(vm[tid]))vm[tid]=[];});
-  var hasAny=Object.keys(vm).some(function(tid){return (vm[tid]||[]).length>0;});
-  if(!hasAny){
+  // Respect the left-panel pill filter: when a specific vendor type is selected,
+  // venue boxes show only that category - same live filter as the left panel list.
+  var hasAnyVisible=Object.keys(vm).some(function(tid){
+    if(deskVendorType!=='All'&&deskVendorType!==tid)return false;
+    return (vm[tid]||[]).length>0;
+  });
+  if(!hasAnyVisible){
     var hint=document.createElement('div');hint.className='drop-hint';
-    hint.textContent='⬇ Drag a Vendor Company here from the left panel';
+    hint.textContent=deskVendorType==='All'?'⬇ Drag a Vendor Company here from the left panel':'No '+( (VENDOR_TYPES.find(function(x){return x.id===deskVendorType;})||{}).name ||'vendors')+' assigned here yet';
     body.appendChild(hint);
   }
   VENDOR_TYPES.forEach(function(vt,i){
+    if(deskVendorType!=='All'&&deskVendorType!==vt.id)return; // pill filter applied to venue box content too
     var entries=Array.isArray(vm[vt.id])?vm[vt.id]:[];
     if(!entries.length)return;
     var c=CLRS[i%CLRS.length];
@@ -1462,6 +1493,8 @@ function makeMgrRow(a,vid){
 
 function makeV3Card(a,vid,c){
   var d=document.createElement('div');d.className='v3card';
+  // Light tint of the role color so the card is instantly recognizable by eye
+  d.style.cssText='background:'+c+'14;border:1px solid '+c+'33;border-radius:8px;padding:6px 7px;';
   // Name row
   var top=document.createElement('div');top.className='v3top';
   var nm=document.createElement('div');nm.className='v3name';
@@ -1669,6 +1702,23 @@ wireBtnDraft(document.getElementById('mbtnDraft'));
 wireBtnDrafts(document.getElementById('mbtnDrafts'));
 wireBtnSave(document.getElementById('mbtnSave'));
 wireBtnPDF(document.getElementById('mbtnPDF'));
+
+// Multi-View toggle - shows staff + vendors together in every venue box
+function wireBtnMultiView(el){
+  if(!el)return;
+  el.addEventListener('click',function(){
+    multiViewMode=!multiViewMode;
+    document.querySelectorAll('#btnMultiView,#mbtnMultiView').forEach(function(b){
+      b.style.background=multiViewMode?'#6a1b9a':'';
+      b.style.color=multiViewMode?'#fff':(b.id==='mbtnMultiView'?'#6a1b9a':'#e1bee7');
+      b.style.borderColor=multiViewMode?'#6a1b9a':'#ce93d8';
+    });
+    toast(multiViewMode?'Multi-View on — showing staff + vendors':'Multi-View off');
+    drawVenueGrid();
+  });
+}
+wireBtnMultiView(document.getElementById('btnMultiView'));
+wireBtnMultiView(document.getElementById('mbtnMultiView'));
 
 function showCopyFrom(){
   var y=new Date();y.setDate(y.getDate()-1);
@@ -3247,7 +3297,7 @@ function drawVendorTypeList(){
     allBtn.textContent='All';
     allBtn.style.background=deskVendorType==='All'?'#1565c0':'#e3eaff';
     allBtn.style.color=deskVendorType==='All'?'#fff':'#1565c0';
-    allBtn.addEventListener('click',function(){deskVendorType='All';drawVendorTypeList();});
+    allBtn.addEventListener('click',function(){deskVendorType='All';drawVendorTypeList();drawVenueGrid();});
     vpEl.appendChild(allBtn);
     VENDOR_TYPES.forEach(function(vt,i){
       var c=CLRS[i%CLRS.length],on=(deskVendorType===vt.id);
@@ -3256,7 +3306,7 @@ function drawVendorTypeList(){
       btn.textContent=vt.name;
       btn.style.background=on?c:'rgba(0,0,0,0.05)';
       btn.style.color=on?'#fff':c;
-      btn.addEventListener('click',(function(tid){return function(){deskVendorType=tid;drawVendorTypeList();};})(vt.id));
+      btn.addEventListener('click',(function(tid){return function(){deskVendorType=tid;drawVendorTypeList();drawVenueGrid();};})(vt.id));
       vpEl.appendChild(btn);
     });
   }

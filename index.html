@@ -337,6 +337,7 @@ input,select,button{font-family:inherit;}
       </div>
       <div id="VENDOR_PANEL_WRAP" class="hide">
         <div class="sp-hdr">📋 Vendor Types <span class="sp-cnt" id="VT_CNT">0</span></div>
+        <div class="rp-wrap" id="VT_ROLES"></div>
         <div class="sp-list" id="VT_LIST" style="padding:10px;"></div>
       </div>
     </div>
@@ -1152,7 +1153,10 @@ function makeVenueBox(v,hasPinned){
   if(assignMode==='vendors'){
     var vm0=vendorAsgn[v.id]||{};
     var totalVendorEntries=0;
-    Object.keys(vm0).forEach(function(tid){totalVendorEntries+=(vm0[tid]||[]).length;});
+    Object.keys(vm0).forEach(function(tid){
+      var arr=vm0[tid];
+      if(Array.isArray(arr))totalVendorEntries+=arr.length;
+    });
     cnt.textContent=totalVendorEntries+' vendor'+(totalVendorEntries===1?'':'s');
   } else {
     cnt.textContent=t.length+' staff';
@@ -1268,14 +1272,16 @@ function makeVenueBox(v,hasPinned){
 
 function renderVendorBody(body,v){
   var vm=vendorAsgn[v.id]||{};
+  // Defensive: normalize any non-array entries (stale/malformed data) into empty arrays
+  Object.keys(vm).forEach(function(tid){if(!Array.isArray(vm[tid]))vm[tid]=[];});
   var hasAny=Object.keys(vm).some(function(tid){return (vm[tid]||[]).length>0;});
   if(!hasAny){
     var hint=document.createElement('div');hint.className='drop-hint';
-    hint.textContent='⬇ Drag a Vendor Type here from the left panel';
+    hint.textContent='⬇ Drag a Vendor Company here from the left panel';
     body.appendChild(hint);
   }
   VENDOR_TYPES.forEach(function(vt,i){
-    var entries=(vm[vt.id])||[];
+    var entries=Array.isArray(vm[vt.id])?vm[vt.id]:[];
     if(!entries.length)return;
     var c=CLRS[i%CLRS.length];
     var section=document.createElement('div');
@@ -1283,133 +1289,73 @@ function renderVendorBody(body,v){
     var secHdr=document.createElement('div');
     secHdr.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+c+';padding:4px 0 4px;border-bottom:1px solid '+c+'22;margin-bottom:6px;display:flex;align-items:center;gap:6px;';
     secHdr.innerHTML=vt.icon+' '+esc(vt.name);
-    var addBtn=document.createElement('button');
-    addBtn.textContent='+ Add';
-    addBtn.style.cssText='margin-left:auto;background:'+c+'18;color:'+c+';border:none;border-radius:5px;padding:2px 8px;font-size:9px;font-weight:700;cursor:pointer;';
-    addBtn.addEventListener('click',(function(vid,typeId){return function(){showVendorEntryModal(vid,typeId,null);};})(v.id,vt.id));
-    secHdr.appendChild(addBtn);
     section.appendChild(secHdr);
 
     entries.forEach(function(entry,idx){
       var row=document.createElement('div');
       row.style.cssText='background:#f8faff;border:1px solid #e3eaff;border-radius:8px;padding:7px 9px;margin-bottom:5px;';
-      var top=document.createElement('div');top.style.cssText='display:flex;align-items:center;gap:6px;';
+
+      // Top row: name + remove
+      var top=document.createElement('div');top.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:5px;';
       var nm=document.createElement('div');
       nm.style.cssText='flex:1;font-size:11px;font-weight:700;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-      nm.textContent=entry.company||'(no name)';
-      nm.title=entry.company||'';
-      var qtyBadge=document.createElement('span');
-      qtyBadge.style.cssText='background:'+c+'18;color:'+c+';border-radius:4px;padding:1px 6px;font-size:10px;font-weight:800;flex-shrink:0;';
-      if(vt.special==='photovideo'){
-        var svcCount=Object.keys(entry.services||{}).filter(function(s){return (entry.services[s]||0)>0;}).length;
-        qtyBadge.textContent=svcCount+' svc';
-      } else {
-        qtyBadge.textContent='Qty '+(entry.qty||0);
-      }
-      var editBtn=document.createElement('button');
-      editBtn.className='v3rm';editBtn.textContent='✏️';editBtn.style.cssText='background:#e3f2fd;color:#1565c0;width:20px;height:20px;font-size:9px;';
-      editBtn.addEventListener('click',(function(vid,typeId,i2){return function(){showVendorEntryModal(vid,typeId,i2);};})(v.id,vt.id,idx));
+      var label=entry.company||'(no name)';
+      if(vt.special==='photovideo'&&entry.serviceLabel)label+=' — '+entry.serviceLabel;
+      nm.textContent=label;nm.title=label;
       var rmBtn=document.createElement('button');
       rmBtn.className='v3rm';rmBtn.textContent='✕';
       rmBtn.addEventListener('click',(function(vid,typeId,i2){return function(){
         vendorAsgn[vid][typeId].splice(i2,1);
         drawVenueGrid();saveCloud();
       };})(v.id,vt.id,idx));
-      top.appendChild(nm);top.appendChild(qtyBadge);top.appendChild(editBtn);top.appendChild(rmBtn);
+      top.appendChild(nm);top.appendChild(rmBtn);
       row.appendChild(top);
-      if(entry.time||entry.notes){
-        var sub=document.createElement('div');
-        sub.style.cssText='font-size:9px;color:#888;margin-top:3px;display:flex;gap:8px;';
-        if(entry.time)sub.innerHTML+='<span>⏰ '+esc(entry.time)+'</span>';
-        if(entry.notes)sub.innerHTML+='<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📝 '+esc(entry.notes)+'</span>';
-        row.appendChild(sub);
+
+      // Inline editable fields row: Qty, Time, Notes
+      var fieldsRow=document.createElement('div');
+      fieldsRow.style.cssText='display:flex;align-items:center;gap:5px;flex-wrap:wrap;';
+
+      if(vt.special!=='photovideo'){
+        var qtyWrap=document.createElement('div');qtyWrap.style.cssText='display:flex;align-items:center;gap:3px;flex-shrink:0;';
+        var qtyLbl=document.createElement('span');qtyLbl.style.cssText='font-size:9px;color:#888;';qtyLbl.textContent='Qty';
+        var qtyInp=document.createElement('input');
+        qtyInp.type='number';qtyInp.min='1';qtyInp.value=entry.qty||1;
+        qtyInp.style.cssText='width:42px;background:#fff;border:1px solid '+c+'55;border-radius:5px;color:'+c+';padding:2px 4px;font-size:10px;font-weight:700;';
+        qtyInp.addEventListener('change',(function(vid,typeId,i2){return function(){
+          var val=parseInt(this.value)||1;
+          vendorAsgn[vid][typeId][i2].qty=val;
+          saveCloud();
+        };})(v.id,vt.id,idx));
+        qtyWrap.appendChild(qtyLbl);qtyWrap.appendChild(qtyInp);
+        fieldsRow.appendChild(qtyWrap);
       }
+
+      var timeSel=document.createElement('select');
+      timeSel.style.cssText='background:#fff;border:1px solid '+c+'55;border-radius:5px;color:'+c+';padding:2px 4px;font-size:10px;font-weight:700;flex-shrink:0;';
+      TIMES.forEach(function(t){var o=document.createElement('option');o.textContent=t;if(t===entry.time)o.selected=true;timeSel.appendChild(o);});
+      timeSel.addEventListener('change',(function(vid,typeId,i2){return function(){
+        vendorAsgn[vid][typeId][i2].time=this.value;
+        saveCloud();
+      };})(v.id,vt.id,idx));
+      fieldsRow.appendChild(timeSel);
+
+      row.appendChild(fieldsRow);
+
+      // Notes - inline text input, full width below
+      var notesInp=document.createElement('input');
+      notesInp.type='text';notesInp.placeholder='📝 Notes...';
+      notesInp.value=entry.notes||'';
+      notesInp.style.cssText='width:100%;background:#fff;border:1px solid #e3eaff;border-radius:5px;color:#555;padding:3px 6px;font-size:10px;margin-top:5px;';
+      notesInp.addEventListener('change',(function(vid,typeId,i2){return function(){
+        vendorAsgn[vid][typeId][i2].notes=this.value.trim();
+        saveCloud();
+      };})(v.id,vt.id,idx));
+      row.appendChild(notesInp);
+
       section.appendChild(row);
     });
     body.appendChild(section);
   });
-}
-
-function showVendorEntryModal(vid,typeId,editIdx,prefillCompany,prefillService){
-  var v=getV(vid);var vt=VENDOR_TYPES.find(function(x){return x.id===typeId;});
-  if(!v||!vt)return;
-  var isEdit=editIdx!==null&&editIdx!==undefined;
-  var entry=isEdit?vendorAsgn[vid][typeId][editIdx]:{company:prefillCompany||'',qty:1,notes:'',time:'9:00 AM',services:{}};
-  // If dropped from a specific service card (Photo & Video tree), pre-check just that service
-  if(!isEdit&&prefillService){
-    entry.services={};
-    entry.services[prefillService]=1;
-  }
-  var companies=vendorCompanies[vt.id]||[];
-  var coOptions='<option value="">-- Type or select below --</option>'+
-    companies.map(function(c){return'<option value="'+esc(c)+'"'+(c===entry.company?' selected':'')+'>'+esc(c)+'</option>';}).join('');
-  var timeOptions=TIMES.map(function(t){return'<option'+(t===entry.time?' selected':'')+'>'+t+'</option>';}).join('');
-
-  var servicesHtml='';
-  if(vt.special==='photovideo'){
-    servicesHtml='<label class="lbl">Services Needed</label><div style="margin-bottom:10px;">';
-    PV_SERVICES.forEach(function(svc){
-      var checked=(entry.services&&entry.services[svc])?true:false;
-      var qty=(entry.services&&entry.services[svc])||'';
-      servicesHtml+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f4ff;">'+
-        '<input type="checkbox" class="pv-svc-chk" data-svc="'+esc(svc)+'" '+(checked?'checked':'')+' style="width:16px;height:16px;"/>'+
-        '<span style="flex:1;font-size:13px;">'+esc(svc)+'</span>'+
-        '<input type="number" min="0" class="pv-svc-qty" data-svc="'+esc(svc)+'" value="'+(qty||'')+'" placeholder="Qty" style="width:60px;border:1.5px solid #e0e7ff;border-radius:7px;padding:5px 8px;font-size:12px;"/>'+
-        '</div>';
-    });
-    servicesHtml+='</div>';
-  } else {
-    servicesHtml='<label class="lbl">Quantity Needed</label><input id="VEQTY" type="number" min="1" class="inp" value="'+(entry.qty||1)+'"/>';
-  }
-
-  showModal(
-    '<div class="mt">'+vt.icon+' '+esc(vt.name)+'</div>'+
-    '<div style="font-size:12px;color:#888;text-align:center;margin-bottom:14px;">for <strong>'+esc(v.name)+'</strong></div>'+
-    '<label class="lbl">Vendor Company</label>'+
-    '<select id="VECOSEL" class="sel">'+coOptions+'</select>'+
-    '<input id="VECOTXT" class="inp" placeholder="Or type new company name..." value="'+esc(entry.company||'')+'"/>'+
-    servicesHtml+
-    '<label class="lbl">Timing</label>'+
-    '<select id="VETIME" class="sel">'+timeOptions+'</select>'+
-    '<label class="lbl">Notes (optional)</label>'+
-    '<input id="VENOTES" class="inp" placeholder="Any special instructions..." value="'+esc(entry.notes||'')+'"/>'+
-    '<button class="mbtn blue" id="m-yes">'+(isEdit?'Save Changes':'Add Vendor')+'</button>'+
-    '<button class="mcancel" id="m-no">Cancel</button>'
-  );
-  g('VECOSEL').addEventListener('change',function(){if(this.value)g('VECOTXT').value=this.value;});
-  g('m-yes').onclick=function(){
-    var company=(g('VECOTXT').value||'').trim()||g('VECOSEL').value;
-    if(!company){toast('Enter or select a vendor company','w');return;}
-    var time=g('VETIME').value;
-    var notes=(g('VENOTES').value||'').trim();
-    var newEntry={company:company,time:time,notes:notes};
-    if(vt.special==='photovideo'){
-      var services={};
-      document.querySelectorAll('.pv-svc-chk').forEach(function(chk){
-        if(chk.checked){
-          var svc=chk.getAttribute('data-svc');
-          var qtyInp=document.querySelector('.pv-svc-qty[data-svc="'+svc+'"]');
-          var q=parseInt(qtyInp.value)||1;
-          services[svc]=q;
-        }
-      });
-      if(!Object.keys(services).length){toast('Select at least one service','w');return;}
-      newEntry.services=services;
-    } else {
-      var qty=parseInt(g('VEQTY').value)||1;
-      newEntry.qty=qty;
-    }
-    // register company if new
-    if(!vendorCompanies[vt.id])vendorCompanies[vt.id]=[];
-    if(vendorCompanies[vt.id].indexOf(company)<0)vendorCompanies[vt.id].push(company);
-    if(!vendorAsgn[vid])vendorAsgn[vid]={};
-    if(!vendorAsgn[vid][typeId])vendorAsgn[vid][typeId]=[];
-    if(isEdit)vendorAsgn[vid][typeId][editIdx]=newEntry;
-    else vendorAsgn[vid][typeId].push(newEntry);
-    closeModal();toast(company+' '+(isEdit?'updated':'added')+'!');
-    drawVenueGrid();saveCloud();
-  };
-  g('m-no').onclick=closeModal;
 }
 
 function makeRoleHdr(r,c){
@@ -1427,7 +1373,7 @@ function makeMgrRow(a,vid){
   info.appendChild(nm);
   var ts=makeTselEl(a.duty,a.isFixed,function(val){if(asgn[vid]&&asgn[vid][a.emp.id]){asgn[vid][a.emp.id].duty=val;asgn[vid][a.emp.id].isFixed=false;saveCloud();}});
   var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';rm.style.width='22px';rm.style.height='22px';rm.style.fontSize='11px';
-  rm.addEventListener('click',(function(eid,vid2){return function(){remV(eid,vid2);};})(a.emp.id,vid));
+  rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
   d.appendChild(info);d.appendChild(ts);d.appendChild(rm);
   return d;
 }
@@ -1440,7 +1386,7 @@ function makeV3Card(a,vid,c){
   nm.style.cssText='font-size:10px;font-weight:700;color:#111;flex:1;min-width:0;word-break:break-word;line-height:1.2;';
   nm.textContent=a.emp.name;nm.title=a.emp.name;
   var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';
-  rm.addEventListener('click',(function(eid,vid2){return function(){remV(eid,vid2);};})(a.emp.id,vid));
+  rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
   top.appendChild(nm);top.appendChild(rm);
   // Compact time row
   var trow=document.createElement('div');trow.style.cssText='display:flex;align-items:center;gap:2px;margin-top:2px;';
@@ -1486,6 +1432,21 @@ function dropStaff(eid,vid){
 function remV(eid,vid){
   if(asgn[vid])delete asgn[vid][eid];
   drawStaffPanel();drawVenueGrid();drawStats();saveCloud();
+}
+
+// Confirmation wrapper used by the venue box's direct ✕ buttons.
+// (remV itself stays popup-free since it's also called from flows that already confirmed, e.g. the Undeploy modal.)
+function remVConfirm(eid,vid){
+  var e=getS(eid);var v=getV(vid);
+  if(!e||!v){remV(eid,vid);return;}
+  showModal(
+    '<div class="mt" style="color:#c62828;">Remove Staff from Venue?</div>'+
+    '<div style="text-align:center;font-size:15px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(e.name)+'</strong> from<br><strong>'+esc(v.name)+'</strong>?</div>'+
+    '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
+    '<button class="mcancel" id="m-no">Cancel</button>'
+  );
+  g('m-yes').onclick=function(){remV(eid,vid);closeModal();};
+  g('m-no').onclick=closeModal;
 }
 
 function showBulkTime(vid){
@@ -3073,8 +3034,6 @@ function makeLOPDF(){
   doc.save('GAVS_Leave_Office_'+fromDate+'_to_'+toDate+'.pdf');toast('PDF downloaded!');
 }
 
-
-
 // ════════════════════════════════════════════════════════════
 // MANAGE → VENDOR TYPES & COMPANIES
 // ════════════════════════════════════════════════════════════
@@ -3164,14 +3123,41 @@ function switchAssignMode(mode){
   drawVenueGrid(); // redraw venue boxes to show staff or vendor content
 }
 
+var deskVendorType='All'; // filter state for vendor pills, mirrors deskRole for staff
+
 function drawVendorTypeList(){
   var el=document.getElementById('VT_LIST');if(!el)return;
   var totalCompanies=0;
   Object.keys(vendorCompanies).forEach(function(tid){totalCompanies+=(vendorCompanies[tid]||[]).length;});
   var cntEl=document.getElementById('VT_CNT');if(cntEl)cntEl.textContent=totalCompanies;
+
+  // Vendor type filter pills - same pattern as staff role pills
+  var vpEl=document.getElementById('VT_ROLES');
+  if(vpEl){
+    vpEl.innerHTML='';
+    var allBtn=document.createElement('button');
+    allBtn.className='rp';
+    allBtn.textContent='All';
+    allBtn.style.background=deskVendorType==='All'?'#1565c0':'#e3eaff';
+    allBtn.style.color=deskVendorType==='All'?'#fff':'#1565c0';
+    allBtn.addEventListener('click',function(){deskVendorType='All';drawVendorTypeList();});
+    vpEl.appendChild(allBtn);
+    VENDOR_TYPES.forEach(function(vt,i){
+      var c=CLRS[i%CLRS.length],on=(deskVendorType===vt.id);
+      var btn=document.createElement('button');
+      btn.className='rp';
+      btn.textContent=vt.name;
+      btn.style.background=on?c:'rgba(0,0,0,0.05)';
+      btn.style.color=on?'#fff':c;
+      btn.addEventListener('click',(function(tid){return function(){deskVendorType=tid;drawVendorTypeList();};})(vt.id));
+      vpEl.appendChild(btn);
+    });
+  }
+
   el.innerHTML='';
 
   VENDOR_TYPES.forEach(function(vt,i){
+    if(deskVendorType!=='All'&&deskVendorType!==vt.id)return; // pill filter
     var c=CLRS[i%CLRS.length];
     var companies=vendorCompanies[vt.id]||[];
     if(!companies.length)return; // skip empty categories - register companies in Manage first
@@ -3226,8 +3212,17 @@ function drawVendorTypeList(){
     }
   });
 
-  if(!totalCompanies){
-    el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px 12px;font-size:12px;">No vendor companies registered yet.<br>Add some in Manage → Vendor Types.</div>';
+  var visibleCompanies=0;
+  VENDOR_TYPES.forEach(function(vt){
+    if(deskVendorType!=='All'&&deskVendorType!==vt.id)return;
+    visibleCompanies+=(vendorCompanies[vt.id]||[]).length;
+  });
+  if(!visibleCompanies){
+    if(!totalCompanies){
+      el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px 12px;font-size:12px;">No vendor companies registered yet.<br>Add some in Manage → Vendor Types.</div>';
+    } else {
+      el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px 12px;font-size:12px;">No companies registered for this category yet.</div>';
+    }
   }
 
   // drag wiring (delegated) - only fires from cards with data-company
@@ -3281,8 +3276,18 @@ function addVendorCardToVenue(payload,vid){
   var vt=VENDOR_TYPES.find(function(x){return x.id===payload.typeId;});
   if(!vt)return;
   if(activeVids.indexOf(vid)<0)activeVids.push(vid);
-  // Open the entry modal pre-filled with company (and service, for Photo & Video)
-  showVendorEntryModal(vid,payload.typeId,null,payload.company,payload.service);
+  if(!vendorAsgn[vid])vendorAsgn[vid]={};
+  if(!vendorAsgn[vid][payload.typeId])vendorAsgn[vid][payload.typeId]=[];
+  var entry={company:payload.company,qty:1,time:'9:00 AM',notes:''};
+  if(vt.special==='photovideo'&&payload.service){
+    entry.serviceLabel=payload.service;
+    entry.services={};
+    entry.services[payload.service]=1;
+  }
+  vendorAsgn[vid][payload.typeId].push(entry);
+  var label=payload.service?(payload.company+' — '+payload.service):payload.company;
+  toast(label+' added!');
+  drawVenueGrid();saveCloud();
 }
 
 

@@ -73,6 +73,8 @@ input,select,button{font-family:inherit;}
 .mtab{background:transparent;border:none;color:#888;padding:11px 24px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
 .rtab{background:transparent;border:none;color:#888;padding:11px 24px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
 .rtab.on{color:#1565c0;border-bottom:2px solid #1565c0;font-weight:800;}
+.vrtab{background:transparent;border:none;color:#888;padding:11px 24px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
+.vrtab.on{color:#1565c0;border-bottom:2px solid #1565c0;font-weight:800;}
 .mtab.on{color:#1565c0;border-bottom:2px solid #1565c0;font-weight:800;}
 .mgrid{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start;}
 @media(max-width:900px){.mgrid{grid-template-columns:1fr;}}
@@ -278,6 +280,7 @@ input,select,button{font-family:inherit;}
     <button class="nb on" data-screen="assign"><span class="ni">🏨</span><span>Assign Duties</span></button>
     <button class="nb" data-screen="manage"><span class="ni">⚙️</span><span>Manage</span></button>
     <button class="nb" data-screen="report"><span class="ni">📄</span><span>Report</span></button>
+    <button class="nb" data-screen="vendorreport"><span class="ni">📋</span><span>Vendor Report</span></button>
     <button class="nb" data-screen="drafts"><span class="ni">📂</span><span>Drafts</span></button>
     <button class="nb" data-screen="settings"><span class="ni">🔧</span><span>Settings</span></button>
   </div>
@@ -316,6 +319,7 @@ input,select,button{font-family:inherit;}
     <button class="atb-nb atb-on" data-atb-screen="assign" title="Assign Duties">🏨</button>
     <button class="atb-nb" data-atb-screen="manage" title="Manage">⚙️</button>
     <button class="atb-nb" data-atb-screen="report" title="Report">📄</button>
+    <button class="atb-nb" data-atb-screen="vendorreport" title="Vendor Report">📋</button>
     <button class="atb-nb" data-atb-screen="drafts" title="Drafts">📂</button>
     <button class="atb-nb" data-atb-screen="settings" title="Settings">🔧</button>
   </div>
@@ -563,6 +567,85 @@ input,select,button{font-family:inherit;}
 
 </div>
 
+<!-- VENDOR REPORT -->
+<div class="screen" id="screen-vendorreport">
+  <div class="phdr"><span style="font-size:28px;">📋</span>
+    <div><div class="ptitle">Vendor Reports</div></div>
+  </div>
+  <!-- Vendor report type tabs -->
+  <div class="mtabs" style="margin-bottom:16px;overflow-x:auto;flex-wrap:nowrap;">
+    <button class="vrtab on" data-vrtab="daily">📅 Daily Vendor</button>
+    <button class="vrtab" data-vrtab="venue">🏨 Venue History</button>
+    <button class="vrtab" data-vrtab="company">📊 Company Report</button>
+  </div>
+
+  <!-- Daily Vendor Report -->
+  <div id="vr-daily">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px;">Select Date</label>
+        <input type="date" id="VRD" class="inp" style="margin-bottom:0;width:auto;"/>
+      </div>
+      <button class="bigbtn" id="btnViewVendorReport" style="width:auto;padding:10px 20px;margin-top:18px;">View Report</button>
+      <div style="flex:1;"></div>
+      <button class="pdfbtn" id="btnVendorDailyPDF" style="margin:0;width:auto;padding:10px 24px;font-size:13px;">⬇ Download PDF</button>
+    </div>
+    <div id="VRB" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;"></div>
+  </div>
+
+  <!-- Venue Vendor History -->
+  <div id="vr-venue" class="hide">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:12px;align-items:end;flex-wrap:wrap;">
+        <div style="position:relative;">
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Search Venue</label>
+          <input id="VRV_IN" class="inp" placeholder="Type venue name..." style="margin-bottom:0;" autocomplete="off"/>
+          <input type="hidden" id="VRV"/>
+          <div id="VRV_DD" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #90caf9;border-radius:9px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(21,101,192,0.15);display:none;"></div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">From Date</label>
+          <input type="date" id="VRVF" class="inp" style="margin-bottom:0;"/>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">To Date</label>
+          <input type="date" id="VRVT" class="inp" style="margin-bottom:0;"/>
+        </div>
+        <button class="bigbtn" id="btnVRVR" style="width:auto;padding:10px 20px;white-space:nowrap;">View Report</button>
+      </div>
+    </div>
+    <div id="VRVB"></div>
+    <button class="pdfbtn hide" id="btnVRVPDF">⬇ Download Venue Vendor History PDF</button>
+  </div>
+
+  <!-- Vendor Company Report -->
+  <div id="vr-company" class="hide">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:12px;align-items:end;flex-wrap:wrap;">
+        <div style="position:relative;">
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Search Company</label>
+          <input id="VRC_IN" class="inp" placeholder="Type company name..." style="margin-bottom:0;" autocomplete="off"/>
+          <input type="hidden" id="VRC"/>
+          <div id="VRC_DD" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #90caf9;border-radius:9px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(21,101,192,0.15);display:none;"></div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Month</label>
+          <select class="sel" id="VRCM" style="margin-bottom:0;"></select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Year</label>
+          <select class="sel" id="VRCY" style="margin-bottom:0;"></select>
+        </div>
+        <button class="bigbtn" id="btnVRCR" style="width:auto;padding:10px 20px;white-space:nowrap;">View Report</button>
+      </div>
+    </div>
+    <div id="VRCS"></div>
+    <div id="VRCB"></div>
+    <button class="pdfbtn hide" id="btnVRCPDF">⬇ Download Company PDF</button>
+  </div>
+
+</div>
+
 <!-- DRAFTS -->
 <div class="screen" id="screen-drafts">
   <div class="phdr"><span style="font-size:28px;">📂</span><div><div class="ptitle">Draft Plans</div><div style="font-size:12px;color:#888;">Future duty planning</div></div></div>
@@ -749,6 +832,7 @@ function go(s){
     else if(s==='leave')drawLeave();
     else if(s==='office')drawOffice();
     else if(s==='report'){drawReport();populateVHVenue();refreshSREmp();}
+    else if(s==='vendorreport'){initVendorReportDates();populateVRVVenue();populateVRCCompany();}
     else if(s==='drafts')showDraftList();
     else if(s==='settings'){/* settings screen is static, nothing to init */}
   }
@@ -1311,24 +1395,22 @@ function renderVendorBody(body,v){
       top.appendChild(nm);top.appendChild(rmBtn);
       row.appendChild(top);
 
-      // Inline editable fields row: Qty, Time, Notes
+      // Inline editable fields row: Qty, Time, Notes - same for ALL vendor types including Photo & Video
       var fieldsRow=document.createElement('div');
       fieldsRow.style.cssText='display:flex;align-items:center;gap:5px;flex-wrap:wrap;';
 
-      if(vt.special!=='photovideo'){
-        var qtyWrap=document.createElement('div');qtyWrap.style.cssText='display:flex;align-items:center;gap:3px;flex-shrink:0;';
-        var qtyLbl=document.createElement('span');qtyLbl.style.cssText='font-size:9px;color:#888;';qtyLbl.textContent='Qty';
-        var qtyInp=document.createElement('input');
-        qtyInp.type='number';qtyInp.min='1';qtyInp.value=entry.qty||1;
-        qtyInp.style.cssText='width:42px;background:#fff;border:1px solid '+c+'55;border-radius:5px;color:'+c+';padding:2px 4px;font-size:10px;font-weight:700;';
-        qtyInp.addEventListener('change',(function(vid,typeId,i2){return function(){
-          var val=parseInt(this.value)||1;
-          vendorAsgn[vid][typeId][i2].qty=val;
-          saveCloud();
-        };})(v.id,vt.id,idx));
-        qtyWrap.appendChild(qtyLbl);qtyWrap.appendChild(qtyInp);
-        fieldsRow.appendChild(qtyWrap);
-      }
+      var qtyWrap=document.createElement('div');qtyWrap.style.cssText='display:flex;align-items:center;gap:3px;flex-shrink:0;';
+      var qtyLbl=document.createElement('span');qtyLbl.style.cssText='font-size:9px;color:#888;';qtyLbl.textContent='Qty';
+      var qtyInp=document.createElement('input');
+      qtyInp.type='number';qtyInp.min='1';qtyInp.value=entry.qty||1;
+      qtyInp.style.cssText='width:42px;background:#fff;border:1px solid '+c+'55;border-radius:5px;color:'+c+';padding:2px 4px;font-size:10px;font-weight:700;';
+      qtyInp.addEventListener('change',(function(vid,typeId,i2){return function(){
+        var val=parseInt(this.value)||1;
+        vendorAsgn[vid][typeId][i2].qty=val;
+        saveCloud();
+      };})(v.id,vt.id,idx));
+      qtyWrap.appendChild(qtyLbl);qtyWrap.appendChild(qtyInp);
+      fieldsRow.appendChild(qtyWrap);
 
       var timeSel=document.createElement('select');
       timeSel.style.cssText='background:#fff;border:1px solid '+c+'55;border-radius:5px;color:'+c+';padding:2px 4px;font-size:10px;font-weight:700;flex-shrink:0;';
@@ -1579,6 +1661,14 @@ wireBtnCopy(document.getElementById('btnCopy2'));
 wireBtnDraft(document.getElementById('btnDraft2'));
 wireBtnDrafts(document.getElementById('btnDrafts2'));
 wireBtnSave(document.getElementById('btnSave2'));
+function wireBtnPDF(el){if(el)el.addEventListener('click',function(){saveLog();makePDF();});}
+wireBtnPDF(document.getElementById('btnExportPDF'));
+// Mobile action bar buttons (were previously completely unwired)
+wireBtnCopy(document.getElementById('mbtnCopy'));
+wireBtnDraft(document.getElementById('mbtnDraft'));
+wireBtnDrafts(document.getElementById('mbtnDrafts'));
+wireBtnSave(document.getElementById('mbtnSave'));
+wireBtnPDF(document.getElementById('mbtnPDF'));
 
 function showCopyFrom(){
   var y=new Date();y.setDate(y.getDate()-1);
@@ -2138,6 +2228,23 @@ function saveLog(){
   Object.keys(lvMap).forEach(function(eid){log.leave.push({id:eid,duty:lvMap[eid].duty});});
   Object.keys(offMap).forEach(function(eid){log.office.push({id:eid,duty:offMap[eid].duty});});
   dlog[d]=log;
+}
+
+function saveVendorLog(){
+  var d=getD();
+  var vlog={venues:{}};
+  Object.keys(vendorAsgn).forEach(function(vid){
+    var vm=vendorAsgn[vid];if(!vm)return;
+    var hasEntries=Object.keys(vm).some(function(tid){return Array.isArray(vm[tid])&&vm[tid].length>0;});
+    if(!hasEntries)return;
+    vlog.venues[vid]={};
+    Object.keys(vm).forEach(function(tid){
+      if(!Array.isArray(vm[tid])||!vm[tid].length)return;
+      // deep copy entries (company, qty, time, notes, serviceLabel, services)
+      vlog.venues[vid][tid]=vm[tid].map(function(entry){return JSON.parse(JSON.stringify(entry));});
+    });
+  });
+  vdlog[d]=vlog;
 }
 
 // Report tab switching
@@ -3291,6 +3398,450 @@ function addVendorCardToVenue(payload,vid){
 }
 
 
+
+// ════════════════════════════════════════════════════════════
+// VENDOR REPORT SYSTEM
+// ════════════════════════════════════════════════════════════
+
+// Sub-tab switching
+document.querySelectorAll('.vrtab').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.vrtab').forEach(function(b){b.classList.remove('on');});
+    this.classList.add('on');
+    var tab=this.getAttribute('data-vrtab');
+    g('vr-daily').classList.toggle('hide',tab!=='daily');
+    g('vr-venue').classList.toggle('hide',tab!=='venue');
+    g('vr-company').classList.toggle('hide',tab!=='company');
+    if(tab==='daily')drawDailyVendorReport();
+    if(tab==='venue')populateVRVVenue();
+    if(tab==='company')populateVRCCompany();
+  });
+});
+
+function initVendorReportDates(){
+  var vrdEl=document.getElementById('VRD');
+  if(vrdEl&&!vrdEl.value)vrdEl.value=getD();
+  drawDailyVendorReport();
+}
+
+// ── helper: build venue label for a given vendor entry (handles photovideo service label) ──
+function vendorEntryLabel(entry,vt){
+  var label=entry.company||'(no name)';
+  if(vt&&vt.special==='photovideo'&&entry.serviceLabel)label+=' — '+entry.serviceLabel;
+  return label;
+}
+
+// ════════════════════════════════════════════════════════════
+// 1. DAILY VENDOR REPORT
+// ════════════════════════════════════════════════════════════
+var btnViewVendorReport=document.getElementById('btnViewVendorReport');
+if(btnViewVendorReport)btnViewVendorReport.addEventListener('click',drawDailyVendorReport);
+var btnVendorDailyPDF=document.getElementById('btnVendorDailyPDF');
+if(btnVendorDailyPDF)btnVendorDailyPDF.addEventListener('click',makeDailyVendorPDF);
+
+function drawDailyVendorReport(){
+  var vrdEl=document.getElementById('VRD');
+  if(vrdEl&&!vrdEl.value)vrdEl.value=getD();
+  var reportDate=vrdEl?vrdEl.value:getD();
+  var isToday=reportDate===getD();
+  var data={}; // venueId -> {typeId:[entries]}
+  if(isToday){
+    saveVendorLog();
+    Object.keys(vendorAsgn).forEach(function(vid){data[vid]=vendorAsgn[vid];});
+  } else {
+    var log=vdlog[reportDate];
+    if(log)Object.keys(log.venues||{}).forEach(function(vid){data[vid]=log.venues[vid];});
+  }
+  var el=document.getElementById('VRB');if(!el)return;
+  var h='';
+  venues.forEach(function(v){
+    var vm=data[v.id];if(!vm)return;
+    var allEntries=[];
+    VENDOR_TYPES.forEach(function(vt){
+      var arr=vm[vt.id];if(!Array.isArray(arr)||!arr.length)return;
+      arr.forEach(function(entry){allEntries.push({entry:entry,vt:vt});});
+    });
+    if(!allEntries.length)return;
+    h+='<div class="pvcard"><div class="pvname">'+esc(v.name)+'</div>';
+    h+='<div style="font-size:12px;color:#1565c0;font-weight:600;margin-bottom:8px;">'+allEntries.length+' vendor entries</div>';
+    allEntries.forEach(function(item,i){
+      var entry=item.entry,vt=item.vt;
+      var c=CLRS[VENDOR_TYPES.indexOf(vt)%CLRS.length];
+      h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;">';
+      h+='<div style="font-weight:700;font-size:12px;">'+esc(vendorEntryLabel(entry,vt))+'</div>';
+      h+='<span style="font-size:9px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 4px;">'+esc(vt.name)+'</span>';
+      if(entry.notes)h+='<div style="font-size:10px;color:#888;margin-top:2px;">📝 '+esc(entry.notes)+'</div>';
+      h+='</div><div style="font-size:11px;font-weight:700;color:#0d47a1;text-align:right;">Qty '+(entry.qty||1)+'<br>'+esc(entry.time||'')+'</div></div>';
+    });
+    h+='</div>';
+  });
+  if(!h){
+    if(isToday)h='<div style="grid-column:1/-1;text-align:center;color:#bbb;padding:50px;font-size:14px;">No vendors assigned yet.</div>';
+    else h='<div style="grid-column:1/-1;text-align:center;padding:50px;"><div style="font-size:40px;margin-bottom:12px;">📭</div><div style="font-size:15px;color:#888;font-weight:600;">No vendor data saved for '+fd(reportDate)+'</div></div>';
+  }
+  el.innerHTML=h;
+}
+
+function makeDailyVendorPDF(){
+  if(!window.jspdf){toast('PDF library loading...','w');return;}
+  saveVendorLog();
+  var vrdEl=document.getElementById('VRD');
+  var d=(vrdEl&&vrdEl.value)?vrdEl.value:getD();
+  var isToday=d===getD();
+  var data={};
+  if(isToday){Object.keys(vendorAsgn).forEach(function(vid){data[vid]=vendorAsgn[vid];});}
+  else{var log=vdlog[d];if(log)Object.keys(log.venues||{}).forEach(function(vid){data[vid]=log.venues[vid];});}
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,mg=12,y=mg;
+  function cp(n){if(y+n>283){doc.addPage();y=mg;}}
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
+  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
+  doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');
+  doc.text('Daily Vendor Report',pw/2+10,22,{align:'center'});
+  y=42;
+  doc.setTextColor(13,71,161);doc.setFontSize(11);doc.setFont('helvetica','bold');
+  doc.text('Vendor Date: '+fd(d),mg,y);y+=12;
+  var hasData=false;
+  venues.forEach(function(v){
+    var vm=data[v.id];if(!vm)return;
+    var allEntries=[];
+    VENDOR_TYPES.forEach(function(vt){var arr=vm[vt.id];if(Array.isArray(arr))arr.forEach(function(entry){allEntries.push({entry:entry,vt:vt});});});
+    if(!allEntries.length)return;
+    hasData=true;
+    cp(14+allEntries.length*8);
+    doc.setFillColor(21,101,192);doc.roundedRect(mg,y,pw-mg*2,12,2,2,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
+    doc.text(v.name,pw/2,y+8,{align:'center'});
+    doc.setFontSize(8);doc.text(allEntries.length+' entries',pw-mg-3,y+8,{align:'right'});y+=13;
+    allEntries.forEach(function(item,i){
+      var entry=item.entry,vt=item.vt;
+      cp(8);
+      if(i%2===0){doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,8,'F');}
+      doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(8);
+      doc.text(vendorEntryLabel(entry,vt),mg+3,y+4);
+      doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(6);
+      doc.text(vt.name,mg+3,y+7);
+      doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);
+      doc.text('Qty '+(entry.qty||1)+'  '+(entry.time||''),pw-mg-3,y+5,{align:'right'});
+      y+=8;
+    });
+    y+=4;
+  });
+  if(!hasData){doc.setTextColor(150,150,150);doc.setFontSize(11);doc.setFont('helvetica','italic');doc.text('No vendor assignments for this date.',pw/2,y+10,{align:'center'});}
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | Vendors | '+fd(d),mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_Vendor_Daily_'+d+'.pdf');toast('Vendor PDF downloaded!');
+}
+
+// ════════════════════════════════════════════════════════════
+// 2. VENUE VENDOR HISTORY
+// ════════════════════════════════════════════════════════════
+function populateVRVVenue(){
+  var now=new Date();
+  var firstDay=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+  var lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);
+  if(g('VRVF')&&!g('VRVF').value)g('VRVF').value=firstDay;
+  if(g('VRVT')&&!g('VRVT').value)g('VRVT').value=lastDay;
+  var inEl=document.getElementById('VRV_IN');
+  var ddEl=document.getElementById('VRV_DD');
+  var hidEl=g('VRV');
+  if(inEl&&!inEl._wired){
+    inEl._wired=true;
+    inEl.addEventListener('input',function(){
+      var q=this.value.trim();
+      if(!q){ddEl.style.display='none';return;}
+      var matches=venues.filter(function(v){return v.name.toLowerCase().indexOf(q.toLowerCase())>=0;}).slice(0,12);
+      ddEl.innerHTML='';
+      matches.forEach(function(v){
+        var item=document.createElement('div');
+        item.style.cssText='padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f4ff;';
+        item.textContent='🏨 '+v.name;
+        item.addEventListener('mouseenter',function(){this.style.background='#e3f2fd';});
+        item.addEventListener('mouseleave',function(){this.style.background='';});
+        item.addEventListener('click',(function(vid,vname){return function(){
+          inEl.value=vname;hidEl.value=vid;ddEl.style.display='none';
+        };})(v.id,v.name));
+        ddEl.appendChild(item);
+      });
+      ddEl.style.display=matches.length?'block':'none';
+    });
+    function closeVRVDD(ev){if(!inEl.contains(ev.target)&&!ddEl.contains(ev.target))ddEl.style.display='none';}
+    document.addEventListener('click',closeVRVDD);
+    document.addEventListener('touchstart',closeVRVDD,{passive:true});
+  }
+}
+
+var btnVRVR=document.getElementById('btnVRVR');
+if(btnVRVR)btnVRVR.addEventListener('click',drawVenueVendorHistory);
+var btnVRVPDF=document.getElementById('btnVRVPDF');
+if(btnVRVPDF)btnVRVPDF.addEventListener('click',makeVenueVendorHistoryPDF);
+
+function getVenueVendorEntriesForDate(vid,ds){
+  var today=getD();
+  var entries=[];
+  if(ds===today){
+    var vm=vendorAsgn[vid];if(!vm)return entries;
+    VENDOR_TYPES.forEach(function(vt){var arr=vm[vt.id];if(Array.isArray(arr))arr.forEach(function(entry){entries.push({entry:entry,vt:vt});});});
+  } else {
+    var log=vdlog[ds];if(!log||!log.venues||!log.venues[vid])return entries;
+    var vm2=log.venues[vid];
+    VENDOR_TYPES.forEach(function(vt){var arr=vm2[vt.id];if(Array.isArray(arr))arr.forEach(function(entry){entries.push({entry:entry,vt:vt});});});
+  }
+  return entries;
+}
+
+function drawVenueVendorHistory(){
+  var vid=(g('VRV')||{}).value||'';
+  var fromDate=(g('VRVF')||{}).value||'';
+  var toDate=(g('VRVT')||{}).value||'';
+  var el=g('VRVB');if(!el)return;
+  if(!vid){toast('Select a venue','w');return;}
+  if(!fromDate||!toDate){toast('Select date range','w');return;}
+  if(fromDate>toDate){toast('From date must be before To date','w');return;}
+  var v=getV(vid);if(!v)return;
+  var h='<div class="pvcard" style="grid-column:1/-1;">';
+  h+='<div class="pvname">'+esc(v.name)+'</div>';
+  h+='<div style="font-size:12px;color:#1565c0;font-weight:600;margin-bottom:14px;">'+fd(fromDate)+' → '+fd(toDate)+'</div>';
+  h+='<div style="display:grid;grid-template-columns:120px 1fr;gap:0;border:1px solid #e3eaff;border-radius:9px;overflow:hidden;">';
+  h+='<div style="background:#1565c0;color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Date</div>';
+  h+='<div style="background:#1565c0;color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Vendors</div>';
+  var cur=new Date(fromDate);var end=new Date(toDate);var rowIdx=0;
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    var entries=getVenueVendorEntriesForDate(vid,ds);
+    var bg=rowIdx%2===0?'#f8faff':'#fff';
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cur.getDay()];
+    h+='<div style="background:'+bg+';padding:8px 12px;font-size:12px;font-weight:600;color:#1565c0;border-top:1px solid #e3eaff;">'+dn+', '+fd(ds)+'</div>';
+    h+='<div style="background:'+bg+';padding:8px 12px;font-size:12px;border-top:1px solid #e3eaff;">';
+    if(entries.length){
+      h+=entries.map(function(item){
+        var c=CLRS[VENDOR_TYPES.indexOf(item.vt)%CLRS.length];
+        return'<span style="display:inline-block;background:'+c+'18;border-radius:4px;padding:1px 7px;margin:1px;font-size:11px;color:'+c+';">'+esc(vendorEntryLabel(item.entry,item.vt))+' (Qty '+(item.entry.qty||1)+')</span>';
+      }).join('');
+    } else {
+      h+='<span style="color:#bbb;font-size:11px;">No vendor assignments</span>';
+    }
+    h+='</div>';
+    cur.setDate(cur.getDate()+1);rowIdx++;
+  }
+  h+='</div></div>';
+  el.innerHTML=h;
+  g('btnVRVPDF').classList.remove('hide');
+}
+
+function makeVenueVendorHistoryPDF(){
+  var vid=(g('VRV')||{}).value||'';
+  var fromDate=(g('VRVF')||{}).value||'';
+  var toDate=(g('VRVT')||{}).value||'';
+  var v=getV(vid);
+  if(!v||!fromDate||!toDate||!window.jspdf){toast('Error','e');return;}
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,mg=12,y=mg;
+  function cp(n){if(y+n>283){doc.addPage();y=mg;}}
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
+  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,13,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Venue Vendor History Report',pw/2+10,21,{align:'center'});y=40;
+  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,20,3,3,'F');
+  doc.setTextColor(13,71,161);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(v.name,mg+5,y+9);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(80,80,80);doc.text(fd(fromDate)+' to '+fd(toDate),mg+5,y+17);y+=26;
+  doc.setFillColor(21,101,192);doc.rect(mg,y,pw-mg*2,8,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+  doc.text('Date',mg+3,y+5.5);doc.text('Vendors',mg+50,y+5.5);y+=9;
+  var cur=new Date(fromDate);var end=new Date(toDate);var rowIdx=0;
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    var entries=getVenueVendorEntriesForDate(vid,ds);
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cur.getDay()];
+    var nameStr=entries.length?entries.map(function(item){return vendorEntryLabel(item.entry,item.vt)+' (Qty '+(item.entry.qty||1)+')';}).join(', '):'No vendor assignments';
+    var maxW=pw-mg*2-52;
+    var lines=doc.splitTextToSize(nameStr,maxW);
+    var rh=Math.max(8,lines.length*5+4);
+    cp(rh);
+    if(rowIdx%2===0){doc.setFillColor(248,250,255);}else{doc.setFillColor(255,255,255);}
+    doc.rect(mg,y,pw-mg*2,rh,'F');
+    doc.setDrawColor(220,230,255);doc.rect(mg,y,pw-mg*2,rh,'S');
+    doc.setTextColor(21,101,192);doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text(dn+' '+String(cur.getDate()).padStart(2,'0')+'/'+String(cur.getMonth()+1).padStart(2,'0'),mg+3,y+5);
+    doc.setTextColor(entries.length?30:150,entries.length?30:150,entries.length?30:150);
+    doc.setFont('helvetica',entries.length?'normal':'italic');
+    doc.text(lines,mg+50,y+5);
+    y+=rh;cur.setDate(cur.getDate()+1);rowIdx++;
+  }
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | '+v.name,mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_Vendor_Venue_'+v.name.replace(/ /g,'_')+'_'+fromDate+'_to_'+toDate+'.pdf');toast('Venue vendor history PDF downloaded!');
+}
+
+// ════════════════════════════════════════════════════════════
+// 3. VENDOR COMPANY REPORT
+// ════════════════════════════════════════════════════════════
+function populateVRCCompany(){
+  var ms=g('VRCM');
+  if(ms&&!ms.options.length){MONS.forEach(function(m,i){var o=document.createElement('option');o.value=i;o.textContent=m;ms.appendChild(o);});ms.value=new Date().getMonth();}
+  var ys=g('VRCY');
+  if(ys&&!ys.options.length){var cy=new Date().getFullYear();for(var y2=cy;y2>=cy-2;y2--){var o=document.createElement('option');o.value=y2;o.textContent=y2;ys.appendChild(o);}ys.value=cy;}
+
+  var inEl=document.getElementById('VRC_IN');
+  var ddEl=document.getElementById('VRC_DD');
+  var hidEl=g('VRC');
+  if(inEl&&!inEl._wired){
+    inEl._wired=true;
+    inEl.addEventListener('input',function(){
+      var q=this.value.trim();
+      if(!q){ddEl.style.display='none';return;}
+      var allCompanies=[];
+      VENDOR_TYPES.forEach(function(vt){
+        (vendorCompanies[vt.id]||[]).forEach(function(co){
+          if(co.toLowerCase().indexOf(q.toLowerCase())>=0)allCompanies.push({company:co,vt:vt});
+        });
+      });
+      allCompanies=allCompanies.slice(0,12);
+      ddEl.innerHTML='';
+      allCompanies.forEach(function(item){
+        var c=CLRS[VENDOR_TYPES.indexOf(item.vt)%CLRS.length];
+        var el2=document.createElement('div');
+        el2.style.cssText='padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f4ff;';
+        el2.innerHTML='<div style="font-weight:700;">'+esc(item.company)+'</div><div style="font-size:11px;color:'+c+';">'+esc(item.vt.name)+'</div>';
+        el2.addEventListener('mouseenter',function(){this.style.background='#e3f2fd';});
+        el2.addEventListener('mouseleave',function(){this.style.background='';});
+        el2.addEventListener('click',(function(co,vtid){return function(){
+          inEl.value=co;hidEl.value=co+'||'+vtid;ddEl.style.display='none';
+        };})(item.company,item.vt.id));
+        ddEl.appendChild(el2);
+      });
+      ddEl.style.display=allCompanies.length?'block':'none';
+    });
+    function closeVRCDD(ev){if(!inEl.contains(ev.target)&&!ddEl.contains(ev.target))ddEl.style.display='none';}
+    document.addEventListener('click',closeVRCDD);
+    document.addEventListener('touchstart',closeVRCDD,{passive:true});
+  }
+}
+
+var btnVRCR=document.getElementById('btnVRCR');
+if(btnVRCR)btnVRCR.addEventListener('click',drawCompanyReport);
+var btnVRCPDF=document.getElementById('btnVRCPDF');
+if(btnVRCPDF)btnVRCPDF.addEventListener('click',makeCompanyReportPDF);
+
+function getCompanyMonthData(company,typeId,month,year){
+  saveVendorLog();
+  var dim=new Date(year,month+1,0).getDate();
+  var rows=[];var totalQty=0;
+  for(var day=1;day<=dim;day++){
+    var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    var today=getD();
+    var venuesUsed=[];
+    var src=null;
+    if(ds===today){src=vendorAsgn;}
+    else{var log=vdlog[ds];if(log)src=Object.keys(log.venues||{}).reduce(function(acc,vid){acc[vid]=log.venues[vid];return acc;},{});}
+    if(src){
+      Object.keys(src).forEach(function(vid){
+        var vm=src[vid];if(!vm)return;
+        var arr=vm[typeId];if(!Array.isArray(arr))return;
+        arr.forEach(function(entry){
+          if(entry.company===company){
+            var v=getV(vid);
+            venuesUsed.push({venue:v?v.name:'Unknown',qty:entry.qty||1,time:entry.time||'',entry:entry});
+            totalQty+=(entry.qty||1);
+          }
+        });
+      });
+    }
+    if(venuesUsed.length)rows.push({day:day,ds:ds,venues:venuesUsed});
+  }
+  return{rows:rows,totalQty:totalQty,dim:dim};
+}
+
+function drawCompanyReport(){
+  var hid=(g('VRC')||{}).value||'';
+  if(!hid){toast('Select a vendor company','w');return;}
+  var parts=hid.split('||');
+  var company=parts[0],typeId=parts[1];
+  var vt=VENDOR_TYPES.find(function(x){return x.id===typeId;});
+  if(!vt)return;
+  var month=parseInt((g('VRCM')||{}).value||'0');
+  var year=parseInt((g('VRCY')||{}).value||new Date().getFullYear());
+  var data=getCompanyMonthData(company,typeId,month,year);
+  var c=CLRS[VENDOR_TYPES.indexOf(vt)%CLRS.length];
+
+  var ss=g('VRCS');
+  if(ss)ss.innerHTML='<div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:14px;">'+
+    '<div style="font-size:16px;font-weight:800;color:'+c+';">'+vt.icon+' '+esc(company)+'</div>'+
+    '<div style="font-size:12px;color:'+c+';font-weight:600;margin-bottom:10px;">'+esc(vt.name)+'</div>'+
+    '<div style="font-size:15px;font-weight:800;color:#0d47a1;margin-bottom:10px;">'+MONS[month]+' '+year+'</div>'+
+    '<div style="display:flex;gap:8px;">'+
+    '<div style="background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:9px;padding:8px 16px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#1565c0;">'+data.rows.length+'</div><div style="font-size:10px;color:#888;">Days Used</div></div>'+
+    '<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:9px;padding:8px 16px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#1b5e20;">'+data.totalQty+'</div><div style="font-size:10px;color:#888;">Total Qty Supplied</div></div>'+
+    '</div></div>';
+
+  var sb=g('VRCB');
+  if(!data.rows.length){
+    if(sb)sb.innerHTML='<div style="text-align:center;color:#bbb;padding:40px;">No usage recorded this month.</div>';
+  } else {
+    var h='<div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;"><div style="font-size:10px;font-weight:800;color:#1565c0;letter-spacing:0.1em;margin-bottom:10px;">USAGE BY DAY</div>';
+    data.rows.forEach(function(row){
+      var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,row.day).getDay()];
+      h+='<div style="padding:8px 0;border-bottom:1px solid #f0f4ff;">';
+      h+='<div style="font-weight:800;color:#1565c0;font-size:13px;">'+dn+' '+row.day+' '+MONS[month]+'</div>';
+      row.venues.forEach(function(vu){
+        h+='<div style="font-size:12px;color:#555;padding:3px 0 3px 10px;">🏨 '+esc(vu.venue)+' — Qty '+vu.qty+(vu.time?' @ '+esc(vu.time):'')+(vu.entry.notes?' 📝 '+esc(vu.entry.notes):'')+'</div>';
+      });
+      h+='</div>';
+    });
+    h+='</div>';
+    if(sb)sb.innerHTML=h;
+  }
+  g('btnVRCPDF').classList.remove('hide');
+}
+
+function makeCompanyReportPDF(){
+  if(!window.jspdf){toast('PDF loading...','w');return;}
+  var hid=(g('VRC')||{}).value||'';
+  if(!hid)return;
+  var parts=hid.split('||');
+  var company=parts[0],typeId=parts[1];
+  var vt=VENDOR_TYPES.find(function(x){return x.id===typeId;});
+  if(!vt)return;
+  var month=parseInt((g('VRCM')||{}).value||'0');
+  var year=parseInt((g('VRCY')||{}).value||new Date().getFullYear());
+  var data=getCompanyMonthData(company,typeId,month,year);
+
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,mg=12,y=mg;
+  function cp(n){if(y+n>283){doc.addPage();y=mg;}}
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
+  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Vendor Company Report',pw/2+10,22,{align:'center'});y=42;
+  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,22,3,3,'F');
+  doc.setTextColor(13,71,161);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(company,mg+5,y+10);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(80,80,80);doc.text(vt.name,mg+5,y+17);
+  doc.setTextColor(13,71,161);doc.setFontSize(12);doc.setFont('helvetica','bold');doc.text(MONS[month]+' '+year,pw-mg-5,y+12,{align:'right'});y+=28;
+  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,16,3,3,'F');
+  doc.setTextColor(120,120,120);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text('Days Used',mg+10,y+6);doc.text('Total Qty Supplied',mg+100,y+6);
+  doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(21,101,192);doc.text(String(data.rows.length),mg+10,y+13);
+  doc.setTextColor(27,94,32);doc.text(String(data.totalQty),mg+100,y+13);y+=22;
+  doc.setFillColor(21,101,192);doc.rect(mg,y,pw-mg*2,7,'F');doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','bold');
+  doc.text('Date',mg+2,y+5);doc.text('Venue(s)',mg+35,y+5);y+=8;
+  data.rows.forEach(function(row){
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,row.day).getDay()];
+    var str=row.venues.map(function(vu){return vu.venue+' (Qty '+vu.qty+')';}).join(', ');
+    var lines=doc.splitTextToSize(str,pw-mg*2-37);
+    var rh=Math.max(6.5,lines.length*5+2);
+    cp(rh);
+    doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,rh,'F');doc.setDrawColor(220,220,220);doc.rect(mg,y,pw-mg*2,rh,'S');
+    doc.setTextColor(80,80,80);doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text(dn+' '+String(row.day).padStart(2,'0')+'/'+String(month+1).padStart(2,'0'),mg+2,y+4.5);
+    doc.setTextColor(30,30,30);doc.setFont('helvetica','normal');doc.text(lines,mg+35,y+4.5);
+    y+=rh;
+  });
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | '+company+' | '+MONS[month]+' '+year,mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_Vendor_'+company.replace(/ /g,'_')+'_'+MONS[month]+'_'+year+'.pdf');toast('Company PDF downloaded!');
+}
+
 // ── TOUCH DRAG & DROP FOR IPAD / MOBILE ──────────────────────
 var touchDragEid = null;
 var touchGhost = null;
@@ -3433,6 +3984,7 @@ function saveCloud(){
 function actuallySaveCloud(){
   if(!DB_LOADED)return;
   saveLog();
+  saveVendorLog();
   try{
     var staffData=staff.map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
     var venueData=venues.map(function(v){return{id:v.id,name:v.name,vip:v.vip||false};});

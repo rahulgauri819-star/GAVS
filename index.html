@@ -219,10 +219,9 @@ input,select,button{font-family:inherit;}
 /* 3-col grid for non-managers */
 .v3grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:4px;}
 @media(max-width:600px){.v3grid{grid-template-columns:repeat(2,1fr);}}
-.v3card{background:#f8faff;border:1px solid #e3eaff;border-radius:8px;padding:6px 7px;}
-.v3top{display:flex;align-items:center;gap:4px;margin-bottom:3px;}
-.v3name{font-size:10px;font-weight:700;color:#111;flex:1;min-width:0;word-break:break-word;line-height:1.2;}
-.v3rm{background:#ffebee;border:none;color:#c62828;border-radius:4px;width:17px;height:17px;cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.v3card{background:#f8faff;border:1px solid #e3eaff;border-radius:6px;padding:3px 5px;}
+.v3name{font-size:9px;font-weight:700;color:#111;flex:1;min-width:0;line-height:1.4;}
+.v3rm{background:#ffebee;border:none;color:#c62828;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .v3sel{width:100%;background:#f0f4ff;border:1px solid #bbdefb;border-radius:5px;color:#0d47a1;padding:2px 4px;font-size:10px;cursor:pointer;}
 .lockico{font-size:9px;}
 /* Add venue box */
@@ -699,7 +698,7 @@ var DB_LOADED=false;
 // ── DATA ──────────────────────────────────────────────────────
 var CREDS=[{u:'admin',p:'gavs2024'},{u:'grover',p:'audio123'}];
 var curUser='';
-var CLRS=['#1565c0','#6a1b9a','#0277bd','#1b5e20','#b71c1c','#880e4f','#e65100','#00695c','#33691e','#4527a0','#c62828','#4e342e','#00796b','#ad1457','#283593'];
+var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e','#37474f','#6a1b9a','#bf360c','#1565c0','#2e7d32'];
 var TIMES=['6:00 AM','7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM','7:00 PM','8:00 PM','9:00 PM','10:00 PM','11:00 PM'];
 var MONS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var DEFAULT_VENUES=['The Leela Palace New Delhi','The Oberoi New Delhi','ITC Maurya New Delhi','Taj Mahal Hotel New Delhi','The Imperial New Delhi','Hyatt Regency Delhi','Radisson Blu Plaza Delhi Airport','Le Meridien New Delhi','The Ashok New Delhi','Sheraton New Delhi Hotel','Eros Hotel New Delhi','The Suryaa New Delhi','Crowne Plaza Today Okhla','JW Marriott New Delhi Aerocity','Pullman New Delhi Aerocity','Novotel New Delhi Aerocity','Andaz Delhi','Aloft New Delhi Aerocity','Ibis New Delhi Aerocity','Pride Plaza Hotel Aerocity','Holiday Inn New Delhi Aerocity','Roseate House New Delhi','The Grand New Delhi','Shangri-La Eros New Delhi','Lalit New Delhi','Hans Hotel New Delhi','The Manor New Delhi','Hotel Bristol New Delhi','Jaypee Siddharth New Delhi','Vivanta New Delhi Dwarka','Lemon Tree Premier New Delhi','The Westin Gurgaon','Trident Gurgaon','Hyatt Place Gurgaon','Courtyard by Marriott Gurgaon','ITC Grand Bharat Gurgaon','Hilton Garden Inn Gurgaon','Four Points by Sheraton Gurgaon','DoubleTree Hilton Gurgaon','Le Meridien Gurgaon','Park Hyatt Gurgaon','Radisson Blu MBD Noida','Crowne Plaza Greater Noida','Jaypee Greens Golf Resort Noida','The Westin Sohna Resort','Vivanta Surajkund','Sheraton Saket New Delhi','Fortune Select Excalibur Gurgaon','Country Inn Sahibabad','Maidens Hotel Delhi'];
@@ -1494,20 +1493,17 @@ function makeMgrRow(a,vid){
 function makeV3Card(a,vid,c){
   var d=document.createElement('div');d.className='v3card';
   // Light tint of the role color so the card is instantly recognizable by eye
-  d.style.cssText='background:'+c+'14;border:1px solid '+c+'33;border-radius:8px;padding:6px 7px;';
-  // Name row
-  var top=document.createElement('div');top.className='v3top';
+  d.style.cssText='background:'+c+'22;border:1px solid '+c+'55;border-radius:6px;padding:3px 5px;display:flex;align-items:center;gap:3px;';
+  // Name - single line, truncates with ellipsis
   var nm=document.createElement('div');nm.className='v3name';
-  nm.style.cssText='font-size:10px;font-weight:700;color:#111;flex:1;min-width:0;word-break:break-word;line-height:1.2;';
+  nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4;';
   nm.textContent=a.emp.name;nm.title=a.emp.name;
-  var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';
-  rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
-  top.appendChild(nm);top.appendChild(rm);
-  // Compact time row
-  var trow=document.createElement('div');trow.style.cssText='display:flex;align-items:center;gap:2px;margin-top:2px;';
-  if(a.isFixed){var lk=document.createElement('span');lk.style.cssText='font-size:8px;';lk.textContent='🔒';trow.appendChild(lk);}
+  d.appendChild(nm);
+  // Lock icon (fixed duty) - inline, right before time
+  if(a.isFixed){var lk=document.createElement('span');lk.style.cssText='font-size:7px;flex-shrink:0;';lk.textContent='🔒';d.appendChild(lk);}
+  // Time dropdown - compact, fits content width only
   var sel=document.createElement('select');
-  sel.style.cssText='flex:1;background:#f0f4ff;border:1px solid #bbdefb;border-radius:4px;color:#0d47a1;padding:1px 2px;font-size:9px;cursor:pointer;';
+  sel.style.cssText='flex-shrink:0;background:#f0f4ff;border:1px solid #bbdefb;border-radius:4px;color:#0d47a1;padding:1px 2px;font-size:8px;cursor:pointer;width:54px;';
   TIMES.forEach(function(t){var o=document.createElement('option');o.textContent=t;if(t===a.duty)o.selected=true;sel.appendChild(o);});
   var capturedEid=a.emp.id;var capturedVid=vid;
   sel.addEventListener('change',function(){
@@ -1517,8 +1513,12 @@ function makeV3Card(a,vid,c){
       saveCloud();
     }
   });
-  trow.appendChild(sel);
-  d.appendChild(top);d.appendChild(trow);
+  d.appendChild(sel);
+  // Remove button - compact
+  var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';
+  rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
+  rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
+  d.appendChild(rm);
   return d;
 }
 

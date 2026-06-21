@@ -153,7 +153,7 @@ input,select,button{font-family:inherit;}
 .tsel{background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:6px;color:#0d47a1;padding:3px 8px;font-size:11px;cursor:pointer;}
 /* Assign duties desktop */
 .assign-layout{display:flex;gap:20px;height:calc(100vh - 215px);min-height:600px;}
-@media(max-width:900px){.assign-layout{flex-direction:column;height:auto;}.sp{width:100%;max-height:260px;}.vp{min-height:400px;}.vgrid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));}}
+@media(max-width:900px){.assign-layout{flex-direction:column;height:auto;}.sp{width:100%;max-height:260px;}.vp{min-height:400px;}.vgrid{column-width:280px;}}
 /* Staff panel */
 .sp{width:280px;flex-shrink:0;background:#fff;border-radius:14px;border:1.5px solid #e3eaff;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 12px rgba(21,101,192,0.08);}
 .sp-hdr{background:#1565c0;color:#fff;padding:12px 14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px;flex-shrink:0;}
@@ -193,8 +193,9 @@ input,select,button{font-family:inherit;}
 .ab-date{font-size:13px;font-weight:700;color:#1565c0;background:#e3f2fd;border-radius:8px;padding:8px 14px;white-space:nowrap;}
 .abbtn{padding:8px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid;white-space:nowrap;}
 /* Venue grid */
-.vgrid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-content:start;padding-bottom:20px;}
-@media(max-width:900px){.vgrid{grid-template-columns:1fr;}}
+.vgrid{flex:1;overflow-y:auto;column-width:320px;column-gap:14px;padding-bottom:20px;}
+.vgrid>*{break-inside:avoid;margin-bottom:14px;display:inline-block;width:100%;}
+@media(max-width:900px){.vgrid{column-width:100%;column-count:1;}}
 /* Venue box */
 .vbox{background:#fff;border:2px solid #e3eaff;border-radius:14px;overflow:visible;box-shadow:0 2px 8px rgba(21,101,192,0.05);transition:border-color 0.2s,box-shadow 0.2s;}
 .vbox.vip{border-color:#f9a825;}
@@ -346,7 +347,7 @@ input,select,button{font-family:inherit;}
         <input class="vsi" id="V_SRCH" type="text" placeholder="🔍 Type venue name to add..."/>
         <div class="vdd" id="V_DD"></div>
       </div>
-      <div class="vgrid" id="V_GRID" style="flex:1;overflow-y:auto;align-items:start;"></div>
+      <div class="vgrid" id="V_GRID" style="flex:1;overflow-y:auto;"></div>
     </div>
 
   </div>
@@ -736,6 +737,7 @@ function go(s){
     var dp2=document.getElementById('DP2');
     if(dp2&&document.getElementById('DP'))dp2.value=document.getElementById('DP').value;
     updateADate();drawStaffPanel();drawVenueGrid();updateATBStats();
+    if(assignMode==='vendors')drawVendorTypeList();
     // update topbar nav active state
     document.querySelectorAll('[data-atb-screen]').forEach(function(b){
       b.classList.toggle('atb-on',b.getAttribute('data-atb-screen')===s);
@@ -1131,8 +1133,11 @@ function makeVenueBox(v,hasPinned){
   box.addEventListener('dragleave',function(){this.classList.remove('drag-over');});
   box.addEventListener('drop',function(ev){
     ev.preventDefault();this.classList.remove('drag-over');
-    var vtid=ev.dataTransfer.getData('text/vendortype');
-    if(vtid){addVendorTypeToVenue(vtid,v.id);return;}
+    var vcardJson=ev.dataTransfer.getData('text/vendorcard');
+    if(vcardJson){
+      try{var payload=JSON.parse(vcardJson);addVendorCardToVenue(payload,v.id);}catch(err){}
+      return;
+    }
     var eid=ev.dataTransfer.getData('text/plain');
     if(eid)dropStaff(eid,v.id);
   });
@@ -1202,7 +1207,7 @@ function makeVenueBox(v,hasPinned){
   if(hallsN>=2){
     var hallsWarn=document.createElement('div');
     hallsWarn.style.cssText='background:#fff0f0;color:#c62828;font-size:15px;font-weight:900;text-align:center;padding:7px 10px;border-bottom:2px solid #ffcdd2;letter-spacing:0.02em;';
-    hallsWarn.textContent='⚠️ '+hallsN+' HALLS TODAY';
+    hallsWarn.textContent='⚠️ '+hallsN+' HALLS';
     box.appendChild(hallsWarn);
   }
 
@@ -1325,11 +1330,16 @@ function renderVendorBody(body,v){
   });
 }
 
-function showVendorEntryModal(vid,typeId,editIdx){
+function showVendorEntryModal(vid,typeId,editIdx,prefillCompany,prefillService){
   var v=getV(vid);var vt=VENDOR_TYPES.find(function(x){return x.id===typeId;});
   if(!v||!vt)return;
   var isEdit=editIdx!==null&&editIdx!==undefined;
-  var entry=isEdit?vendorAsgn[vid][typeId][editIdx]:{company:'',qty:1,notes:'',time:'9:00 AM',services:{}};
+  var entry=isEdit?vendorAsgn[vid][typeId][editIdx]:{company:prefillCompany||'',qty:1,notes:'',time:'9:00 AM',services:{}};
+  // If dropped from a specific service card (Photo & Video tree), pre-check just that service
+  if(!isEdit&&prefillService){
+    entry.services={};
+    entry.services[prefillService]=1;
+  }
   var companies=vendorCompanies[vt.id]||[];
   var coOptions='<option value="">-- Type or select below --</option>'+
     companies.map(function(c){return'<option value="'+esc(c)+'"'+(c===entry.company?' selected':'')+'>'+esc(c)+'</option>';}).join('');
@@ -3156,46 +3166,93 @@ function switchAssignMode(mode){
 
 function drawVendorTypeList(){
   var el=document.getElementById('VT_LIST');if(!el)return;
-  var cntEl=document.getElementById('VT_CNT');if(cntEl)cntEl.textContent=VENDOR_TYPES.length;
+  var totalCompanies=0;
+  Object.keys(vendorCompanies).forEach(function(tid){totalCompanies+=(vendorCompanies[tid]||[]).length;});
+  var cntEl=document.getElementById('VT_CNT');if(cntEl)cntEl.textContent=totalCompanies;
   el.innerHTML='';
+
   VENDOR_TYPES.forEach(function(vt,i){
     var c=CLRS[i%CLRS.length];
-    var card=document.createElement('div');
-    card.className='scard avail';
-    card.draggable=true;
-    card.setAttribute('data-vtid',vt.id);
-    card.style.cssText='cursor:grab;';
-    var info=document.createElement('div');info.className='sci';
-    var nm=document.createElement('div');nm.className='scn';nm.textContent=vt.icon+' '+vt.name;
-    var sub=document.createElement('div');sub.className='scr';sub.style.color=c;
-    var compCount=(vendorCompanies[vt.id]||[]).length;
-    sub.textContent=compCount+' compan'+(compCount===1?'y':'ies')+' registered';
-    info.appendChild(nm);info.appendChild(sub);
-    var dh=document.createElement('span');dh.className='dh';dh.textContent='⠿';
-    card.appendChild(dh);card.appendChild(info);
-    el.appendChild(card);
+    var companies=vendorCompanies[vt.id]||[];
+    if(!companies.length)return; // skip empty categories - register companies in Manage first
+
+    // Section heading - same style as role headings in staff panel
+    var hdr=document.createElement('div');
+    hdr.className='rg-hdr';
+    hdr.style.color=c;
+    hdr.innerHTML=vt.icon+' '+esc(vt.name)+' <div class="rg-line"></div>';
+    el.appendChild(hdr);
+
+    if(vt.special==='photovideo'){
+      // Tree structure: company name = non-draggable header, services underneath = draggable
+      companies.forEach(function(co){
+        var coHdr=document.createElement('div');
+        coHdr.style.cssText='font-size:12px;font-weight:800;color:#111;padding:6px 4px 3px;display:flex;align-items:center;gap:5px;';
+        coHdr.innerHTML='📁 '+esc(co);
+        el.appendChild(coHdr);
+        PV_SERVICES.forEach(function(svc){
+          var card=document.createElement('div');
+          card.className='scard avail';
+          card.draggable=true;
+          card.style.cssText='cursor:grab;margin-left:14px;';
+          card.setAttribute('data-vtid',vt.id);
+          card.setAttribute('data-company',co);
+          card.setAttribute('data-service',svc);
+          var info=document.createElement('div');info.className='sci';
+          var nm=document.createElement('div');nm.className='scn';nm.textContent=svc;
+          info.appendChild(nm);
+          var dh=document.createElement('span');dh.className='dh';dh.textContent='⠿';
+          card.appendChild(dh);card.appendChild(info);
+          el.appendChild(card);
+        });
+      });
+    } else {
+      // Normal types: company itself is draggable
+      companies.forEach(function(co){
+        var card=document.createElement('div');
+        card.className='scard avail';
+        card.draggable=true;
+        card.style.cssText='cursor:grab;';
+        card.setAttribute('data-vtid',vt.id);
+        card.setAttribute('data-company',co);
+        var info=document.createElement('div');info.className='sci';
+        var nm=document.createElement('div');nm.className='scn';nm.textContent=co;
+        var sub=document.createElement('div');sub.className='scr';sub.style.color=c;sub.textContent=vt.name;
+        info.appendChild(nm);info.appendChild(sub);
+        var dh=document.createElement('span');dh.className='dh';dh.textContent='⠿';
+        card.appendChild(dh);card.appendChild(info);
+        el.appendChild(card);
+      });
+    }
   });
-  // drag wiring (delegated)
+
+  if(!totalCompanies){
+    el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px 12px;font-size:12px;">No vendor companies registered yet.<br>Add some in Manage → Vendor Types.</div>';
+  }
+
+  // drag wiring (delegated) - only fires from cards with data-company
   el.addEventListener('dragstart',function(ev){
-    var card=ev.target.closest('.scard[data-vtid]');
+    var card=ev.target.closest('.scard[data-company]');
     if(!card)return;
-    ev.dataTransfer.setData('text/vendortype',card.getAttribute('data-vtid'));
+    var payload={typeId:card.getAttribute('data-vtid'),company:card.getAttribute('data-company'),service:card.getAttribute('data-service')||null};
+    ev.dataTransfer.setData('text/vendorcard',JSON.stringify(payload));
     ev.dataTransfer.effectAllowed='move';
   });
 }
 
-// Touch drag for vendor type cards (iPad/mobile)
-var touchVTypeId=null;
+// Touch drag for vendor company/service cards (iPad/mobile)
+var touchVCardPayload=null;
 document.addEventListener('touchstart',function(ev){
-  var card=ev.target.closest('#VT_LIST .scard[data-vtid]');
+  var card=ev.target.closest('#VT_LIST .scard[data-company]');
   if(!card)return;
-  touchVTypeId=card.getAttribute('data-vtid');
-  var vt=VENDOR_TYPES.find(function(x){return x.id===touchVTypeId;});
+  touchVCardPayload={typeId:card.getAttribute('data-vtid'),company:card.getAttribute('data-company'),service:card.getAttribute('data-service')||null};
+  var vt=VENDOR_TYPES.find(function(x){return x.id===touchVCardPayload.typeId;});
   if(!vt)return;
+  var label=touchVCardPayload.service?(touchVCardPayload.company+' — '+touchVCardPayload.service):touchVCardPayload.company;
   var touch=ev.touches[0];
   touchGhost=document.createElement('div');
   touchGhost.style.cssText='position:fixed;z-index:9999;pointer-events:none;background:#fff;border:2px solid #1565c0;border-radius:10px;padding:8px 12px;font-size:13px;color:#111;white-space:nowrap;box-shadow:0 6px 22px rgba(0,0,0,0.2);opacity:0.9;';
-  touchGhost.textContent=vt.icon+' '+vt.name;
+  touchGhost.textContent=vt.icon+' '+label;
   touchGhost.style.left=(touch.clientX-50)+'px';touchGhost.style.top=(touch.clientY-30)+'px';
   document.body.appendChild(touchGhost);
   if(navigator.vibrate)navigator.vibrate(30);
@@ -3203,9 +3260,9 @@ document.addEventListener('touchstart',function(ev){
 },{passive:true});
 
 document.addEventListener('touchend',function(ev){
-  if(!touchVTypeId)return;
+  if(!touchVCardPayload)return;
   if(touchGhost){try{document.body.removeChild(touchGhost);}catch(x){}touchGhost=null;}
-  var card=document.querySelector('#VT_LIST .scard[data-vtid="'+touchVTypeId+'"]');
+  var card=document.querySelector('#VT_LIST .scard[data-company="'+touchVCardPayload.company+'"][data-vtid="'+touchVCardPayload.typeId+'"]');
   if(card)card.style.opacity='';
   var touch=ev.changedTouches[0];
   document.querySelectorAll('.vbox').forEach(function(b){b.classList.remove('drag-over');});
@@ -3214,20 +3271,20 @@ document.addEventListener('touchend',function(ev){
     var vbox=elAt.closest('.vbox');
     if(vbox){
       var vid=vbox.id.replace('vb-','');
-      if(vid)addVendorTypeToVenue(touchVTypeId,vid);
+      if(vid)addVendorCardToVenue(touchVCardPayload,vid);
     }
   }
-  touchVTypeId=null;
+  touchVCardPayload=null;
 },{passive:true});
 
-function addVendorTypeToVenue(typeId,vid){
-  if(!vendorAsgn[vid])vendorAsgn[vid]={};
-  if(!vendorAsgn[vid][typeId])vendorAsgn[vid][typeId]=[];
+function addVendorCardToVenue(payload,vid){
+  var vt=VENDOR_TYPES.find(function(x){return x.id===payload.typeId;});
+  if(!vt)return;
   if(activeVids.indexOf(vid)<0)activeVids.push(vid);
-  var vt=VENDOR_TYPES.find(function(x){return x.id===typeId;});
-  toast((vt?vt.name:'Vendor type')+' added to venue');
-  drawVenueGrid();saveCloud();
+  // Open the entry modal pre-filled with company (and service, for Photo & Video)
+  showVendorEntryModal(vid,payload.typeId,null,payload.company,payload.service);
 }
+
 
 // ── TOUCH DRAG & DROP FOR IPAD / MOBILE ──────────────────────
 var touchDragEid = null;

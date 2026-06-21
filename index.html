@@ -215,7 +215,7 @@ input,select,button{font-family:inherit;}
 .vg-hdr:first-child{margin-top:0;}
 .vg-line{flex:1;height:1px;background:currentColor;opacity:0.15;}
 /* Manager row in venue - full width */
-.mgr-row{background:#fffde7;border:1px solid #ffe082;border-radius:8px;padding:7px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px;}
+.mgr-row{background:#fffde7;border:1px solid #ffe082;border-radius:7px;padding:5px 8px;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
 /* 3-col grid for non-managers */
 .v3grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:4px;}
 @media(max-width:600px){.v3grid{grid-template-columns:repeat(2,1fr);}}
@@ -700,6 +700,8 @@ var CREDS=[{u:'admin',p:'gavs2024'},{u:'grover',p:'audio123'}];
 var curUser='';
 var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e','#37474f','#6a1b9a','#bf360c','#1565c0','#2e7d32'];
 var TIMES=['6:00 AM','7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM','7:00 PM','8:00 PM','9:00 PM','10:00 PM','11:00 PM'];
+// Display-only short time label e.g. "6:00 AM" -> "6 AM". Stored values/PDFs always use the full TIMES format above.
+function shortTime(t){return (t||'').replace(':00 ',' ');}
 var MONS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var DEFAULT_VENUES=['The Leela Palace New Delhi','The Oberoi New Delhi','ITC Maurya New Delhi','Taj Mahal Hotel New Delhi','The Imperial New Delhi','Hyatt Regency Delhi','Radisson Blu Plaza Delhi Airport','Le Meridien New Delhi','The Ashok New Delhi','Sheraton New Delhi Hotel','Eros Hotel New Delhi','The Suryaa New Delhi','Crowne Plaza Today Okhla','JW Marriott New Delhi Aerocity','Pullman New Delhi Aerocity','Novotel New Delhi Aerocity','Andaz Delhi','Aloft New Delhi Aerocity','Ibis New Delhi Aerocity','Pride Plaza Hotel Aerocity','Holiday Inn New Delhi Aerocity','Roseate House New Delhi','The Grand New Delhi','Shangri-La Eros New Delhi','Lalit New Delhi','Hans Hotel New Delhi','The Manor New Delhi','Hotel Bristol New Delhi','Jaypee Siddharth New Delhi','Vivanta New Delhi Dwarka','Lemon Tree Premier New Delhi','The Westin Gurgaon','Trident Gurgaon','Hyatt Place Gurgaon','Courtyard by Marriott Gurgaon','ITC Grand Bharat Gurgaon','Hilton Garden Inn Gurgaon','Four Points by Sheraton Gurgaon','DoubleTree Hilton Gurgaon','Le Meridien Gurgaon','Park Hyatt Gurgaon','Radisson Blu MBD Noida','Crowne Plaza Greater Noida','Jaypee Greens Golf Resort Noida','The Westin Sohna Resort','Vivanta Surajkund','Sheraton Saket New Delhi','Fortune Select Excalibur Gurgaon','Country Inn Sahibabad','Maidens Hotel Delhi'];
 var ROLES=['Manager','Sound Engineer','Lighting Tech','AV Tech','Stage Manager','Camera Operator','Video Tech','Crew Lead','Setup Specialist','Live Stream Tech','Projection Tech','DJ Operator','Truss Rigger'];
@@ -1478,13 +1480,15 @@ function makeRoleHdr(r,c){
 
 function makeMgrRow(a,vid){
   var d=document.createElement('div');d.className='mgr-row';
+  d.style.cssText='padding:5px 8px;';
   var info=document.createElement('div');info.style.cssText='flex:1;min-width:0;';
-  var nm=document.createElement('div');nm.style.cssText='font-size:12px;font-weight:800;color:#1a237e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-  nm.textContent=a.emp.name+(a.emp.phone?' Ph:'+a.emp.phone:'');
+  var nm=document.createElement('div');nm.style.cssText='font-size:11px;font-weight:800;color:#1a237e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+  // Phone number stays out of the on-screen card (kept in PDF reports only); name only here.
+  nm.textContent=a.emp.name;
   nm.title=a.emp.name+(a.emp.phone?' Ph:'+a.emp.phone:'');
   info.appendChild(nm);
   var ts=makeTselEl(a.duty,a.isFixed,function(val){if(asgn[vid]&&asgn[vid][a.emp.id]){asgn[vid][a.emp.id].duty=val;asgn[vid][a.emp.id].isFixed=false;saveCloud();}});
-  var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';rm.style.width='22px';rm.style.height='22px';rm.style.fontSize='11px';
+  var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';rm.style.width='19px';rm.style.height='19px';rm.style.fontSize='10px';
   rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
   d.appendChild(info);d.appendChild(ts);d.appendChild(rm);
   return d;
@@ -1501,10 +1505,11 @@ function makeV3Card(a,vid,c){
   d.appendChild(nm);
   // Lock icon (fixed duty) - inline, right before time
   if(a.isFixed){var lk=document.createElement('span');lk.style.cssText='font-size:7px;flex-shrink:0;';lk.textContent='🔒';d.appendChild(lk);}
-  // Time dropdown - compact, fits content width only
+  // Time dropdown - compact, fits content width only. Shows short label (e.g. "6 AM")
+  // but option value/stored data stays the full TIMES format so PDFs/reports are unaffected.
   var sel=document.createElement('select');
-  sel.style.cssText='flex-shrink:0;background:#f0f4ff;border:1px solid #bbdefb;border-radius:4px;color:#0d47a1;padding:1px 2px;font-size:8px;cursor:pointer;width:54px;';
-  TIMES.forEach(function(t){var o=document.createElement('option');o.textContent=t;if(t===a.duty)o.selected=true;sel.appendChild(o);});
+  sel.style.cssText='flex-shrink:0;background:#f0f4ff;border:1px solid #bbdefb;border-radius:4px;color:#0d47a1;padding:1px 1px;font-size:8px;cursor:pointer;width:38px;';
+  TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===a.duty)o.selected=true;sel.appendChild(o);});
   var capturedEid=a.emp.id;var capturedVid=vid;
   sel.addEventListener('change',function(){
     if(asgn[capturedVid]&&asgn[capturedVid][capturedEid]){
@@ -1526,7 +1531,7 @@ function makeTselEl(cur,isFixed,onChange){
   var wrap=document.createElement('div');wrap.style.cssText='display:flex;align-items:center;gap:3px;';
   if(isFixed){var lk=document.createElement('span');lk.className='lockico';lk.textContent='🔒';wrap.appendChild(lk);}
   var sel=document.createElement('select');sel.className='v3sel';
-  TIMES.forEach(function(t){var o=document.createElement('option');o.textContent=t;if(t===cur)o.selected=true;sel.appendChild(o);});
+  TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===cur)o.selected=true;sel.appendChild(o);});
   sel.addEventListener('change',function(){onChange(this.value);});
   wrap.appendChild(sel);
   return wrap;

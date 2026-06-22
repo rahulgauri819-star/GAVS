@@ -105,7 +105,7 @@ input,select,button{font-family:inherit;}
 .atb-nb.atb-on{background:rgba(255,255,255,0.25);border-color:#fff;}
 .atb-flex{flex:1;}
 /* Assign main area */
-.assign-area{display:flex;flex:1;overflow:hidden;}
+.assign-area{display:flex;flex:1;overflow:hidden;min-height:0;}
 /* Staff panel inside assign */
 .asp{width:260px;flex-shrink:0;background:#fff;border-right:1px solid #e3eaff;display:flex;flex-direction:column;overflow:hidden;}
 .mode-toggle{display:flex;flex-shrink:0;background:#f0f4ff;padding:6px;gap:6px;}
@@ -113,7 +113,7 @@ input,select,button{font-family:inherit;}
 .mode-btn.mode-on{background:#1565c0;color:#fff;box-shadow:0 2px 6px rgba(21,101,192,0.3);}
 #STAFF_PANEL_WRAP,#VENDOR_PANEL_WRAP{display:flex;flex-direction:column;flex:1;overflow:hidden;}
 /* Venue panel inside assign */
-.avp{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px 12px;}
+.avp{flex:1;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;padding:10px 12px;}
 /* Mobile action bar */
 .mob-ab{display:none;background:#fff;border-bottom:1px solid #e3eaff;padding:8px 12px;gap:6px;overflow-x:auto;flex-wrap:nowrap;}
 .mob-btn{padding:7px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid #e3eaff;background:#f8faff;color:#1565c0;white-space:nowrap;flex-shrink:0;}
@@ -350,10 +350,11 @@ input,select,button{font-family:inherit;}
     <!-- Right: Venue Grid -->
     <div class="avp">
       <div class="vs-wrap" style="margin-bottom:8px;">
-        <input class="vsi" id="V_SRCH" type="text" placeholder="🔍 Type venue name to add..."/>
+        <input class="vsi" id="V_SRCH" type="text" placeholder="🔍 Type venue name to add..." style="flex:1;"/>
+        <button id="btnResetOrder" title="Reset to auto-sort by staff count" style="flex-shrink:0;background:#f0f4ff;border:1.5px solid #e3eaff;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;color:#1565c0;cursor:pointer;white-space:nowrap;">↺ Reset Order</button>
         <div class="vdd" id="V_DD"></div>
       </div>
-      <div class="vgrid" id="V_GRID" style="flex:1;overflow-y:auto;"></div>
+      <div class="vgrid" id="V_GRID" style="overflow-y:visible;"></div>
     </div>
 
   </div>
@@ -720,7 +721,7 @@ var VENDOR_TYPES=[
   {id:'fabrication',name:'Fabrication Vendor',icon:'🔧',special:false},
   {id:'stall',name:'Stall Vendor',icon:'🏪',special:false}
 ];
-var PV_SERVICES=['Still Photography','HD Camera','Gimbal Video','Candid Photography','Multicam'];
+var PV_SERVICES=['Still Photography','HD Video Camera','Gimbal Video','Candid Photography','Multicam'];
 // Registered vendor companies per type: vendorCompanies[typeId] = ['ABC Labour Co.', 'XYZ Manpower', ...]
 var vendorCompanies={};
 // Per-day vendor assignments: vendorAsgn[venueId][typeId] = [ {id, company, qty, notes, time, services:{...}} , ... ]
@@ -728,6 +729,8 @@ var vendorAsgn={};
 var activeVendorVids=[]; // legacy - venues that have vendor data, kept in sync with activeVids now
 var vdlog={}; // per-date vendor log: vdlog[date] = {venues:{vid:{typeId:[entries]}}}
 var assignMode='staff'; // 'staff' or 'vendors' - toggle in Assign Duties left panel
+var collapsedVids=new Set(); // venues that are collapsed (session only, not saved)
+var venueOrder=[]; // custom drag order for activeVids (saved to Firebase)
 var multiViewMode=false; // when true, venue boxes show BOTH staff and vendors together regardless of assignMode
 var drafts=[],curDraftId=null,curDraftVer=0;
 var activeVids=[];
@@ -877,6 +880,10 @@ function initActiveVids(){
     var hasPinned=staff.some(function(e){return e.pv===v.id;});
     var hasAsgn=asgn[v.id]&&Object.keys(asgn[v.id]).length>0;
     if(hasPinned||hasAsgn){if(activeVids.indexOf(v.id)<0)activeVids.push(v.id);}
+  });
+  // Also ensure all pinned-staff venues are always present (even if no assignments yet)
+  staff.forEach(function(e){
+    if(e.pv&&getV(e.pv)&&activeVids.indexOf(e.pv)<0)activeVids.push(e.pv);
   });
 }
 
@@ -1082,6 +1089,10 @@ function onGreyStaffClick(eid){
 }
 
 // ── VENUE SEARCH ──────────────────────────────────────────────
+var btnResetOrder=document.getElementById('btnResetOrder');
+if(btnResetOrder)btnResetOrder.addEventListener('click',function(){
+  venueOrder=[];saveCloud();drawVenueGrid();toast('Order reset to auto-sort by staff count');
+});
 g('V_SRCH').addEventListener('input',function(){
   var q=this.value.trim();
   var dd=g('V_DD');
@@ -1199,11 +1210,55 @@ function drawVenueGrid(){
   el.appendChild(offBox);
   } // end if assignMode==='staff'
 
-  // ── Venue boxes ─────────────────────────────────────────────
-  activeVids.forEach(function(vid){
+  // ── Venue boxes — sorted by staff count (most first) unless custom order set ─
+  var sortedVids=activeVids.slice();
+  if(venueOrder.length){
+    // Use custom drag order, but include any new venues not yet in custom order
+    var ordered=venueOrder.filter(function(id){return sortedVids.indexOf(id)>=0;});
+    sortedVids.filter(function(id){return ordered.indexOf(id)<0;}).forEach(function(id){ordered.push(id);});
+    sortedVids=ordered;
+  } else {
+    // Auto-sort by staff count descending
+    sortedVids.sort(function(a,b){
+      var ca=Object.keys(asgn[a]||{}).length,cb=Object.keys(asgn[b]||{}).length;
+      return cb-ca;
+    });
+  }
+  sortedVids.forEach(function(vid){
     var v=getV(vid);if(!v)return;
     var hasPinned=staff.some(function(e){return e.pv===vid;});
-    el.appendChild(makeVenueBox(v,hasPinned));
+    var box=makeVenueBox(v,hasPinned);
+    // Drag-to-reorder: make the venue header draggable
+    box.setAttribute('draggable','false'); // only header is draggable
+    var boxHdr=box.querySelector('.vbox-hdr');
+    if(boxHdr){
+      boxHdr.style.cursor='grab';
+      boxHdr.setAttribute('draggable','true');
+      boxHdr.addEventListener('dragstart',(function(vid2){return function(ev){
+        ev.dataTransfer.setData('text/venueid',vid2);
+        ev.dataTransfer.effectAllowed='move';
+        box.style.opacity='0.5';
+      };})(vid));
+      boxHdr.addEventListener('dragend',function(){box.style.opacity='';});
+    }
+    box.addEventListener('dragover',function(ev){
+      var dragType=ev.dataTransfer.types&&(ev.dataTransfer.types.indexOf?ev.dataTransfer.types.indexOf('text/venueid')>=0:ev.dataTransfer.types.contains('text/venueid'));
+      if(dragType){ev.preventDefault();box.style.outline='2px solid #f9a825';}
+    });
+    box.addEventListener('dragleave',function(){box.style.outline='';});
+    box.addEventListener('drop',function(ev){
+      box.style.outline='';
+      var fromId=ev.dataTransfer.getData('text/venueid');
+      if(!fromId||fromId===vid)return;
+      ev.preventDefault();
+      // Build/update venueOrder with the reorder
+      var curOrder=sortedVids.slice();
+      var fi=curOrder.indexOf(fromId),ti=curOrder.indexOf(vid);
+      if(fi>=0&&ti>=0){curOrder.splice(fi,1);curOrder.splice(ti,0,fromId);}
+      venueOrder=curOrder;
+      saveCloud();drawVenueGrid();
+    });
+    el.appendChild(box);
   });
 
   // ── Add new venue box ────────────────────────────────────────
@@ -1281,6 +1336,19 @@ function makeVenueBox(v,hasPinned){
   allTimeBtn.title='Set same time for all staff';
   allTimeBtn.addEventListener('click',(function(vid){return function(){showBulkTime(vid);};})(v.id));
   hdr.appendChild(allTimeBtn);
+  // Collapse/expand toggle button
+  var isCollapsed=collapsedVids.has(v.id);
+  var colBtn=document.createElement('button');
+  colBtn.className='vbox-close';
+  colBtn.textContent=isCollapsed?'▶':'▼';
+  colBtn.title=isCollapsed?'Expand':'Collapse';
+  colBtn.style.background='rgba(255,255,255,0.15)';
+  colBtn.addEventListener('click',(function(vid2){return function(ev){
+    ev.stopPropagation();
+    if(collapsedVids.has(vid2))collapsedVids.delete(vid2);else collapsedVids.add(vid2);
+    drawVenueGrid();
+  };})(v.id));
+  hdr.appendChild(colBtn);
   if(!hasPinned){
     var cls=document.createElement('button');cls.className='vbox-close';cls.textContent='✕';cls.title='Remove from view';
     cls.addEventListener('click',(function(vid2,vname,vt){return function(){
@@ -1298,6 +1366,9 @@ function makeVenueBox(v,hasPinned){
     hdr.appendChild(cls);
   }
   box.appendChild(hdr);
+
+  // If collapsed, show only header - skip body entirely
+  if(collapsedVids.has(v.id)){return box;}
 
   // Halls warning - shown when 2+ halls set, regardless of mode
   var hallsN=vHalls[v.id]||0;
@@ -1460,10 +1531,15 @@ function renderVendorBody(body,v){
       row.appendChild(fieldsRow);
 
       // Notes - inline text input, full width below
-      var notesInp=document.createElement('input');
-      notesInp.type='text';notesInp.placeholder='📝 Notes...';
+      var notesInp=document.createElement('textarea');
+      notesInp.placeholder='📝 Notes...';
       notesInp.value=entry.notes||'';
-      notesInp.style.cssText='width:100%;background:#fff;border:1px solid '+c+'33;border-radius:5px;color:#555;padding:3px 6px;font-size:10px;margin-top:5px;';
+      notesInp.rows=1;
+      notesInp.style.cssText='width:100%;background:#fff;border:1px solid '+c+'33;border-radius:5px;color:#555;padding:3px 6px;font-size:10px;margin-top:5px;resize:none;overflow:hidden;line-height:1.4;box-sizing:border-box;';
+      // Auto-grow height as content grows
+      function autoGrow(el){el.style.height='auto';el.style.height=(el.scrollHeight)+'px';}
+      notesInp.addEventListener('input',function(){autoGrow(this);});
+      setTimeout(function(){autoGrow(notesInp);},0);
       notesInp.addEventListener('change',(function(vid,typeId,i2){return function(){
         vendorAsgn[vid][typeId][i2].notes=this.value.trim();
         saveCloud();
@@ -1575,6 +1651,8 @@ function remVConfirm(eid,vid){
 }
 
 function showBulkTime(vid){
+  // If in vendor mode, apply time to vendors instead of staff
+  if(assignMode==='vendors'){showBulkVendorTime(vid);return;}
   var t=Object.values(asgn[vid]||{});
   if(!t.length){toast('No staff assigned to this venue','w');return;}
   var v=getV(vid);
@@ -1592,6 +1670,27 @@ function showBulkTime(vid){
       if(asgn[vid][eid])asgn[vid][eid].duty=val;
     });
     closeModal();toast('All staff set to '+val);drawVenueGrid();saveCloud();
+  };
+  g('m-no').onclick=closeModal;
+}
+
+function showBulkVendorTime(vid){
+  var v=getV(vid);if(!v)return;
+  var vm=vendorAsgn[vid]||{};
+  var total=0;Object.keys(vm).forEach(function(tid){if(Array.isArray(vm[tid]))total+=vm[tid].length;});
+  if(!total){toast('No vendors assigned to this venue','w');return;}
+  var timeOpts=TIMES.map(function(t){return'<option value="'+t+'">'+shortTime(t)+'</option>';}).join('');
+  showModal(
+    '<div class="mt">⏰ Set Same Time for All Vendors</div>'+
+    '<div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">Set one duty time for all <strong>'+total+'</strong> vendor entries at <strong>'+esc(v.name)+'</strong></div>'+
+    '<select id="BVTIME" class="sel"><option value="9:00 AM">9 AM</option>'+timeOpts+'</select>'+
+    '<button class="mbtn blue" id="m-yes">Apply to All Vendors</button>'+
+    '<button class="mcancel" id="m-no">Cancel</button>'
+  );
+  g('m-yes').onclick=function(){
+    var val=g('BVTIME').value;
+    Object.keys(vm).forEach(function(tid){if(Array.isArray(vm[tid]))vm[tid].forEach(function(e){e.time=val;});});
+    closeModal();toast('All vendors set to '+shortTime(val));drawVenueGrid();saveCloud();
   };
   g('m-no').onclick=closeModal;
 }
@@ -2130,16 +2229,27 @@ function confirmDelRole(r){
     return;
   }
   showModal(
-    '<div class="mt" style="color:#c62828;">Delete Role?</div>'+
-    '<div style="text-align:center;font-size:15px;margin-bottom:18px;">Delete <strong>'+esc(r)+'</strong>?</div>'+
-    '<button class="mbtn red" id="m-yes">Yes, Delete</button>'+
+    '<div class="mt" style="color:#c62828;">🔐 Verify to Delete Role</div>'+
+    '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:6px;">Delete role <strong>'+esc(r)+'</strong>?</div>'+
+    '<div style="font-size:12px;color:#888;text-align:center;margin-bottom:14px;">Enter your credentials to confirm.</div>'+
+    '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Username</label>'+
+    '<input id="DEL_R_U" class="inp" placeholder="Username" autocomplete="off"/>'+
+    '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Password</label>'+
+    '<input id="DEL_R_P" class="inp" type="password" placeholder="Password"/>'+
+    '<div id="DEL_R_ERR" style="color:#c62828;font-size:12px;text-align:center;display:none;background:#ffebee;padding:8px;border-radius:8px;margin-bottom:10px;">Incorrect credentials.</div>'+
+    '<button class="mbtn red" id="m-yes">Verify & Delete</button>'+
     '<button class="mcancel" id="m-no">Cancel</button>'
   );
   g('m-yes').onclick=function(){
+    var u=(g('DEL_R_U').value||'').trim().toLowerCase();
+    var p=(g('DEL_R_P').value||'').trim();
+    var ok=CREDS.some(function(c){return c.u===u&&c.p===p;});
+    if(!ok){g('DEL_R_ERR').style.display='block';g('DEL_R_P').value='';return;}
     ROLES=ROLES.filter(function(x){return x!==r;});
-    closeModal();toast(r+' removed','w');drawMRoles();populateRoleDD();saveCloud();
+    closeModal();toast(r+' deleted','w');drawMRoles();populateRoleDD();saveCloud();
   };
   g('m-no').onclick=closeModal;
+  g('DEL_R_P').addEventListener('keydown',function(e){if(e.key==='Enter')g('m-yes').click();});
 }
 
 // ── LEAVE ─────────────────────────────────────────────────────
@@ -2512,7 +2622,7 @@ function makeVHPDF(){
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
-  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);var logoW=28,logoH=Math.round(28*(img.naturalHeight/img.naturalWidth));if(logoH>28){logoH=28;logoW=Math.round(28*(img.naturalWidth/img.naturalHeight));}doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4+Math.round((28-logoH)/2),logoW,logoH);}}catch(er){}
   doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,13,{align:'center'});
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Venue History Report',pw/2+10,21,{align:'center'});y=40;
   doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,20,3,3,'F');
@@ -2587,7 +2697,7 @@ function makePDF(){
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
-  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);var logoW=28,logoH=Math.round(28*(img.naturalHeight/img.naturalWidth));if(logoH>28){logoH=28;logoW=Math.round(28*(img.naturalWidth/img.naturalHeight));}doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4+Math.round((28-logoH)/2),logoW,logoH);}}catch(er){}
   doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
   doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
   doc.setFontSize(8);doc.setFont('helvetica','normal');
@@ -2652,6 +2762,8 @@ function makePDF(){
         doc.setTextColor(rgb[0]>50?Math.max(rgb[0]-40,20):rgb[0]+20,rgb[1]>50?Math.max(rgb[1]-40,20):rgb[1]+20,rgb[2]>50?Math.max(rgb[2]-40,20):rgb[2]+20);
         doc.setFont('helvetica','bold');doc.setFontSize(7);
         doc.text(a.emp.name,mg+5,y+4.5);
+        doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(6);
+        doc.text(r,mg+90,y+4.5);
         doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);
         doc.text(a.duty,pw-mg-3,y+4.5,{align:'right'});
         y+=6.5;rowNum++;
@@ -2776,7 +2888,7 @@ function makeStaffPDF(){
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
-  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);var logoW=28,logoH=Math.round(28*(img.naturalHeight/img.naturalWidth));if(logoH>28){logoH=28;logoW=Math.round(28*(img.naturalWidth/img.naturalHeight));}doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4+Math.round((28-logoH)/2),logoW,logoH);}}catch(er){}
   doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Employee Monthly Report',pw/2+10,22,{align:'center'});y=42;
   doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,22,3,3,'F');
@@ -2971,7 +3083,7 @@ g('btnDraftPDF').addEventListener('click',function(){
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
-  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);var logoW=28,logoH=Math.round(28*(img.naturalHeight/img.naturalWidth));if(logoH>28){logoH=28;logoW=Math.round(28*(img.naturalWidth/img.naturalHeight));}doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4+Math.round((28-logoH)/2),logoW,logoH);}}catch(er){}
   doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Draft Duty Plan',pw/2+10,22,{align:'center'});y=38;
   doc.setFillColor(255,248,225);doc.rect(mg,y,pw-mg*2,14,'F');doc.setDrawColor(230,160,0);doc.setLineWidth(0.5);doc.rect(mg,y,pw-mg*2,14,'S');doc.setLineWidth(0.2);
@@ -3179,7 +3291,7 @@ function makeLOPDF(){
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
-  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);var logoW=28,logoH=Math.round(28*(img.naturalHeight/img.naturalWidth));if(logoH>28){logoH=28;logoW=Math.round(28*(img.naturalWidth/img.naturalHeight));}doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4+Math.round((28-logoH)/2),logoW,logoH);}}catch(er){}
   doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,13,{align:'center'});
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Leave & Office Duty History Report',pw/2+10,21,{align:'center'});y=40;
   doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,14,3,3,'F');
@@ -3294,10 +3406,29 @@ function drawMVTDetail(){
       var info=document.createElement('div');info.className='sr-info';
       info.innerHTML='<div class="sr-name">'+esc(co)+'</div>';
       var db=document.createElement('button');db.className='ibtn db';db.textContent='🗑️';
-      db.addEventListener('click',(function(idx){return function(){
-        vendorCompanies[vt.id].splice(idx,1);
-        toast(co+' removed','w');drawMVTDetail();drawMVendorTypes();saveCloud();
-      };})(i));
+      db.addEventListener('click',(function(idx,coName){return function(){
+        showModal(
+          '<div class="mt" style="color:#c62828;">🔐 Verify to Delete Company</div>'+
+          '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:6px;">Delete <strong>'+esc(coName)+'</strong>?</div>'+
+          '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Username</label>'+
+          '<input id="DEL_CO_U" class="inp" placeholder="Username" autocomplete="off"/>'+
+          '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Password</label>'+
+          '<input id="DEL_CO_P" class="inp" type="password" placeholder="Password"/>'+
+          '<div id="DEL_CO_ERR" style="color:#c62828;font-size:12px;text-align:center;display:none;background:#ffebee;padding:8px;border-radius:8px;margin-bottom:10px;">Incorrect credentials.</div>'+
+          '<button class="mbtn red" id="m-yes">Verify & Delete</button>'+
+          '<button class="mcancel" id="m-no">Cancel</button>'
+        );
+        g('m-yes').onclick=function(){
+          var u=(g('DEL_CO_U').value||'').trim().toLowerCase();
+          var p=(g('DEL_CO_P').value||'').trim();
+          var ok=CREDS.some(function(c){return c.u===u&&c.p===p;});
+          if(!ok){g('DEL_CO_ERR').style.display='block';g('DEL_CO_P').value='';return;}
+          vendorCompanies[vt.id].splice(idx,1);
+          toast(coName+' deleted','w');closeModal();drawMVTDetail();drawMVendorTypes();saveCloud();
+        };
+        g('m-no').onclick=closeModal;
+        g('DEL_CO_P').addEventListener('keydown',function(e){if(e.key==='Enter')g('m-yes').click();});
+      };})(i,co));
       row.appendChild(info);row.appendChild(db);
       listEl.appendChild(row);
     });
@@ -3489,6 +3620,13 @@ function addVendorCardToVenue(payload,vid){
   if(activeVids.indexOf(vid)<0)activeVids.push(vid);
   if(!vendorAsgn[vid])vendorAsgn[vid]={};
   if(!vendorAsgn[vid][payload.typeId])vendorAsgn[vid][payload.typeId]=[];
+  // Prevent duplicate: check if same company+service already assigned to this venue
+  var existing=vendorAsgn[vid][payload.typeId];
+  var isDup=existing.some(function(e){
+    if(payload.service)return e.company===payload.company&&e.serviceLabel===payload.service;
+    return e.company===payload.company&&!e.serviceLabel;
+  });
+  if(isDup){toast('Already assigned to this venue','w');return;}
   var entry={company:payload.company,qty:1,time:'9:00 AM',notes:''};
   if(vt.special==='photovideo'&&payload.service){
     entry.serviceLabel=payload.service;
@@ -3568,14 +3706,21 @@ function drawDailyVendorReport(){
     if(!allEntries.length)return;
     h+='<div class="pvcard"><div class="pvname">'+esc(v.name)+'</div>';
     h+='<div style="font-size:12px;color:#1565c0;font-weight:600;margin-bottom:8px;">'+allEntries.length+' vendor entries</div>';
-    allEntries.forEach(function(item,i){
-      var entry=item.entry,vt=item.vt;
-      var c=CLRS[VENDOR_TYPES.indexOf(vt)%CLRS.length];
-      h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;">';
-      h+='<div style="font-weight:700;font-size:12px;">'+esc(vendorEntryLabel(entry,vt))+'</div>';
-      h+='<span style="font-size:9px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 4px;">'+esc(vt.name)+'</span>';
-      if(entry.notes)h+='<div style="font-size:10px;color:#888;margin-top:2px;">📝 '+esc(entry.notes)+'</div>';
-      h+='</div><div style="font-size:11px;font-weight:700;color:#0d47a1;text-align:right;">Qty '+(entry.qty||1)+'<br>'+esc(entry.time||'')+'</div></div>';
+    // Group by vendor type for cleaner display
+    var vtGroupDS={};
+    allEntries.forEach(function(item){var tid=item.vt.id;if(!vtGroupDS[tid])vtGroupDS[tid]={vt:item.vt,entries:[]};vtGroupDS[tid].entries.push(item.entry);});
+    VENDOR_TYPES.forEach(function(vt,vi){
+      var grp=vtGroupDS[vt.id];if(!grp)return;
+      var c=CLRS[vi%CLRS.length];
+      h+='<div style="font-size:9px;font-weight:800;text-transform:uppercase;color:'+c+';padding:4px 0 2px;border-bottom:1px solid '+c+'22;margin-bottom:4px;">'+esc(vt.name)+'</div>';
+      grp.entries.forEach(function(entry,i){
+        h+='<div class="prow" style="background:'+c+'10;border-left:3px solid '+c+';margin-bottom:3px;">';
+        h+='<span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;">';
+        h+='<div style="font-weight:700;font-size:12px;">'+esc(entry.company||'')+'</div>';
+        if(entry.serviceLabel)h+='<div style="font-size:10px;color:#6a1b9a;">📷 '+esc(entry.serviceLabel)+'</div>';
+        if(entry.notes)h+='<div style="font-size:10px;color:#888;">📝 '+esc(entry.notes)+'</div>';
+        h+='</div><div style="font-size:11px;font-weight:700;color:#0d47a1;text-align:right;flex-shrink:0;">Qty '+(entry.qty||1)+'<br>'+esc(entry.time||'')+'</div></div>';
+      });
     });
     h+='</div>';
   });
@@ -3599,7 +3744,7 @@ function makeDailyVendorPDF(){
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
-  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);var logoW=28,logoH=Math.round(28*(img.naturalHeight/img.naturalWidth));if(logoH>28){logoH=28;logoW=Math.round(28*(img.naturalWidth/img.naturalHeight));}doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4+Math.round((28-logoH)/2),logoW,logoH);}}catch(er){}
   doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
   doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
   doc.setFontSize(8);doc.setFont('helvetica','normal');
@@ -3761,7 +3906,7 @@ function makeVenueVendorHistoryPDF(){
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
-  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);var logoW=28,logoH=Math.round(28*(img.naturalHeight/img.naturalWidth));if(logoH>28){logoH=28;logoW=Math.round(28*(img.naturalWidth/img.naturalHeight));}doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4+Math.round((28-logoH)/2),logoW,logoH);}}catch(er){}
   doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,13,{align:'center'});
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Venue Vendor History Report',pw/2+10,21,{align:'center'});y=40;
   doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,20,3,3,'F');
@@ -3906,7 +4051,16 @@ function drawCompanyReport(){
       h+='<div style="padding:8px 0;border-bottom:1px solid #f0f4ff;">';
       h+='<div style="font-weight:800;color:#1565c0;font-size:13px;">'+dn+' '+row.day+' '+MONS[month]+'</div>';
       row.venues.forEach(function(vu){
-        h+='<div style="font-size:12px;color:#555;padding:3px 0 3px 10px;">🏨 '+esc(vu.venue)+' — Qty '+vu.qty+(vu.time?' @ '+esc(vu.time):'')+(vu.entry.notes?' 📝 '+esc(vu.entry.notes):'')+'</div>';
+        var label=vu.entry.serviceLabel?esc(vu.entry.company)+' — '+esc(vu.entry.serviceLabel):esc(vu.venue);
+        h+='<div style="background:#f8faff;border-radius:7px;padding:7px 10px;margin:4px 0 4px 10px;">';
+        h+='<div style="font-weight:700;font-size:12px;">🏨 '+esc(vu.venue)+'</div>';
+        if(vu.entry.serviceLabel)h+='<div style="font-size:11px;color:#6a1b9a;margin-top:2px;">📷 '+esc(vu.entry.serviceLabel)+'</div>';
+        h+='<div style="font-size:11px;color:#555;margin-top:3px;display:flex;gap:16px;">';
+        h+='<span>📦 Qty: <strong>'+vu.qty+'</strong></span>';
+        if(vu.time)h+='<span>⏰ '+esc(vu.time)+'</span>';
+        h+='</div>';
+        if(vu.entry.notes)h+='<div style="font-size:11px;color:#888;margin-top:3px;">📝 '+esc(vu.entry.notes)+'</div>';
+        h+='</div>';
       });
       h+='</div>';
     });
@@ -3932,7 +4086,7 @@ function makeCompanyReportPDF(){
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
-  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);var logoW=28,logoH=Math.round(28*(img.naturalHeight/img.naturalWidth));if(logoH>28){logoH=28;logoW=Math.round(28*(img.naturalWidth/img.naturalHeight));}doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4+Math.round((28-logoH)/2),logoW,logoH);}}catch(er){}
   doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
   doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Vendor Company Report',pw/2+10,22,{align:'center'});y=42;
   doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,22,3,3,'F');
@@ -4130,7 +4284,7 @@ function actuallySaveCloud(){
     var payload={
       staff:staffData,venues:venueData,asgn:asgnData,lvMap:lvData,offMap:offData,
       drafts:draftsData,roles:ROLES,dlog:dlog,activeVids:activeVids,
-      vHalls:vHalls,
+      vHalls:vHalls,venueOrder:venueOrder,
       vendorAsgn:vendorAsgn,vendorCompanies:vendorCompanies,
       vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,
       updatedAt:new Date().toISOString()
@@ -4209,6 +4363,7 @@ function loadFromCloud(callback){
       // Restore dlog
       if(d.dlog)dlog=d.dlog;
       if(d.vHalls)vHalls=d.vHalls;
+      if(d.venueOrder&&d.venueOrder.length)venueOrder=d.venueOrder;
       if(d.vendorAsgn)vendorAsgn=d.vendorAsgn;
       if(d.vendorCompanies)vendorCompanies=d.vendorCompanies;
       // Only override the fixed 9 categories if saved data has the new object structure (not old string array)

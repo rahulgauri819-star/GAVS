@@ -73,6 +73,8 @@ input,select,button{font-family:inherit;}
 .mtab{background:transparent;border:none;color:#888;padding:11px 24px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
 .rtab{background:transparent;border:none;color:#888;padding:11px 24px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
 .rtab.on{color:#1565c0;border-bottom:2px solid #1565c0;font-weight:800;}
+.vrtab{background:transparent;border:none;color:#888;padding:11px 24px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;}
+.vrtab.on{color:#1565c0;border-bottom:2px solid #1565c0;font-weight:800;}
 .mtab.on{color:#1565c0;border-bottom:2px solid #1565c0;font-weight:800;}
 .mgrid{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start;}
 @media(max-width:900px){.mgrid{grid-template-columns:1fr;}}
@@ -106,6 +108,10 @@ input,select,button{font-family:inherit;}
 .assign-area{display:flex;flex:1;overflow:hidden;}
 /* Staff panel inside assign */
 .asp{width:260px;flex-shrink:0;background:#fff;border-right:1px solid #e3eaff;display:flex;flex-direction:column;overflow:hidden;}
+.mode-toggle{display:flex;flex-shrink:0;background:#f0f4ff;padding:6px;gap:6px;}
+.mode-btn{flex:1;padding:8px 0;border-radius:8px;border:none;background:transparent;color:#888;font-size:12px;font-weight:700;cursor:pointer;}
+.mode-btn.mode-on{background:#1565c0;color:#fff;box-shadow:0 2px 6px rgba(21,101,192,0.3);}
+#STAFF_PANEL_WRAP,#VENDOR_PANEL_WRAP{display:flex;flex-direction:column;flex:1;overflow:hidden;}
 /* Venue panel inside assign */
 .avp{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px 12px;}
 /* Mobile action bar */
@@ -149,7 +155,7 @@ input,select,button{font-family:inherit;}
 .tsel{background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:6px;color:#0d47a1;padding:3px 8px;font-size:11px;cursor:pointer;}
 /* Assign duties desktop */
 .assign-layout{display:flex;gap:20px;height:calc(100vh - 215px);min-height:600px;}
-@media(max-width:900px){.assign-layout{flex-direction:column;height:auto;}.sp{width:100%;max-height:260px;}.vp{min-height:400px;}.vgrid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));}}
+@media(max-width:900px){.assign-layout{flex-direction:column;height:auto;}.sp{width:100%;max-height:260px;}.vp{min-height:400px;}.vgrid{column-width:280px;}}
 /* Staff panel */
 .sp{width:280px;flex-shrink:0;background:#fff;border-radius:14px;border:1.5px solid #e3eaff;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 2px 12px rgba(21,101,192,0.08);}
 .sp-hdr{background:#1565c0;color:#fff;padding:12px 14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px;flex-shrink:0;}
@@ -189,8 +195,9 @@ input,select,button{font-family:inherit;}
 .ab-date{font-size:13px;font-weight:700;color:#1565c0;background:#e3f2fd;border-radius:8px;padding:8px 14px;white-space:nowrap;}
 .abbtn{padding:8px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid;white-space:nowrap;}
 /* Venue grid */
-.vgrid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-content:start;padding-bottom:20px;}
-@media(max-width:900px){.vgrid{grid-template-columns:1fr;}}
+.vgrid{flex:1;overflow-y:auto;column-width:320px;column-gap:14px;padding-bottom:20px;}
+.vgrid>*{break-inside:avoid;margin-bottom:14px;display:inline-block;width:100%;}
+@media(max-width:900px){.vgrid{column-width:100%;column-count:1;}}
 /* Venue box */
 .vbox{background:#fff;border:2px solid #e3eaff;border-radius:14px;overflow:visible;box-shadow:0 2px 8px rgba(21,101,192,0.05);transition:border-color 0.2s,box-shadow 0.2s;}
 .vbox.vip{border-color:#f9a825;}
@@ -208,14 +215,13 @@ input,select,button{font-family:inherit;}
 .vg-hdr:first-child{margin-top:0;}
 .vg-line{flex:1;height:1px;background:currentColor;opacity:0.15;}
 /* Manager row in venue - full width */
-.mgr-row{background:#fffde7;border:1px solid #ffe082;border-radius:8px;padding:7px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px;}
+.mgr-row{background:#fffde7;border:1px solid #ffe082;border-radius:7px;padding:5px 8px;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
 /* 3-col grid for non-managers */
 .v3grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:4px;}
 @media(max-width:600px){.v3grid{grid-template-columns:repeat(2,1fr);}}
-.v3card{background:#f8faff;border:1px solid #e3eaff;border-radius:8px;padding:6px 7px;}
-.v3top{display:flex;align-items:center;gap:4px;margin-bottom:3px;}
-.v3name{font-size:10px;font-weight:700;color:#111;flex:1;min-width:0;word-break:break-word;line-height:1.2;}
-.v3rm{background:#ffebee;border:none;color:#c62828;border-radius:4px;width:17px;height:17px;cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.v3card{background:transparent;}
+.v3name{font-size:9px;font-weight:700;color:#111;flex:1;min-width:0;line-height:1.4;}
+.v3rm{background:#ffebee;border:none;color:#c62828;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .v3sel{width:100%;background:#f0f4ff;border:1px solid #bbdefb;border-radius:5px;color:#0d47a1;padding:2px 4px;font-size:10px;cursor:pointer;}
 .lockico{font-size:9px;}
 /* Add venue box */
@@ -271,9 +277,9 @@ input,select,button{font-family:inherit;}
   <div class="stats" id="SB"></div>
   <div class="nav">
     <button class="nb on" data-screen="assign"><span class="ni">🏨</span><span>Assign Duties</span></button>
-    <button class="nb" data-screen="vendors"><span class="ni">📋</span><span>Assign Vendors</span></button>
     <button class="nb" data-screen="manage"><span class="ni">⚙️</span><span>Manage</span></button>
     <button class="nb" data-screen="report"><span class="ni">📄</span><span>Report</span></button>
+    <button class="nb" data-screen="vendorreport"><span class="ni">📋</span><span>Vendor Report</span></button>
     <button class="nb" data-screen="drafts"><span class="ni">📂</span><span>Drafts</span></button>
     <button class="nb" data-screen="settings"><span class="ni">🔧</span><span>Settings</span></button>
   </div>
@@ -290,6 +296,7 @@ input,select,button{font-family:inherit;}
     <button class="mob-btn" id="mbtnDrafts" style="border-color:#ce93d8;color:#6a1b9a;">📂 Drafts</button>
     <button class="mob-btn" id="mbtnSave" style="border-color:#a5d6a7;color:#1b5e20;">☁️ Save</button>
     <button class="mob-btn" id="mbtnPDF" style="border-color:#90caf9;color:#1565c0;">📄 PDF</button>
+    <button class="mob-btn" id="mbtnMultiView" style="border-color:#ce93d8;color:#6a1b9a;">🔀 Multi-View</button>
   </div>
 
   <!-- Compact topbar (desktop only, replaces main header) -->
@@ -307,12 +314,13 @@ input,select,button{font-family:inherit;}
     <button class="atb-btn" id="btnDrafts2" style="border-color:#ce93d8;color:#e1bee7;" title="Drafts">📂 Drafts</button>
     <button class="atb-btn" id="btnSave2" style="border-color:#a5d6a7;color:#c8e6c9;" title="Save to Cloud">☁️ Save</button>
     <button class="atb-btn" id="btnExportPDF" style="border-color:#90caf9;color:#bbdefb;" title="Export Duty PDF">📄 PDF</button>
+    <button class="atb-btn" id="btnMultiView" style="border-color:#ce93d8;color:#e1bee7;" title="Show Staff + Vendors Together">🔀 Multi-View</button>
     <div class="atb-flex"></div>
     <div class="atb-sep"></div>
     <button class="atb-nb atb-on" data-atb-screen="assign" title="Assign Duties">🏨</button>
-    <button class="atb-nb" data-atb-screen="vendors" title="Assign Vendors">📋</button>
     <button class="atb-nb" data-atb-screen="manage" title="Manage">⚙️</button>
     <button class="atb-nb" data-atb-screen="report" title="Report">📄</button>
+    <button class="atb-nb" data-atb-screen="vendorreport" title="Vendor Report">📋</button>
     <button class="atb-nb" data-atb-screen="drafts" title="Drafts">📂</button>
     <button class="atb-nb" data-atb-screen="settings" title="Settings">🔧</button>
   </div>
@@ -322,10 +330,21 @@ input,select,button{font-family:inherit;}
 
     <!-- Left: Staff Panel -->
     <div class="asp">
-      <div class="sp-hdr">👥 All Staff <span class="sp-cnt" id="SP_CNT">0</span></div>
-      <div class="sp-s"><input id="SP_SRCH" type="text" placeholder="Search staff..."/></div>
-      <div class="rp-wrap" id="SP_ROLES"></div>
-      <div class="sp-list" id="SP_LIST"></div>
+      <div class="mode-toggle" id="MODE_TOGGLE">
+        <button class="mode-btn mode-on" id="modeBtnStaff">👥 Staff</button>
+        <button class="mode-btn" id="modeBtnVendors">📋 Vendors</button>
+      </div>
+      <div id="STAFF_PANEL_WRAP">
+        <div class="sp-hdr">👥 All Staff <span class="sp-cnt" id="SP_CNT">0</span></div>
+        <div class="sp-s"><input id="SP_SRCH" type="text" placeholder="Search staff..."/></div>
+        <div class="rp-wrap" id="SP_ROLES"></div>
+        <div class="sp-list" id="SP_LIST"></div>
+      </div>
+      <div id="VENDOR_PANEL_WRAP" class="hide">
+        <div class="sp-hdr">📋 Vendor Types <span class="sp-cnt" id="VT_CNT">0</span></div>
+        <div class="rp-wrap" id="VT_ROLES"></div>
+        <div class="sp-list" id="VT_LIST" style="padding:10px;"></div>
+      </div>
     </div>
 
     <!-- Right: Venue Grid -->
@@ -334,37 +353,9 @@ input,select,button{font-family:inherit;}
         <input class="vsi" id="V_SRCH" type="text" placeholder="🔍 Type venue name to add..."/>
         <div class="vdd" id="V_DD"></div>
       </div>
-      <div class="vgrid" id="V_GRID" style="flex:1;overflow-y:auto;align-items:start;"></div>
+      <div class="vgrid" id="V_GRID" style="flex:1;overflow-y:auto;"></div>
     </div>
 
-  </div>
-</div>
-
-<!-- ASSIGN VENDORS -->
-<div class="screen" id="screen-vendors">
-  <div class="ab">
-    <div class="ab-date" id="VENDOR_ADATE">Date: —</div>
-    <button class="abbtn" id="btnVCopy" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9;">📅 Copy from Date</button>
-    <button class="abbtn" id="btnVDraft" style="background:#fff8e1;color:#f57f17;border-color:#ffe082;">💾 Save as Draft</button>
-    <button class="abbtn" id="btnVSave" style="background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7;">☁️ Save</button>
-    <button class="abbtn" id="btnVPDF" style="background:#f3e5f5;color:#6a1b9a;border-color:#ce93d8;">📄 PDF</button>
-  </div>
-  <div class="assign-layout">
-    <div class="sp">
-      <div class="sp-hdr">📋 Vendor Types <span class="sp-cnt" id="VT_CNT">0</span></div>
-      <div class="sp-list" id="VT_LIST" style="padding:10px;"></div>
-      <div style="padding:10px;border-top:1px solid #e3eaff;">
-        <input id="NEW_VT" class="inp" placeholder="New vendor type..." style="margin-bottom:8px;"/>
-        <button class="bigbtn" id="btnAddVT">+ Add Vendor Type</button>
-      </div>
-    </div>
-    <div class="vp">
-      <div class="vs-wrap">
-        <input class="vsi" id="VV_SRCH" type="text" placeholder="🔍 Type venue name to add..."/>
-        <div class="vdd" id="VV_DD"></div>
-      </div>
-      <div class="vgrid" id="VENDOR_GRID" style="align-items:start;"></div>
-    </div>
   </div>
 </div>
 
@@ -374,6 +365,7 @@ input,select,button{font-family:inherit;}
     <button class="mtab on" data-mtab="staff">👥 Staff</button>
     <button class="mtab" data-mtab="venues">🏨 Venues</button>
     <button class="mtab" data-mtab="roles">🏷️ Roles</button>
+    <button class="mtab" data-mtab="vendors">📋 Vendor Types</button>
   </div>
   <div id="mp-staff">
     <div class="mgrid">
@@ -417,6 +409,24 @@ input,select,button{font-family:inherit;}
         </div>
       </div>
       <div><div id="MRL"></div></div>
+    </div>
+  </div>
+
+  <div id="mp-vendors" class="hide">
+    <div class="mgrid">
+      <div>
+        <div class="abt" style="margin-bottom:10px;">VENDOR TYPES</div>
+        <div id="MVT_LIST"></div>
+      </div>
+      <div>
+        <div id="MVT_DETAIL">
+          <div style="text-align:center;padding:60px 20px;color:#bbb;">
+            <div style="font-size:40px;">📋</div>
+            <div style="font-size:14px;font-weight:700;color:#1565c0;margin-top:10px;">Select a Vendor Type</div>
+            <div style="font-size:12px;color:#aaa;margin-top:4px;">to manage its registered companies</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -558,6 +568,85 @@ input,select,button{font-family:inherit;}
 
 </div>
 
+<!-- VENDOR REPORT -->
+<div class="screen" id="screen-vendorreport">
+  <div class="phdr"><span style="font-size:28px;">📋</span>
+    <div><div class="ptitle">Vendor Reports</div></div>
+  </div>
+  <!-- Vendor report type tabs -->
+  <div class="mtabs" style="margin-bottom:16px;overflow-x:auto;flex-wrap:nowrap;">
+    <button class="vrtab on" data-vrtab="daily">📅 Daily Vendor</button>
+    <button class="vrtab" data-vrtab="venue">🏨 Venue History</button>
+    <button class="vrtab" data-vrtab="company">📊 Company Report</button>
+  </div>
+
+  <!-- Daily Vendor Report -->
+  <div id="vr-daily">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div>
+        <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px;">Select Date</label>
+        <input type="date" id="VRD" class="inp" style="margin-bottom:0;width:auto;"/>
+      </div>
+      <button class="bigbtn" id="btnViewVendorReport" style="width:auto;padding:10px 20px;margin-top:18px;">View Report</button>
+      <div style="flex:1;"></div>
+      <button class="pdfbtn" id="btnVendorDailyPDF" style="margin:0;width:auto;padding:10px 24px;font-size:13px;">⬇ Download PDF</button>
+    </div>
+    <div id="VRB" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;"></div>
+  </div>
+
+  <!-- Venue Vendor History -->
+  <div id="vr-venue" class="hide">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:12px;align-items:end;flex-wrap:wrap;">
+        <div style="position:relative;">
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Search Venue</label>
+          <input id="VRV_IN" class="inp" placeholder="Type venue name..." style="margin-bottom:0;" autocomplete="off"/>
+          <input type="hidden" id="VRV"/>
+          <div id="VRV_DD" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #90caf9;border-radius:9px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(21,101,192,0.15);display:none;"></div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">From Date</label>
+          <input type="date" id="VRVF" class="inp" style="margin-bottom:0;"/>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">To Date</label>
+          <input type="date" id="VRVT" class="inp" style="margin-bottom:0;"/>
+        </div>
+        <button class="bigbtn" id="btnVRVR" style="width:auto;padding:10px 20px;white-space:nowrap;">View Report</button>
+      </div>
+    </div>
+    <div id="VRVB"></div>
+    <button class="pdfbtn hide" id="btnVRVPDF">⬇ Download Venue Vendor History PDF</button>
+  </div>
+
+  <!-- Vendor Company Report -->
+  <div id="vr-company" class="hide">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:12px;align-items:end;flex-wrap:wrap;">
+        <div style="position:relative;">
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Search Company</label>
+          <input id="VRC_IN" class="inp" placeholder="Type company name..." style="margin-bottom:0;" autocomplete="off"/>
+          <input type="hidden" id="VRC"/>
+          <div id="VRC_DD" style="position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #90caf9;border-radius:9px;z-index:200;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(21,101,192,0.15);display:none;"></div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Month</label>
+          <select class="sel" id="VRCM" style="margin-bottom:0;"></select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Year</label>
+          <select class="sel" id="VRCY" style="margin-bottom:0;"></select>
+        </div>
+        <button class="bigbtn" id="btnVRCR" style="width:auto;padding:10px 20px;white-space:nowrap;">View Report</button>
+      </div>
+    </div>
+    <div id="VRCS"></div>
+    <div id="VRCB"></div>
+    <button class="pdfbtn hide" id="btnVRCPDF">⬇ Download Company PDF</button>
+  </div>
+
+</div>
+
 <!-- DRAFTS -->
 <div class="screen" id="screen-drafts">
   <div class="phdr"><span style="font-size:28px;">📂</span><div><div class="ptitle">Draft Plans</div><div style="font-size:12px;color:#888;">Future duty planning</div></div></div>
@@ -609,17 +698,37 @@ var DB_LOADED=false;
 // ── DATA ──────────────────────────────────────────────────────
 var CREDS=[{u:'admin',p:'gavs2024'},{u:'grover',p:'audio123'}];
 var curUser='';
-var CLRS=['#1565c0','#6a1b9a','#0277bd','#1b5e20','#b71c1c','#880e4f','#e65100','#00695c','#33691e','#4527a0','#c62828','#4e342e','#00796b','#ad1457','#283593'];
+var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e','#37474f','#6a1b9a','#bf360c','#1565c0','#2e7d32'];
 var TIMES=['6:00 AM','7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM','7:00 PM','8:00 PM','9:00 PM','10:00 PM','11:00 PM'];
+// Display-only short time label e.g. "6:00 AM" -> "6 AM". Stored values/PDFs always use the full TIMES format above.
+function shortTime(t){return (t||'').replace(':00 ',' ');}
 var MONS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var DEFAULT_VENUES=['The Leela Palace New Delhi','The Oberoi New Delhi','ITC Maurya New Delhi','Taj Mahal Hotel New Delhi','The Imperial New Delhi','Hyatt Regency Delhi','Radisson Blu Plaza Delhi Airport','Le Meridien New Delhi','The Ashok New Delhi','Sheraton New Delhi Hotel','Eros Hotel New Delhi','The Suryaa New Delhi','Crowne Plaza Today Okhla','JW Marriott New Delhi Aerocity','Pullman New Delhi Aerocity','Novotel New Delhi Aerocity','Andaz Delhi','Aloft New Delhi Aerocity','Ibis New Delhi Aerocity','Pride Plaza Hotel Aerocity','Holiday Inn New Delhi Aerocity','Roseate House New Delhi','The Grand New Delhi','Shangri-La Eros New Delhi','Lalit New Delhi','Hans Hotel New Delhi','The Manor New Delhi','Hotel Bristol New Delhi','Jaypee Siddharth New Delhi','Vivanta New Delhi Dwarka','Lemon Tree Premier New Delhi','The Westin Gurgaon','Trident Gurgaon','Hyatt Place Gurgaon','Courtyard by Marriott Gurgaon','ITC Grand Bharat Gurgaon','Hilton Garden Inn Gurgaon','Four Points by Sheraton Gurgaon','DoubleTree Hilton Gurgaon','Le Meridien Gurgaon','Park Hyatt Gurgaon','Radisson Blu MBD Noida','Crowne Plaza Greater Noida','Jaypee Greens Golf Resort Noida','The Westin Sohna Resort','Vivanta Surajkund','Sheraton Saket New Delhi','Fortune Select Excalibur Gurgaon','Country Inn Sahibabad','Maidens Hotel Delhi'];
 var ROLES=['Manager','Sound Engineer','Lighting Tech','AV Tech','Stage Manager','Camera Operator','Video Tech','Crew Lead','Setup Specialist','Live Stream Tech','Projection Tech','DJ Operator','Truss Rigger'];
 var staff=[],venues=[],asgn={},lvMap={},offMap={},dlog={};
 var vHalls={}; // venueId -> number of halls (per current date, reset on date change like asgn)
-var VENDOR_TYPES=['Labour','Photography','Cinematic','Catering','Decor','Transport']; // editable categories
-var vendorAsgn={}; // venueId -> {vendorType: qty}
-var activeVendorVids=[]; // venues shown in Assign Vendors grid
-var vdlog={}; // per-date vendor log: vdlog[date] = {venues:{vid:{type:qty}}}
+// ── VENDOR SYSTEM ──────────────────────────────────────────
+// 9 fixed vendor type categories
+var VENDOR_TYPES=[
+  {id:'labour',name:'Labour Vendor',icon:'👷',special:false},
+  {id:'genset',name:'Genset Vendor',icon:'🔌',special:false},
+  {id:'ups',name:'UPS Vendor',icon:'🔋',special:false},
+  {id:'photovideo',name:'Photo & Video Vendor',icon:'📷',special:'photovideo'},
+  {id:'led',name:'LED Vendor',icon:'💡',special:false},
+  {id:'av',name:'AV Vendor',icon:'🔊',special:false},
+  {id:'watchout',name:'Watchout Vendor',icon:'👁️',special:false},
+  {id:'fabrication',name:'Fabrication Vendor',icon:'🔧',special:false},
+  {id:'stall',name:'Stall Vendor',icon:'🏪',special:false}
+];
+var PV_SERVICES=['Still Photography','HD Camera','Gimbal Video','Candid Photography','Multicam'];
+// Registered vendor companies per type: vendorCompanies[typeId] = ['ABC Labour Co.', 'XYZ Manpower', ...]
+var vendorCompanies={};
+// Per-day vendor assignments: vendorAsgn[venueId][typeId] = [ {id, company, qty, notes, time, services:{...}} , ... ]
+var vendorAsgn={};
+var activeVendorVids=[]; // legacy - venues that have vendor data, kept in sync with activeVids now
+var vdlog={}; // per-date vendor log: vdlog[date] = {venues:{vid:{typeId:[entries]}}}
+var assignMode='staff'; // 'staff' or 'vendors' - toggle in Assign Duties left panel
+var multiViewMode=false; // when true, venue boxes show BOTH staff and vendors together regardless of assignMode
 var drafts=[],curDraftId=null,curDraftVer=0;
 var activeVids=[];
 var deskRole='All';
@@ -716,19 +825,18 @@ function go(s){
     var dp2=document.getElementById('DP2');
     if(dp2&&document.getElementById('DP'))dp2.value=document.getElementById('DP').value;
     updateADate();drawStaffPanel();drawVenueGrid();updateATBStats();
+    if(assignMode==='vendors')drawVendorTypeList();
     // update topbar nav active state
     document.querySelectorAll('[data-atb-screen]').forEach(function(b){
       b.classList.toggle('atb-on',b.getAttribute('data-atb-screen')===s);
     });
-  } else if(s==='vendors'){
-    document.body.classList.remove('in-assign');
-    updateVendorADate();drawVendorTypes();drawVendorGrid();
   } else {
     document.body.classList.remove('in-assign');
     if(s==='manage')drawManage();
     else if(s==='leave')drawLeave();
     else if(s==='office')drawOffice();
     else if(s==='report'){drawReport();populateVHVenue();refreshSREmp();}
+    else if(s==='vendorreport'){initVendorReportDates();populateVRVVenue();populateVRCCompany();}
     else if(s==='drafts')showDraftList();
     else if(s==='settings'){/* settings screen is static, nothing to init */}
   }
@@ -1009,6 +1117,7 @@ function drawVenueGrid(){
   var el=g('V_GRID');if(!el)return;
   el.innerHTML='';
 
+  if(assignMode==='staff'){
   // ── Leave drop zone ─────────────────────────────────────────
   var lvBox=document.createElement('div');
   var lvCount=Object.keys(lvMap).length;
@@ -1025,15 +1134,17 @@ function drawVenueGrid(){
   } else {
     lvList.forEach(function(a){
       var row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:6px;background:#ffebee;border-radius:7px;padding:5px 8px;margin-bottom:5px;font-size:12px;';
       var c=cc(a.emp.role);
-      row.innerHTML='<div style="width:24px;height:24px;border-radius:5px;background:'+c+'18;color:'+c+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;">'+ini(a.emp.name)+'</div>'+
-        '<div style="flex:1;font-weight:600;color:#c62828;">'+esc(a.emp.name)+'</div>';
+      // Same compact list style as venue boxes - no avatar, color accent bar, tinted bg
+      row.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;';
+      var nm=document.createElement('div');
+      nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;';
+      nm.textContent=a.emp.name;
       var rm=document.createElement('button');
-      rm.style.cssText='background:#ffcdd2;border:none;color:#c62828;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
-      rm.textContent='✕';
+      rm.className='v3rm';rm.textContent='✕';
+      rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
       rm.addEventListener('click',(function(eid){return function(){unLeave(eid);};})(a.emp.id));
-      row.appendChild(rm);
+      row.appendChild(nm);row.appendChild(rm);
       lvBody.appendChild(row);
     });
   }
@@ -1064,15 +1175,16 @@ function drawVenueGrid(){
   } else {
     offList.forEach(function(a){
       var row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:6px;background:#fff3e0;border-radius:7px;padding:5px 8px;margin-bottom:5px;font-size:12px;';
       var c=cc(a.emp.role);
-      row.innerHTML='<div style="width:24px;height:24px;border-radius:5px;background:'+c+'18;color:'+c+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;">'+ini(a.emp.name)+'</div>'+
-        '<div style="flex:1;font-weight:600;color:#e65100;">'+esc(a.emp.name)+'</div>';
+      row.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;';
+      var nm=document.createElement('div');
+      nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;';
+      nm.textContent=a.emp.name;
       var rm=document.createElement('button');
-      rm.style.cssText='background:#ffe0b2;border:none;color:#e65100;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
-      rm.textContent='✕';
+      rm.className='v3rm';rm.textContent='✕';
+      rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
       rm.addEventListener('click',(function(eid){return function(){unOffice(eid);};})(a.emp.id));
-      row.appendChild(rm);
+      row.appendChild(nm);row.appendChild(rm);
       offBody.appendChild(row);
     });
   }
@@ -1085,6 +1197,7 @@ function drawVenueGrid(){
     if(eid)markOffice(eid);
   });
   el.appendChild(offBox);
+  } // end if assignMode==='staff'
 
   // ── Venue boxes ─────────────────────────────────────────────
   activeVids.forEach(function(vid){
@@ -1112,6 +1225,11 @@ function makeVenueBox(v,hasPinned){
   box.addEventListener('dragleave',function(){this.classList.remove('drag-over');});
   box.addEventListener('drop',function(ev){
     ev.preventDefault();this.classList.remove('drag-over');
+    var vcardJson=ev.dataTransfer.getData('text/vendorcard');
+    if(vcardJson){
+      try{var payload=JSON.parse(vcardJson);addVendorCardToVenue(payload,v.id);}catch(err){}
+      return;
+    }
     var eid=ev.dataTransfer.getData('text/plain');
     if(eid)dropStaff(eid,v.id);
   });
@@ -1122,7 +1240,20 @@ function makeVenueBox(v,hasPinned){
 
   var icon=document.createElement('span');icon.textContent=v.vip?'⭐':'🏨';
   var nm=document.createElement('div');nm.className='vbox-name';nm.textContent=v.name;
-  var cnt=document.createElement('span');cnt.className='vbox-cnt';cnt.textContent=t.length+' staff';
+  var cnt=document.createElement('span');cnt.className='vbox-cnt';
+  var vm0=vendorAsgn[v.id]||{};
+  var totalVendorEntries=0;
+  Object.keys(vm0).forEach(function(tid){
+    var arr=vm0[tid];
+    if(Array.isArray(arr))totalVendorEntries+=arr.length;
+  });
+  if(multiViewMode){
+    cnt.textContent=t.length+' staff · '+totalVendorEntries+' vendor'+(totalVendorEntries===1?'':'s');
+  } else if(assignMode==='vendors'){
+    cnt.textContent=totalVendorEntries+' vendor'+(totalVendorEntries===1?'':'s');
+  } else {
+    cnt.textContent=t.length+' staff';
+  }
 
   hdr.appendChild(icon);hdr.appendChild(nm);
   if(v.vip){var vipBdg=document.createElement('span');vipBdg.style.cssText='background:rgba(255,60,60,0.25);color:#ff6060;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:800;flex-shrink:0;';vipBdg.textContent='VIP';hdr.appendChild(vipBdg);}
@@ -1168,8 +1299,45 @@ function makeVenueBox(v,hasPinned){
   }
   box.appendChild(hdr);
 
+  // Halls warning - shown when 2+ halls set, regardless of mode
+  var hallsN=vHalls[v.id]||0;
+  if(hallsN>=2){
+    var hallsWarn=document.createElement('div');
+    hallsWarn.style.cssText='background:#fff0f0;color:#c62828;font-size:15px;font-weight:900;text-align:center;padding:7px 10px;border-bottom:2px solid #ffcdd2;letter-spacing:0.02em;';
+    hallsWarn.textContent='⚠️ '+hallsN+' HALLS';
+    box.appendChild(hallsWarn);
+  }
+
   // Body
   var body=document.createElement('div');body.className='vbox-body';
+
+  // Multi-View: show BOTH staff and vendor sections together, regardless of the left panel toggle
+  if(multiViewMode){
+    renderStaffBody(body,v,t);
+    var divider=document.createElement('div');
+    divider.style.cssText='height:2px;background:linear-gradient(90deg,#1565c0,#6a1b9a);margin:10px -10px;border-radius:2px;';
+    body.appendChild(divider);
+    var vendorLbl=document.createElement('div');
+    vendorLbl.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#6a1b9a;margin-bottom:6px;';
+    vendorLbl.textContent='📋 Vendors';
+    body.appendChild(vendorLbl);
+    renderVendorBody(body,v);
+    box.appendChild(body);
+    return box;
+  }
+
+  if(assignMode==='vendors'){
+    renderVendorBody(body,v);
+    box.appendChild(body);
+    return box;
+  }
+
+  renderStaffBody(body,v,t);
+  box.appendChild(body);
+  return box;
+}
+
+function renderStaffBody(body,v,t){
   if(!t.length){
     var hint=document.createElement('div');hint.className='drop-hint';hint.textContent='⬇ Drop staff here';
     body.appendChild(hint);
@@ -1190,16 +1358,17 @@ function makeVenueBox(v,hasPinned){
       mgrs.forEach(function(a){body.appendChild(makeMgrRow(a,v.id));});
     }
 
-    // Non-managers: collect role groups, display 3 role columns side by side
+    // Non-managers: collect role groups, display in masonry/Pinterest-style columns
+    // (CSS multi-column instead of flex, so a short column doesn't waste space stretched
+    // to match a tall neighbor - same fix as the outer venue grid)
     var activeRoles=ROLES.filter(function(r){return r!=='Manager'&&roleGroups[r]&&roleGroups[r].length;});
     if(activeRoles.length){
-      // Outer flex container - role groups side by side
       var roleRow=document.createElement('div');
-      roleRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;';
+      roleRow.style.cssText='column-width:150px;column-gap:8px;margin-top:6px;';
       activeRoles.forEach(function(r){
         var grp=roleGroups[r];var c=cc(r);
         var col=document.createElement('div');
-        col.style.cssText='flex:1;min-width:90px;';
+        col.style.cssText='break-inside:avoid;display:inline-block;width:100%;margin-bottom:8px;';
         // Role heading
         var rh=document.createElement('div');
         rh.style.cssText='font-size:8px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+c+';padding:4px 2px 3px;border-bottom:1px solid '+c+'22;margin-bottom:3px;';
@@ -1212,8 +1381,99 @@ function makeVenueBox(v,hasPinned){
       body.appendChild(roleRow);
     }
   }
-  box.appendChild(body);
-  return box;
+}
+
+function renderVendorBody(body,v){
+  var vm=vendorAsgn[v.id]||{};
+  // Defensive: normalize any non-array entries (stale/malformed data) into empty arrays
+  Object.keys(vm).forEach(function(tid){if(!Array.isArray(vm[tid]))vm[tid]=[];});
+  // Respect the left-panel pill filter: when a specific vendor type is selected,
+  // venue boxes show only that category - same live filter as the left panel list.
+  var hasAnyVisible=Object.keys(vm).some(function(tid){
+    if(deskVendorType!=='All'&&deskVendorType!==tid)return false;
+    return (vm[tid]||[]).length>0;
+  });
+  if(!hasAnyVisible){
+    var hint=document.createElement('div');hint.className='drop-hint';
+    hint.textContent=deskVendorType==='All'?'⬇ Drag a Vendor Company here from the left panel':'No '+( (VENDOR_TYPES.find(function(x){return x.id===deskVendorType;})||{}).name ||'vendors')+' assigned here yet';
+    body.appendChild(hint);
+  }
+  VENDOR_TYPES.forEach(function(vt,i){
+    if(deskVendorType!=='All'&&deskVendorType!==vt.id)return; // pill filter applied to venue box content too
+    var entries=Array.isArray(vm[vt.id])?vm[vt.id]:[];
+    if(!entries.length)return;
+    var c=CLRS[i%CLRS.length];
+    var section=document.createElement('div');
+    section.style.cssText='margin-bottom:10px;';
+    var secHdr=document.createElement('div');
+    secHdr.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+c+';padding:4px 0 4px;border-bottom:1px solid '+c+'22;margin-bottom:6px;display:flex;align-items:center;gap:6px;';
+    secHdr.innerHTML=vt.icon+' '+esc(vt.name);
+    section.appendChild(secHdr);
+
+    entries.forEach(function(entry,idx){
+      var row=document.createElement('div');
+      // Color-tint each entry row matching its vendor category color, same as staff cards
+      row.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:6px 7px;margin-bottom:3px;border-radius:0;';
+
+      // Top row: name + remove
+      var top=document.createElement('div');top.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:5px;';
+      var nm=document.createElement('div');
+      nm.style.cssText='flex:1;font-size:11px;font-weight:700;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+      var label=entry.company||'(no name)';
+      if(vt.special==='photovideo'&&entry.serviceLabel)label+=' — '+entry.serviceLabel;
+      nm.textContent=label;nm.title=label;
+      var rmBtn=document.createElement('button');
+      rmBtn.className='v3rm';rmBtn.textContent='✕';
+      rmBtn.addEventListener('click',(function(vid,typeId,i2){return function(){
+        vendorAsgn[vid][typeId].splice(i2,1);
+        drawVenueGrid();saveCloud();
+      };})(v.id,vt.id,idx));
+      top.appendChild(nm);top.appendChild(rmBtn);
+      row.appendChild(top);
+
+      // Inline editable fields row: Qty, Time, Notes - same for ALL vendor types including Photo & Video
+      var fieldsRow=document.createElement('div');
+      fieldsRow.style.cssText='display:flex;align-items:center;gap:5px;flex-wrap:wrap;';
+
+      var qtyWrap=document.createElement('div');qtyWrap.style.cssText='display:flex;align-items:center;gap:3px;flex-shrink:0;';
+      var qtyLbl=document.createElement('span');qtyLbl.style.cssText='font-size:9px;color:#888;';qtyLbl.textContent='Qty';
+      var qtyInp=document.createElement('input');
+      qtyInp.type='number';qtyInp.min='1';qtyInp.value=entry.qty||1;
+      qtyInp.style.cssText='width:42px;background:#fff;border:1px solid '+c+'55;border-radius:5px;color:'+c+';padding:2px 4px;font-size:10px;font-weight:700;';
+      qtyInp.addEventListener('change',(function(vid,typeId,i2){return function(){
+        var val=parseInt(this.value)||1;
+        vendorAsgn[vid][typeId][i2].qty=val;
+        saveCloud();
+      };})(v.id,vt.id,idx));
+      qtyWrap.appendChild(qtyLbl);qtyWrap.appendChild(qtyInp);
+      fieldsRow.appendChild(qtyWrap);
+
+      var timeSel=document.createElement('select');
+      timeSel.style.cssText='background:#fff;border:1px solid '+c+'55;border-radius:5px;color:'+c+';padding:2px 4px;font-size:10px;font-weight:700;flex-shrink:0;';
+      TIMES.forEach(function(t){var o=document.createElement('option');o.textContent=t;if(t===entry.time)o.selected=true;timeSel.appendChild(o);});
+      timeSel.addEventListener('change',(function(vid,typeId,i2){return function(){
+        vendorAsgn[vid][typeId][i2].time=this.value;
+        saveCloud();
+      };})(v.id,vt.id,idx));
+      fieldsRow.appendChild(timeSel);
+
+      row.appendChild(fieldsRow);
+
+      // Notes - inline text input, full width below
+      var notesInp=document.createElement('input');
+      notesInp.type='text';notesInp.placeholder='📝 Notes...';
+      notesInp.value=entry.notes||'';
+      notesInp.style.cssText='width:100%;background:#fff;border:1px solid '+c+'33;border-radius:5px;color:#555;padding:3px 6px;font-size:10px;margin-top:5px;';
+      notesInp.addEventListener('change',(function(vid,typeId,i2){return function(){
+        vendorAsgn[vid][typeId][i2].notes=this.value.trim();
+        saveCloud();
+      };})(v.id,vt.id,idx));
+      row.appendChild(notesInp);
+
+      section.appendChild(row);
+    });
+    body.appendChild(section);
+  });
 }
 
 function makeRoleHdr(r,c){
@@ -1224,34 +1484,37 @@ function makeRoleHdr(r,c){
 
 function makeMgrRow(a,vid){
   var d=document.createElement('div');d.className='mgr-row';
+  d.style.cssText='padding:5px 8px;';
   var info=document.createElement('div');info.style.cssText='flex:1;min-width:0;';
-  var nm=document.createElement('div');nm.style.cssText='font-size:12px;font-weight:800;color:#1a237e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
-  nm.textContent=a.emp.name+(a.emp.phone?' Ph:'+a.emp.phone:'');
+  var nm=document.createElement('div');nm.style.cssText='font-size:11px;font-weight:800;color:#1a237e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+  // Phone number stays out of the on-screen card (kept in PDF reports only); name only here.
+  nm.textContent=a.emp.name;
   nm.title=a.emp.name+(a.emp.phone?' Ph:'+a.emp.phone:'');
   info.appendChild(nm);
   var ts=makeTselEl(a.duty,a.isFixed,function(val){if(asgn[vid]&&asgn[vid][a.emp.id]){asgn[vid][a.emp.id].duty=val;asgn[vid][a.emp.id].isFixed=false;saveCloud();}});
-  var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';rm.style.width='22px';rm.style.height='22px';rm.style.fontSize='11px';
-  rm.addEventListener('click',(function(eid,vid2){return function(){remV(eid,vid2);};})(a.emp.id,vid));
+  var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';rm.style.width='19px';rm.style.height='19px';rm.style.fontSize='10px';
+  rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
   d.appendChild(info);d.appendChild(ts);d.appendChild(rm);
   return d;
 }
 
 function makeV3Card(a,vid,c){
   var d=document.createElement('div');d.className='v3card';
-  // Name row
-  var top=document.createElement('div');top.className='v3top';
+  // No boxed card - just a slim full-width row with a left color accent bar and a bottom divider.
+  // This guarantees the name always has full room to display - no card-width squeeze, no truncation.
+  d.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;border-radius:0;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;';
+  // Name - full text, NEVER truncated. Wraps to a second line if genuinely too long for the column.
   var nm=document.createElement('div');nm.className='v3name';
-  nm.style.cssText='font-size:10px;font-weight:700;color:#111;flex:1;min-width:0;word-break:break-word;line-height:1.2;';
+  nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;min-width:0;word-break:break-word;line-height:1.3;';
   nm.textContent=a.emp.name;nm.title=a.emp.name;
-  var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';
-  rm.addEventListener('click',(function(eid,vid2){return function(){remV(eid,vid2);};})(a.emp.id,vid));
-  top.appendChild(nm);top.appendChild(rm);
-  // Compact time row
-  var trow=document.createElement('div');trow.style.cssText='display:flex;align-items:center;gap:2px;margin-top:2px;';
-  if(a.isFixed){var lk=document.createElement('span');lk.style.cssText='font-size:8px;';lk.textContent='🔒';trow.appendChild(lk);}
+  d.appendChild(nm);
+  // Lock icon (fixed duty) - inline, right before time
+  if(a.isFixed){var lk=document.createElement('span');lk.style.cssText='font-size:7px;flex-shrink:0;';lk.textContent='🔒';d.appendChild(lk);}
+  // Time dropdown - compact, fits content width only. Shows short label (e.g. "6 AM")
+  // but option value/stored data stays the full TIMES format so PDFs/reports are unaffected.
   var sel=document.createElement('select');
-  sel.style.cssText='flex:1;background:#f0f4ff;border:1px solid #bbdefb;border-radius:4px;color:#0d47a1;padding:1px 2px;font-size:9px;cursor:pointer;';
-  TIMES.forEach(function(t){var o=document.createElement('option');o.textContent=t;if(t===a.duty)o.selected=true;sel.appendChild(o);});
+  sel.style.cssText='flex-shrink:0;background:#f0f4ff;border:1px solid #bbdefb;border-radius:4px;color:#0d47a1;padding:1px 1px;font-size:8px;cursor:pointer;width:38px;';
+  TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===a.duty)o.selected=true;sel.appendChild(o);});
   var capturedEid=a.emp.id;var capturedVid=vid;
   sel.addEventListener('change',function(){
     if(asgn[capturedVid]&&asgn[capturedVid][capturedEid]){
@@ -1260,8 +1523,12 @@ function makeV3Card(a,vid,c){
       saveCloud();
     }
   });
-  trow.appendChild(sel);
-  d.appendChild(top);d.appendChild(trow);
+  d.appendChild(sel);
+  // Remove button - compact
+  var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';
+  rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
+  rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
+  d.appendChild(rm);
   return d;
 }
 
@@ -1269,7 +1536,7 @@ function makeTselEl(cur,isFixed,onChange){
   var wrap=document.createElement('div');wrap.style.cssText='display:flex;align-items:center;gap:3px;';
   if(isFixed){var lk=document.createElement('span');lk.className='lockico';lk.textContent='🔒';wrap.appendChild(lk);}
   var sel=document.createElement('select');sel.className='v3sel';
-  TIMES.forEach(function(t){var o=document.createElement('option');o.textContent=t;if(t===cur)o.selected=true;sel.appendChild(o);});
+  TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===cur)o.selected=true;sel.appendChild(o);});
   sel.addEventListener('change',function(){onChange(this.value);});
   wrap.appendChild(sel);
   return wrap;
@@ -1290,6 +1557,21 @@ function dropStaff(eid,vid){
 function remV(eid,vid){
   if(asgn[vid])delete asgn[vid][eid];
   drawStaffPanel();drawVenueGrid();drawStats();saveCloud();
+}
+
+// Confirmation wrapper used by the venue box's direct ✕ buttons.
+// (remV itself stays popup-free since it's also called from flows that already confirmed, e.g. the Undeploy modal.)
+function remVConfirm(eid,vid){
+  var e=getS(eid);var v=getV(vid);
+  if(!e||!v){remV(eid,vid);return;}
+  showModal(
+    '<div class="mt" style="color:#c62828;">Remove Staff from Venue?</div>'+
+    '<div style="text-align:center;font-size:15px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(e.name)+'</strong> from<br><strong>'+esc(v.name)+'</strong>?</div>'+
+    '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
+    '<button class="mcancel" id="m-no">Cancel</button>'
+  );
+  g('m-yes').onclick=function(){remV(eid,vid);closeModal();};
+  g('m-no').onclick=closeModal;
 }
 
 function showBulkTime(vid){
@@ -1422,6 +1704,31 @@ wireBtnCopy(document.getElementById('btnCopy2'));
 wireBtnDraft(document.getElementById('btnDraft2'));
 wireBtnDrafts(document.getElementById('btnDrafts2'));
 wireBtnSave(document.getElementById('btnSave2'));
+function wireBtnPDF(el){if(el)el.addEventListener('click',function(){saveLog();makePDF();});}
+wireBtnPDF(document.getElementById('btnExportPDF'));
+// Mobile action bar buttons (were previously completely unwired)
+wireBtnCopy(document.getElementById('mbtnCopy'));
+wireBtnDraft(document.getElementById('mbtnDraft'));
+wireBtnDrafts(document.getElementById('mbtnDrafts'));
+wireBtnSave(document.getElementById('mbtnSave'));
+wireBtnPDF(document.getElementById('mbtnPDF'));
+
+// Multi-View toggle - shows staff + vendors together in every venue box
+function wireBtnMultiView(el){
+  if(!el)return;
+  el.addEventListener('click',function(){
+    multiViewMode=!multiViewMode;
+    document.querySelectorAll('#btnMultiView,#mbtnMultiView').forEach(function(b){
+      b.style.background=multiViewMode?'#6a1b9a':'';
+      b.style.color=multiViewMode?'#fff':(b.id==='mbtnMultiView'?'#6a1b9a':'#e1bee7');
+      b.style.borderColor=multiViewMode?'#6a1b9a':'#ce93d8';
+    });
+    toast(multiViewMode?'Multi-View on — showing staff + vendors':'Multi-View off');
+    drawVenueGrid();
+  });
+}
+wireBtnMultiView(document.getElementById('btnMultiView'));
+wireBtnMultiView(document.getElementById('mbtnMultiView'));
 
 function showCopyFrom(){
   var y=new Date();y.setDate(y.getDate()-1);
@@ -1486,7 +1793,7 @@ document.querySelectorAll('.mtab').forEach(function(btn){
     mStaffRole='All'; // Reset role filter when switching tabs
     document.querySelectorAll('.mtab').forEach(function(b){b.classList.remove('on');});
     this.classList.add('on');
-    ['staff','venues','roles'].forEach(function(t){
+    ['staff','venues','roles','vendors'].forEach(function(t){
       var el=g('mp-'+t);
       if(el)el.classList.toggle('hide',t!==curMtab);
     });
@@ -1498,6 +1805,7 @@ function drawManage(){
   populateRoleDD();populateVenueDD();populateTimeDD();
   if(curMtab==='staff')drawMStaff();
   else if(curMtab==='venues')drawMVenues();
+  else if(curMtab==='vendors')drawMVendorTypes();
   else drawMRoles();
 }
 
@@ -1982,6 +2290,23 @@ function saveLog(){
   dlog[d]=log;
 }
 
+function saveVendorLog(){
+  var d=getD();
+  var vlog={venues:{}};
+  Object.keys(vendorAsgn).forEach(function(vid){
+    var vm=vendorAsgn[vid];if(!vm)return;
+    var hasEntries=Object.keys(vm).some(function(tid){return Array.isArray(vm[tid])&&vm[tid].length>0;});
+    if(!hasEntries)return;
+    vlog.venues[vid]={};
+    Object.keys(vm).forEach(function(tid){
+      if(!Array.isArray(vm[tid])||!vm[tid].length)return;
+      // deep copy entries (company, qty, time, notes, serviceLabel, services)
+      vlog.venues[vid][tid]=vm[tid].map(function(entry){return JSON.parse(JSON.stringify(entry));});
+    });
+  });
+  vdlog[d]=vlog;
+}
+
 // Report tab switching
 document.querySelectorAll('.rtab').forEach(function(btn){
   btn.addEventListener('click',function(){
@@ -2227,6 +2552,11 @@ function makeVHPDF(){
 }
 
 // ── PDF ───────────────────────────────────────────────────────
+function hexToRgb(hex){
+  hex=hex.replace('#','');
+  return [parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)];
+}
+
 function makePDF(){
   if(!window.jspdf){toast('PDF library loading...','w');return;}
   // Use RPD date if set (report screen), otherwise today
@@ -2277,18 +2607,57 @@ function makePDF(){
     doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,6,'F');
     doc.setTextColor(13,71,161);doc.setFontSize(6);doc.setFont('helvetica','bold');
     doc.text('#',mg+2,y+4.2);doc.text('Name',mg+10,y+4.2);doc.text('Role',mg+100,y+4.2);doc.text('Duty',pw-mg-3,y+4.2,{align:'right'});y+=7;
-    var mgrs=t.filter(function(a){return isMgr(a.emp);}),rest2=t.filter(function(a){return !isMgr(a.emp);});
-    mgrs.concat(rest2).forEach(function(a,i){
-      var isMG=isMgr(a.emp),rh=isMG?8:6.5;cp(rh);
-      if(isMG){doc.setFillColor(255,244,180);doc.rect(mg,y,pw-mg*2,rh,'F');doc.setDrawColor(220,160,0);doc.setLineWidth(0.4);doc.rect(mg,y,pw-mg*2,rh,'S');doc.setLineWidth(0.2);}
-      else if(i%2===0){doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,rh,'F');}
-      doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(String(i+1),mg+2,y+rh-2);
-      if(isMG){doc.setTextColor(120,70,0);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(a.emp.name+(a.emp.phone?'  Ph:'+a.emp.phone:''),mg+10,y+rh-2);}
-      else{doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text(a.emp.name,mg+10,y+rh-2);}
-      doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+100,y+rh-2);
-      doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text(a.duty,pw-mg-3,y+rh-2,{align:'right'});
-      y+=rh;
-    });y+=4;
+    // Group by role: Manager first, then all other roles alphabetically
+    var roleGroups2={};
+    t.forEach(function(a){
+      var r=a.emp.role;
+      if(!roleGroups2[r])roleGroups2[r]=[];
+      roleGroups2[r].push(a);
+    });
+    var mgrs2=roleGroups2['Manager']||[];
+    var otherRoles=Object.keys(roleGroups2).filter(function(r){return r!=='Manager';}).sort();
+    var rowNum=0;
+    // Managers first
+    if(mgrs2.length){
+      cp(7);
+      doc.setFillColor(255,244,180);doc.rect(mg,y,pw-mg*2,5.5,'F');
+      doc.setTextColor(120,70,0);doc.setFontSize(6);doc.setFont('helvetica','bold');
+      doc.text('MANAGER',mg+3,y+4);y+=5.5;
+      mgrs2.forEach(function(a){
+        cp(7.5);
+        doc.setFillColor(255,248,200);doc.rect(mg,y,pw-mg*2,7.5,'F');
+        doc.setDrawColor(220,160,0);doc.setLineWidth(0.2);doc.rect(mg,y,pw-mg*2,7.5,'S');doc.setLineWidth(0);
+        doc.setTextColor(120,70,0);doc.setFont('helvetica','bold');doc.setFontSize(8);
+        doc.text(a.emp.name+(a.emp.phone?'  Ph:'+a.emp.phone:''),mg+5,y+5.5);
+        doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);
+        doc.text(a.duty,pw-mg-3,y+5.5,{align:'right'});
+        y+=7.5;rowNum++;
+      });
+    }
+    // Other roles, each with a colored section heading
+    otherRoles.forEach(function(r){
+      var grp=roleGroups2[r];
+      var c=cc(r);
+      var rgb=hexToRgb(c);
+      cp(7);
+      doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.rect(mg,y,pw-mg*2,5.5,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(6);doc.setFont('helvetica','bold');
+      doc.text(r.toUpperCase(),mg+3,y+4);doc.text(grp.length+' staff',pw-mg-3,y+4,{align:'right'});
+      y+=5.5;
+      grp.forEach(function(a,i){
+        cp(6.5);
+        // Light tint background matching role color
+        doc.setFillColor(rgb[0]+Math.round((255-rgb[0])*0.88),rgb[1]+Math.round((255-rgb[1])*0.88),rgb[2]+Math.round((255-rgb[2])*0.88));
+        doc.rect(mg,y,pw-mg*2,6.5,'F');
+        doc.setTextColor(rgb[0]>50?Math.max(rgb[0]-40,20):rgb[0]+20,rgb[1]>50?Math.max(rgb[1]-40,20):rgb[1]+20,rgb[2]>50?Math.max(rgb[2]-40,20):rgb[2]+20);
+        doc.setFont('helvetica','bold');doc.setFontSize(7);
+        doc.text(a.emp.name,mg+5,y+4.5);
+        doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);
+        doc.text(a.duty,pw-mg-3,y+4.5,{align:'right'});
+        y+=6.5;rowNum++;
+      });
+    });
+    y+=4;
   });
   if(lv2.length){cp(16);doc.setFillColor(198,40,40);doc.roundedRect(mg,y,pw-mg*2,10,2,2,'F');doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('ON LEAVE',pw/2,y+7,{align:'center'});doc.text(lv2.length+' staff',pw-mg-3,y+7,{align:'right'});y+=12;lv2.forEach(function(a,i){cp(6.5);if(i%2===0){doc.setFillColor(255,245,245);doc.rect(mg,y,pw-mg*2,6.5,'F');}doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(String(i+1),mg+2,y+4.5);doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.text(a.emp.name,mg+10,y+4.5);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+100,y+4.5);y+=6.5;});y+=4;}
   if(ov.length){cp(16);doc.setFillColor(230,81,0);doc.roundedRect(mg,y,pw-mg*2,10,2,2,'F');doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('OFFICE DUTY',pw/2,y+7,{align:'center'});doc.text(ov.length+' staff',pw-mg-3,y+7,{align:'right'});y+=12;ov.forEach(function(a,i){cp(6.5);if(i%2===0){doc.setFillColor(255,248,240);doc.rect(mg,y,pw-mg*2,6.5,'F');}doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(String(i+1),mg+2,y+4.5);doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.text(a.emp.name,mg+10,y+4.5);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+100,y+4.5);y+=6.5;});y+=4;}
@@ -2876,271 +3245,356 @@ function makeLOPDF(){
   doc.save('GAVS_Leave_Office_'+fromDate+'_to_'+toDate+'.pdf');toast('PDF downloaded!');
 }
 
-
 // ════════════════════════════════════════════════════════════
-// ASSIGN VENDORS
+// MANAGE → VENDOR TYPES & COMPANIES
 // ════════════════════════════════════════════════════════════
-function updateVendorADate(){
-  var el=document.getElementById('VENDOR_ADATE');
-  if(el)el.textContent='Date: '+fd(getD());
-}
+var curMVT=null; // currently selected vendor type id in Manage
 
-function drawVendorTypes(){
-  var el=document.getElementById('VT_LIST');if(!el)return;
-  var cntEl=document.getElementById('VT_CNT');if(cntEl)cntEl.textContent=VENDOR_TYPES.length;
+function drawMVendorTypes(){
+  var el=g('MVT_LIST');if(!el)return;
   el.innerHTML='';
-  var icons={'Labour':'👷','Photography':'📷','Cinematic':'🎥','Catering':'🍽️','Decor':'🎉','Transport':'🚐'};
   VENDOR_TYPES.forEach(function(vt,i){
     var c=CLRS[i%CLRS.length];
+    var compCount=(vendorCompanies[vt.id]||[]).length;
     var row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:8px;background:#f8faff;border:1.5px solid #e3eaff;border-radius:9px;padding:9px 11px;margin-bottom:6px;';
-    var icon=icons[vt]||'📦';
-    row.innerHTML='<span style="font-size:16px;">'+icon+'</span><div style="flex:1;font-size:13px;font-weight:700;color:'+c+';">'+esc(vt)+'</div>';
-    var rm=document.createElement('button');
-    rm.className='ibtn db';rm.textContent='🗑️';rm.style.cssText='width:26px;height:26px;font-size:11px;';
-    rm.addEventListener('click',(function(type){return function(){confirmDelVendorType(type);};})(vt));
-    row.appendChild(rm);
+    row.className='srow';
+    row.style.cursor='pointer';
+    if(curMVT===vt.id)row.style.cssText+='border-color:'+c+';box-shadow:0 2px 8px '+c+'33;';
+    var info=document.createElement('div');info.className='sr-info';
+    info.innerHTML='<div class="sr-name" style="color:'+c+';">'+vt.icon+' '+esc(vt.name)+'</div>'+
+      '<div class="sr-sub">'+compCount+' compan'+(compCount===1?'y':'ies')+' registered</div>';
+    row.appendChild(info);
+    var arrow=document.createElement('div');arrow.style.cssText='color:#ccc;font-size:16px;';arrow.textContent='›';
+    row.appendChild(arrow);
+    row.addEventListener('click',(function(id){return function(){curMVT=id;drawMVTDetail();drawMVendorTypes();};})(vt.id));
     el.appendChild(row);
   });
+  if(curMVT)drawMVTDetail();
 }
 
-function confirmDelVendorType(vt){
-  // check if used anywhere in current vendorAsgn
-  var used=Object.keys(vendorAsgn).some(function(vid){return vendorAsgn[vid]&&vendorAsgn[vid][vt];});
-  showModal(
-    '<div class="mt" style="color:#c62828;">Delete Vendor Type?</div>'+
-    '<div style="text-align:center;font-size:14px;margin-bottom:'+(used?'8px':'18px')+';">Delete <strong>'+esc(vt)+'</strong>?</div>'+
-    (used?'<div style="font-size:12px;color:#e65100;text-align:center;margin-bottom:16px;">⚠️ Currently assigned to one or more venues today. Those assignments will be removed.</div>':'')+
-    '<button class="mbtn red" id="m-yes">Yes, Delete</button>'+
-    '<button class="mcancel" id="m-no">Cancel</button>'
-  );
-  g('m-yes').onclick=function(){
-    VENDOR_TYPES=VENDOR_TYPES.filter(function(x){return x!==vt;});
-    Object.keys(vendorAsgn).forEach(function(vid){if(vendorAsgn[vid])delete vendorAsgn[vid][vt];});
-    closeModal();toast(vt+' removed','w');
-    drawVendorTypes();drawVendorGrid();saveCloud();
-  };
-  g('m-no').onclick=closeModal;
-}
-
-var btnAddVT=document.getElementById('btnAddVT');
-if(btnAddVT)btnAddVT.addEventListener('click',function(){
-  var n=(document.getElementById('NEW_VT').value||'').trim();
-  if(!n){toast('Enter vendor type name','w');return;}
-  if(VENDOR_TYPES.indexOf(n)>=0){toast('Already exists','w');return;}
-  VENDOR_TYPES.push(n);
-  document.getElementById('NEW_VT').value='';
-  toast(n+' added!');drawVendorTypes();saveCloud();
-});
-
-// Venue search for vendors grid
-var vvSrch=document.getElementById('VV_SRCH');
-if(vvSrch)vvSrch.addEventListener('input',function(){
-  var q=this.value.trim();
-  var dd=document.getElementById('VV_DD');
-  if(q.length<1){dd.classList.remove('show');dd.innerHTML='';return;}
-  var matches=venues.filter(function(v){
-    return v.name.toLowerCase().indexOf(q.toLowerCase())>=0&&activeVendorVids.indexOf(v.id)<0;
-  }).slice(0,15);
-  dd.innerHTML='';
-  if(!matches.length){
-    var d=document.createElement('div');d.className='vdd-item';d.textContent='No venues found';d.style.color='#aaa';
-    dd.appendChild(d);
+function drawMVTDetail(){
+  var el=g('MVT_DETAIL');if(!el)return;
+  var vt=VENDOR_TYPES.find(function(x){return x.id===curMVT;});
+  if(!vt){
+    el.innerHTML='<div style="text-align:center;padding:60px 20px;color:#bbb;"><div style="font-size:40px;">📋</div><div style="font-size:14px;font-weight:700;color:#1565c0;margin-top:10px;">Select a Vendor Type</div></div>';
+    return;
+  }
+  var companies=vendorCompanies[vt.id]||[];
+  var h='<div class="addbox"><div class="abt">'+vt.icon+' '+esc(vt.name)+' — Companies</div>'+
+    '<input class="inp" id="NEW_VCO" placeholder="e.g. ABC Labour Co."/>'+
+    '<button class="bigbtn" id="btnAddVCO">+ Add Company</button>'+
+    '</div><div id="VCO_LIST"></div>';
+  el.innerHTML=h;
+  var listEl=document.getElementById('VCO_LIST');
+  if(!companies.length){
+    listEl.innerHTML='<div style="text-align:center;padding:30px;color:#bbb;font-size:13px;">No companies added yet.</div>';
   } else {
-    matches.forEach(function(v){
-      var d=document.createElement('div');d.className='vdd-item';d.textContent='🏨 '+v.name;
-      d.addEventListener('click',(function(vid){return function(){
-        if(activeVendorVids.indexOf(vid)<0)activeVendorVids.push(vid);
-        vvSrch.value='';dd.classList.remove('show');dd.innerHTML='';
-        drawVendorGrid();
-      };})(v.id));
-      dd.appendChild(d);
+    companies.forEach(function(co,i){
+      var row=document.createElement('div');row.className='srow';
+      var info=document.createElement('div');info.className='sr-info';
+      info.innerHTML='<div class="sr-name">'+esc(co)+'</div>';
+      var db=document.createElement('button');db.className='ibtn db';db.textContent='🗑️';
+      db.addEventListener('click',(function(idx){return function(){
+        vendorCompanies[vt.id].splice(idx,1);
+        toast(co+' removed','w');drawMVTDetail();drawMVendorTypes();saveCloud();
+      };})(i));
+      row.appendChild(info);row.appendChild(db);
+      listEl.appendChild(row);
     });
   }
-  dd.classList.add('show');
-});
-document.addEventListener('click',function(ev){
-  var vvdd=document.getElementById('VV_DD');
-  if(vvSrch&&vvdd&&!vvSrch.contains(ev.target)&&!vvdd.contains(ev.target)){
-    vvdd.classList.remove('show');
-  }
-});
-
-function drawVendorGrid(){
-  var el=document.getElementById('VENDOR_GRID');if(!el)return;
-  el.innerHTML='';
-  // Auto-include venues that already have vendor assignments
-  Object.keys(vendorAsgn).forEach(function(vid){
-    if(vendorAsgn[vid]&&Object.keys(vendorAsgn[vid]).length&&activeVendorVids.indexOf(vid)<0){
-      activeVendorVids.push(vid);
-    }
+  document.getElementById('btnAddVCO').addEventListener('click',function(){
+    var n=(document.getElementById('NEW_VCO').value||'').trim();
+    if(!n){toast('Enter company name','w');return;}
+    if(!vendorCompanies[vt.id])vendorCompanies[vt.id]=[];
+    if(vendorCompanies[vt.id].indexOf(n)>=0){toast('Already exists','w');return;}
+    vendorCompanies[vt.id].push(n);
+    toast(n+' added!');drawMVTDetail();drawMVendorTypes();saveCloud();
   });
-  activeVendorVids.forEach(function(vid){
-    var v=getV(vid);if(!v)return;
-    el.appendChild(makeVendorBox(v));
-  });
-  var addBox=document.createElement('div');
-  addBox.className='add-vbox';
-  addBox.innerHTML='<div style="font-size:36px;color:#ef9a9a;margin-bottom:8px;">+</div><div style="font-size:14px;font-weight:700;color:#c62828;">Add Venue</div><div style="font-size:11px;color:#e57373;margin-top:4px;">For vendor assignment</div>';
-  addBox.addEventListener('click',function(){
-    var inp=document.getElementById('VV_SRCH');if(inp)inp.focus();
-  });
-  el.appendChild(addBox);
+  document.getElementById('NEW_VCO').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('btnAddVCO').click();});
 }
 
-function makeVendorBox(v){
-  var box=document.createElement('div');
-  box.className='vbox';
-  box.id='vvb-'+v.id;
 
-  var hdr=document.createElement('div');
-  hdr.className='vbox-hdr';
-  var icon=document.createElement('span');icon.textContent='🏨';
-  var nm=document.createElement('div');nm.className='vbox-name';nm.textContent=v.name;
-  hdr.appendChild(icon);hdr.appendChild(nm);
+// ════════════════════════════════════════════════════════════
+// ASSIGN DUTIES — STAFF / VENDORS MODE TOGGLE
+// ════════════════════════════════════════════════════════════
+var modeBtnStaff=document.getElementById('modeBtnStaff');
+var modeBtnVendors=document.getElementById('modeBtnVendors');
+if(modeBtnStaff)modeBtnStaff.addEventListener('click',function(){switchAssignMode('staff');});
+if(modeBtnVendors)modeBtnVendors.addEventListener('click',function(){switchAssignMode('vendors');});
 
-  var vm=vendorAsgn[v.id]||{};
-  var totalQty=Object.values(vm).reduce(function(a,b){return a+b;},0);
-  var cnt=document.createElement('span');cnt.className='vbox-cnt';cnt.textContent=totalQty+' total';
-  hdr.appendChild(cnt);
+function switchAssignMode(mode){
+  assignMode=mode;
+  var staffWrap=document.getElementById('STAFF_PANEL_WRAP');
+  var vendorWrap=document.getElementById('VENDOR_PANEL_WRAP');
+  if(staffWrap)staffWrap.classList.toggle('hide',mode!=='staff');
+  if(vendorWrap)vendorWrap.classList.toggle('hide',mode!=='vendors');
+  if(modeBtnStaff)modeBtnStaff.classList.toggle('mode-on',mode==='staff');
+  if(modeBtnVendors)modeBtnVendors.classList.toggle('mode-on',mode==='vendors');
+  if(mode==='vendors'){drawVendorTypeList();}
+  drawVenueGrid(); // redraw venue boxes to show staff or vendor content
+}
 
-  var cls=document.createElement('button');cls.className='vbox-close';cls.textContent='✕';cls.title='Remove from view';
-  cls.addEventListener('click',(function(vid2,vname){return function(){
-    showModal(
-      '<div class="mt">Remove Venue from Vendor View?</div>'+
-      '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:8px;"><strong>'+esc(vname)+'</strong></div>'+
-      '<div style="text-align:center;font-size:13px;color:#888;margin-bottom:18px;">Vendor assignments will stay saved; venue can be re-added anytime.</div>'+
-      '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
-      '<button class="mcancel" id="m-no">Cancel</button>'
-    );
-    g('m-yes').onclick=function(){activeVendorVids=activeVendorVids.filter(function(id){return id!==vid2;});closeModal();drawVendorGrid();};
-    g('m-no').onclick=closeModal;
-  };})(v.id,v.name));
-  hdr.appendChild(cls);
-  box.appendChild(hdr);
+var deskVendorType='All'; // filter state for vendor pills, mirrors deskRole for staff
 
-  var body=document.createElement('div');body.className='vbox-body';
-  var icons={'Labour':'👷','Photography':'📷','Cinematic':'🎥','Catering':'🍽️','Decor':'🎉','Transport':'🚐'};
+function drawVendorTypeList(){
+  var el=document.getElementById('VT_LIST');if(!el)return;
+  var totalCompanies=0;
+  Object.keys(vendorCompanies).forEach(function(tid){totalCompanies+=(vendorCompanies[tid]||[]).length;});
+  var cntEl=document.getElementById('VT_CNT');if(cntEl)cntEl.textContent=totalCompanies;
+
+  // Vendor type filter pills - same pattern as staff role pills
+  var vpEl=document.getElementById('VT_ROLES');
+  if(vpEl){
+    vpEl.innerHTML='';
+    var allBtn=document.createElement('button');
+    allBtn.className='rp';
+    allBtn.textContent='All';
+    allBtn.style.background=deskVendorType==='All'?'#1565c0':'#e3eaff';
+    allBtn.style.color=deskVendorType==='All'?'#fff':'#1565c0';
+    allBtn.addEventListener('click',function(){deskVendorType='All';drawVendorTypeList();drawVenueGrid();});
+    vpEl.appendChild(allBtn);
+    VENDOR_TYPES.forEach(function(vt,i){
+      var c=CLRS[i%CLRS.length],on=(deskVendorType===vt.id);
+      var btn=document.createElement('button');
+      btn.className='rp';
+      btn.textContent=vt.name;
+      btn.style.background=on?c:'rgba(0,0,0,0.05)';
+      btn.style.color=on?'#fff':c;
+      btn.addEventListener('click',(function(tid){return function(){deskVendorType=tid;drawVendorTypeList();drawVenueGrid();};})(vt.id));
+      vpEl.appendChild(btn);
+    });
+  }
+
+  el.innerHTML='';
 
   VENDOR_TYPES.forEach(function(vt,i){
+    if(deskVendorType!=='All'&&deskVendorType!==vt.id)return; // pill filter
     var c=CLRS[i%CLRS.length];
-    var qty=vm[vt]||0;
-    var row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0f4ff;';
-    var icon=icons[vt]||'📦';
-    var lbl=document.createElement('div');
-    lbl.style.cssText='flex:1;font-size:12px;font-weight:700;color:'+c+';';
-    lbl.innerHTML=icon+' '+esc(vt);
-    row.appendChild(lbl);
+    var companies=vendorCompanies[vt.id]||[];
+    if(!companies.length)return; // skip empty categories - register companies in Manage first
 
-    var minus=document.createElement('button');
-    minus.textContent='−';
-    minus.style.cssText='width:24px;height:24px;border-radius:6px;border:1px solid #e3eaff;background:#f8faff;color:#1565c0;font-size:14px;font-weight:700;cursor:pointer;';
-    minus.addEventListener('click',(function(vid2,type){return function(){
-      var cur=(vendorAsgn[vid2]&&vendorAsgn[vid2][type])||0;
-      if(cur>0){
-        cur--;
-        if(!vendorAsgn[vid2])vendorAsgn[vid2]={};
-        if(cur===0)delete vendorAsgn[vid2][type];else vendorAsgn[vid2][type]=cur;
-        drawVendorGrid();saveCloud();
-      }
-    };})(v.id,vt));
+    // Section heading - same style as role headings in staff panel
+    var hdr=document.createElement('div');
+    hdr.className='rg-hdr';
+    hdr.style.color=c;
+    hdr.innerHTML=vt.icon+' '+esc(vt.name)+' <div class="rg-line"></div>';
+    el.appendChild(hdr);
 
-    var qtyDisp=document.createElement('div');
-    qtyDisp.style.cssText='width:32px;text-align:center;font-size:14px;font-weight:800;color:'+(qty>0?c:'#ccc')+';';
-    qtyDisp.textContent=qty;
-
-    var plus=document.createElement('button');
-    plus.textContent='+';
-    plus.style.cssText='width:24px;height:24px;border-radius:6px;border:1px solid #e3eaff;background:#f8faff;color:#1565c0;font-size:14px;font-weight:700;cursor:pointer;';
-    plus.addEventListener('click',(function(vid2,type){return function(){
-      if(!vendorAsgn[vid2])vendorAsgn[vid2]={};
-      vendorAsgn[vid2][type]=((vendorAsgn[vid2][type])||0)+1;
-      drawVendorGrid();saveCloud();
-    };})(v.id,vt));
-
-    row.appendChild(minus);row.appendChild(qtyDisp);row.appendChild(plus);
-    body.appendChild(row);
+    if(vt.special==='photovideo'){
+      // Tree structure: company name = non-draggable header, services underneath = draggable
+      companies.forEach(function(co){
+        var coHdr=document.createElement('div');
+        coHdr.style.cssText='font-size:12px;font-weight:800;color:#111;padding:6px 4px 3px;display:flex;align-items:center;gap:5px;';
+        coHdr.innerHTML='📁 '+esc(co);
+        el.appendChild(coHdr);
+        PV_SERVICES.forEach(function(svc){
+          var card=document.createElement('div');
+          card.className='scard avail';
+          card.draggable=true;
+          card.style.cssText='cursor:grab;margin-left:14px;';
+          card.setAttribute('data-vtid',vt.id);
+          card.setAttribute('data-company',co);
+          card.setAttribute('data-service',svc);
+          var info=document.createElement('div');info.className='sci';
+          var nm=document.createElement('div');nm.className='scn';nm.textContent=svc;
+          info.appendChild(nm);
+          var dh=document.createElement('span');dh.className='dh';dh.textContent='⠿';
+          card.appendChild(dh);card.appendChild(info);
+          el.appendChild(card);
+        });
+      });
+    } else {
+      // Normal types: company itself is draggable
+      companies.forEach(function(co){
+        var card=document.createElement('div');
+        card.className='scard avail';
+        card.draggable=true;
+        card.style.cssText='cursor:grab;';
+        card.setAttribute('data-vtid',vt.id);
+        card.setAttribute('data-company',co);
+        var info=document.createElement('div');info.className='sci';
+        var nm=document.createElement('div');nm.className='scn';nm.textContent=co;
+        var sub=document.createElement('div');sub.className='scr';sub.style.color=c;sub.textContent=vt.name;
+        info.appendChild(nm);info.appendChild(sub);
+        var dh=document.createElement('span');dh.className='dh';dh.textContent='⠿';
+        card.appendChild(dh);card.appendChild(info);
+        el.appendChild(card);
+      });
+    }
   });
 
-  if(!VENDOR_TYPES.length){
-    var hint=document.createElement('div');hint.className='drop-hint';hint.textContent='No vendor types yet. Add some on the left.';
-    body.appendChild(hint);
+  var visibleCompanies=0;
+  VENDOR_TYPES.forEach(function(vt){
+    if(deskVendorType!=='All'&&deskVendorType!==vt.id)return;
+    visibleCompanies+=(vendorCompanies[vt.id]||[]).length;
+  });
+  if(!visibleCompanies){
+    if(!totalCompanies){
+      el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px 12px;font-size:12px;">No vendor companies registered yet.<br>Add some in Manage → Vendor Types.</div>';
+    } else {
+      el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px 12px;font-size:12px;">No companies registered for this category yet.</div>';
+    }
   }
 
-  box.appendChild(body);
-  return box;
-}
-
-// ── Vendor action buttons ──────────────────────────────────────
-function saveVendorLog(){
-  var d=getD();
-  var log={venues:{}};
-  Object.keys(vendorAsgn).forEach(function(vid){
-    if(!vendorAsgn[vid]||!Object.keys(vendorAsgn[vid]).length)return;
-    log.venues[vid]=Object.assign({},vendorAsgn[vid]);
+  // drag wiring (delegated) - only fires from cards with data-company
+  el.addEventListener('dragstart',function(ev){
+    var card=ev.target.closest('.scard[data-company]');
+    if(!card)return;
+    var payload={typeId:card.getAttribute('data-vtid'),company:card.getAttribute('data-company'),service:card.getAttribute('data-service')||null};
+    ev.dataTransfer.setData('text/vendorcard',JSON.stringify(payload));
+    ev.dataTransfer.effectAllowed='move';
   });
-  vdlog[d]=log;
 }
 
-var btnVSave=document.getElementById('btnVSave');
-if(btnVSave)btnVSave.addEventListener('click',function(){saveVendorLog();saveCloud();toast('Vendors saved to cloud!');});
+// Touch drag for vendor company/service cards (iPad/mobile)
+var touchVCardPayload=null;
+document.addEventListener('touchstart',function(ev){
+  var card=ev.target.closest('#VT_LIST .scard[data-company]');
+  if(!card)return;
+  touchVCardPayload={typeId:card.getAttribute('data-vtid'),company:card.getAttribute('data-company'),service:card.getAttribute('data-service')||null};
+  var vt=VENDOR_TYPES.find(function(x){return x.id===touchVCardPayload.typeId;});
+  if(!vt)return;
+  var label=touchVCardPayload.service?(touchVCardPayload.company+' — '+touchVCardPayload.service):touchVCardPayload.company;
+  var touch=ev.touches[0];
+  touchGhost=document.createElement('div');
+  touchGhost.style.cssText='position:fixed;z-index:9999;pointer-events:none;background:#fff;border:2px solid #1565c0;border-radius:10px;padding:8px 12px;font-size:13px;color:#111;white-space:nowrap;box-shadow:0 6px 22px rgba(0,0,0,0.2);opacity:0.9;';
+  touchGhost.textContent=vt.icon+' '+label;
+  touchGhost.style.left=(touch.clientX-50)+'px';touchGhost.style.top=(touch.clientY-30)+'px';
+  document.body.appendChild(touchGhost);
+  if(navigator.vibrate)navigator.vibrate(30);
+  card.style.opacity='0.3';
+},{passive:true});
 
-var btnVCopy=document.getElementById('btnVCopy');
-if(btnVCopy)btnVCopy.addEventListener('click',function(){
-  var y=new Date();y.setDate(y.getDate()-1);
-  showModal(
-    '<div class="mt">📅 Copy Vendors from Date</div>'+
-    '<div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">Copy all vendor assignments from a past date.</div>'+
-    '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:6px;">Select Date</label>'+
-    '<input id="VCFDATE" type="date" class="inp" value="'+y.toISOString().slice(0,10)+'"/>'+
-    '<button class="mbtn blue" id="m-yes">Copy Vendors</button>'+
-    '<button class="mcancel" id="m-no">Cancel</button>'
-  );
-  g('m-yes').onclick=function(){
-    var dt=g('VCFDATE').value;
-    if(!dt){toast('Select a date','w');return;}
-    var log=vdlog[dt];
-    if(!log||!Object.keys(log.venues||{}).length){toast('No vendor data for '+fd(dt),'w');closeModal();return;}
-    Object.keys(log.venues).forEach(function(vid){
-      vendorAsgn[vid]=Object.assign({},log.venues[vid]);
-      if(activeVendorVids.indexOf(vid)<0)activeVendorVids.push(vid);
+document.addEventListener('touchend',function(ev){
+  if(!touchVCardPayload)return;
+  if(touchGhost){try{document.body.removeChild(touchGhost);}catch(x){}touchGhost=null;}
+  var card=document.querySelector('#VT_LIST .scard[data-company="'+touchVCardPayload.company+'"][data-vtid="'+touchVCardPayload.typeId+'"]');
+  if(card)card.style.opacity='';
+  var touch=ev.changedTouches[0];
+  document.querySelectorAll('.vbox').forEach(function(b){b.classList.remove('drag-over');});
+  var elAt=document.elementFromPoint(touch.clientX,touch.clientY);
+  if(elAt){
+    var vbox=elAt.closest('.vbox');
+    if(vbox){
+      var vid=vbox.id.replace('vb-','');
+      if(vid)addVendorCardToVenue(touchVCardPayload,vid);
+    }
+  }
+  touchVCardPayload=null;
+},{passive:true});
+
+function addVendorCardToVenue(payload,vid){
+  var vt=VENDOR_TYPES.find(function(x){return x.id===payload.typeId;});
+  if(!vt)return;
+  if(activeVids.indexOf(vid)<0)activeVids.push(vid);
+  if(!vendorAsgn[vid])vendorAsgn[vid]={};
+  if(!vendorAsgn[vid][payload.typeId])vendorAsgn[vid][payload.typeId]=[];
+  var entry={company:payload.company,qty:1,time:'9:00 AM',notes:''};
+  if(vt.special==='photovideo'&&payload.service){
+    entry.serviceLabel=payload.service;
+    entry.services={};
+    entry.services[payload.service]=1;
+  }
+  vendorAsgn[vid][payload.typeId].push(entry);
+  var label=payload.service?(payload.company+' — '+payload.service):payload.company;
+  toast(label+' added!');
+  drawVenueGrid();saveCloud();
+}
+
+
+
+// ════════════════════════════════════════════════════════════
+// VENDOR REPORT SYSTEM
+// ════════════════════════════════════════════════════════════
+
+// Sub-tab switching
+document.querySelectorAll('.vrtab').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.vrtab').forEach(function(b){b.classList.remove('on');});
+    this.classList.add('on');
+    var tab=this.getAttribute('data-vrtab');
+    g('vr-daily').classList.toggle('hide',tab!=='daily');
+    g('vr-venue').classList.toggle('hide',tab!=='venue');
+    g('vr-company').classList.toggle('hide',tab!=='company');
+    if(tab==='daily')drawDailyVendorReport();
+    if(tab==='venue')populateVRVVenue();
+    if(tab==='company')populateVRCCompany();
+  });
+});
+
+function initVendorReportDates(){
+  var vrdEl=document.getElementById('VRD');
+  if(vrdEl&&!vrdEl.value)vrdEl.value=getD();
+  drawDailyVendorReport();
+}
+
+// ── helper: build venue label for a given vendor entry (handles photovideo service label) ──
+function vendorEntryLabel(entry,vt){
+  var label=entry.company||'(no name)';
+  if(vt&&vt.special==='photovideo'&&entry.serviceLabel)label+=' — '+entry.serviceLabel;
+  return label;
+}
+
+// ════════════════════════════════════════════════════════════
+// 1. DAILY VENDOR REPORT
+// ════════════════════════════════════════════════════════════
+var btnViewVendorReport=document.getElementById('btnViewVendorReport');
+if(btnViewVendorReport)btnViewVendorReport.addEventListener('click',drawDailyVendorReport);
+var btnVendorDailyPDF=document.getElementById('btnVendorDailyPDF');
+if(btnVendorDailyPDF)btnVendorDailyPDF.addEventListener('click',makeDailyVendorPDF);
+
+function drawDailyVendorReport(){
+  var vrdEl=document.getElementById('VRD');
+  if(vrdEl&&!vrdEl.value)vrdEl.value=getD();
+  var reportDate=vrdEl?vrdEl.value:getD();
+  var isToday=reportDate===getD();
+  var data={}; // venueId -> {typeId:[entries]}
+  if(isToday){
+    saveVendorLog();
+    Object.keys(vendorAsgn).forEach(function(vid){data[vid]=vendorAsgn[vid];});
+  } else {
+    var log=vdlog[reportDate];
+    if(log)Object.keys(log.venues||{}).forEach(function(vid){data[vid]=log.venues[vid];});
+  }
+  var el=document.getElementById('VRB');if(!el)return;
+  var h='';
+  venues.forEach(function(v){
+    var vm=data[v.id];if(!vm)return;
+    var allEntries=[];
+    VENDOR_TYPES.forEach(function(vt){
+      var arr=vm[vt.id];if(!Array.isArray(arr)||!arr.length)return;
+      arr.forEach(function(entry){allEntries.push({entry:entry,vt:vt});});
     });
-    closeModal();toast('Vendors copied from '+fd(dt));
-    drawVendorGrid();saveCloud();
-  };
-  g('m-no').onclick=closeModal;
-});
+    if(!allEntries.length)return;
+    h+='<div class="pvcard"><div class="pvname">'+esc(v.name)+'</div>';
+    h+='<div style="font-size:12px;color:#1565c0;font-weight:600;margin-bottom:8px;">'+allEntries.length+' vendor entries</div>';
+    allEntries.forEach(function(item,i){
+      var entry=item.entry,vt=item.vt;
+      var c=CLRS[VENDOR_TYPES.indexOf(vt)%CLRS.length];
+      h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;">';
+      h+='<div style="font-weight:700;font-size:12px;">'+esc(vendorEntryLabel(entry,vt))+'</div>';
+      h+='<span style="font-size:9px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 4px;">'+esc(vt.name)+'</span>';
+      if(entry.notes)h+='<div style="font-size:10px;color:#888;margin-top:2px;">📝 '+esc(entry.notes)+'</div>';
+      h+='</div><div style="font-size:11px;font-weight:700;color:#0d47a1;text-align:right;">Qty '+(entry.qty||1)+'<br>'+esc(entry.time||'')+'</div></div>';
+    });
+    h+='</div>';
+  });
+  if(!h){
+    if(isToday)h='<div style="grid-column:1/-1;text-align:center;color:#bbb;padding:50px;font-size:14px;">No vendors assigned yet.</div>';
+    else h='<div style="grid-column:1/-1;text-align:center;padding:50px;"><div style="font-size:40px;margin-bottom:12px;">📭</div><div style="font-size:15px;color:#888;font-weight:600;">No vendor data saved for '+fd(reportDate)+'</div></div>';
+  }
+  el.innerHTML=h;
+}
 
-var btnVDraft=document.getElementById('btnVDraft');
-if(btnVDraft)btnVDraft.addEventListener('click',function(){
-  showModal(
-    '<div class="mt">💾 Save Vendor Draft</div>'+
-    '<div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">Save current vendor assignments for '+fd(getD())+'</div>'+
-    '<label class="lbl">Draft Name (optional)</label>'+
-    '<input id="VDRAFTNAME" class="inp" placeholder="e.g. Annual Conference Vendors..."/>'+
-    '<button class="mbtn blue" id="m-yes">Save Draft</button>'+
-    '<button class="mcancel" id="m-no">Cancel</button>'
-  );
-  g('m-yes').onclick=function(){
-    var name=(g('VDRAFTNAME').value||'').trim()||('Vendor Draft '+fd(getD()));
-    var snap={v:1,savedAt:new Date().toISOString(),vendorAsgn:JSON.parse(JSON.stringify(vendorAsgn))};
-    var ex=null;
-    for(var i=0;i<drafts.length;i++){if(drafts[i].name===name&&drafts[i].date===getD()&&drafts[i].isVendor){ex=drafts[i];break;}}
-    if(ex){snap.v=ex.versions.length+1;ex.versions.push(snap);toast('Vendor draft updated to v'+snap.v);}
-    else{drafts.push({id:mkId(),name:name,date:getD(),createdAt:new Date().toISOString(),versions:[snap],activated:false,isVendor:true});toast('Vendor draft saved as v1');}
-    closeModal();saveCloud();
-  };
-  g('m-no').onclick=closeModal;
-});
-
-var btnVPDF=document.getElementById('btnVPDF');
-if(btnVPDF)btnVPDF.addEventListener('click',makeVendorPDF);
-
-function makeVendorPDF(){
+function makeDailyVendorPDF(){
   if(!window.jspdf){toast('PDF library loading...','w');return;}
   saveVendorLog();
-  var d=getD(),ndd=nd(d);
+  var vrdEl=document.getElementById('VRD');
+  var d=(vrdEl&&vrdEl.value)?vrdEl.value:getD();
+  var isToday=d===getD();
+  var data={};
+  if(isToday){Object.keys(vendorAsgn).forEach(function(vid){data[vid]=vendorAsgn[vid];});}
+  else{var log=vdlog[d];if(log)Object.keys(log.venues||{}).forEach(function(vid){data[vid]=log.venues[vid];});}
   var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
@@ -3149,41 +3603,363 @@ function makeVendorPDF(){
   doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
   doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
   doc.setFontSize(8);doc.setFont('helvetica','normal');
-  doc.text('Vendor Deployment Report',pw/2+10,22,{align:'center'});
+  doc.text('Daily Vendor Report',pw/2+10,22,{align:'center'});
   y=42;
   doc.setTextColor(13,71,161);doc.setFontSize(11);doc.setFont('helvetica','bold');
-  doc.text('Vendor Date: '+fd(ndd),mg,y);
-  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(130,130,130);
-  doc.text('Prepared: '+fd(d),mg,y+6);y+=16;
+  doc.text('Vendor Date: '+fd(d),mg,y);y+=12;
   var hasData=false;
   venues.forEach(function(v){
-    var vm=vendorAsgn[v.id];if(!vm||!Object.keys(vm).length)return;
+    var vm=data[v.id];if(!vm)return;
+    var allEntries=[];
+    VENDOR_TYPES.forEach(function(vt){var arr=vm[vt.id];if(Array.isArray(arr))arr.forEach(function(entry){allEntries.push({entry:entry,vt:vt});});});
+    if(!allEntries.length)return;
     hasData=true;
-    var entries=Object.keys(vm).map(function(t){return{type:t,qty:vm[t]};});
-    cp(14+entries.length*7);
+    cp(14+allEntries.length*8);
     doc.setFillColor(21,101,192);doc.roundedRect(mg,y,pw-mg*2,12,2,2,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
     doc.text(v.name,pw/2,y+8,{align:'center'});
-    var total=entries.reduce(function(s,e){return s+e.qty;},0);
-    doc.setFontSize(8);doc.text(total+' total',pw-mg-3,y+8,{align:'right'});y+=13;
-    entries.forEach(function(e,i){
-      cp(7);
-      if(i%2===0){doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,6.5,'F');}
-      doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(8);
-      doc.text(e.type,mg+5,y+4.5);
-      doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(9);
-      doc.text(String(e.qty),pw-mg-5,y+4.5,{align:'right'});
-      y+=6.5;
+    doc.setFontSize(8);doc.text(allEntries.length+' entries',pw-mg-3,y+8,{align:'right'});y+=13;
+    // Group entries by vendor type with colored section headings
+    var vtGrouped={};
+    allEntries.forEach(function(item){
+      if(!vtGrouped[item.vt.id])vtGrouped[item.vt.id]={vt:item.vt,entries:[]};
+      vtGrouped[item.vt.id].entries.push(item.entry);
+    });
+    VENDOR_TYPES.forEach(function(vt,vi){
+      var grp=vtGrouped[vt.id];if(!grp)return;
+      var c=CLRS[vi%CLRS.length];
+      var rgb=hexToRgb(c);
+      cp(6);
+      doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.rect(mg,y,pw-mg*2,5.5,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(6);doc.setFont('helvetica','bold');
+      doc.text(vt.name.toUpperCase(),mg+3,y+4);doc.text(grp.entries.length+' entries',pw-mg-3,y+4,{align:'right'});
+      y+=5.5;
+      grp.entries.forEach(function(entry){
+        cp(7.5);
+        doc.setFillColor(rgb[0]+Math.round((255-rgb[0])*0.85),rgb[1]+Math.round((255-rgb[1])*0.85),rgb[2]+Math.round((255-rgb[2])*0.85));
+        doc.rect(mg,y,pw-mg*2,7.5,'F');
+        doc.setTextColor(rgb[0]>50?Math.max(rgb[0]-30,20):rgb[0]+20,rgb[1]>50?Math.max(rgb[1]-30,20):rgb[1]+20,rgb[2]>50?Math.max(rgb[2]-30,20):rgb[2]+20);
+        doc.setFont('helvetica','bold');doc.setFontSize(8);
+        doc.text(vendorEntryLabel(entry,vt),mg+4,y+5.5);
+        doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);
+        doc.text('Qty '+(entry.qty||1)+(entry.time?'  '+entry.time:''),pw-mg-3,y+5.5,{align:'right'});
+        if(entry.notes){doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.text('📝 '+entry.notes.slice(0,60),mg+4,y+7);}
+        y+=7.5;
+      });
     });
     y+=4;
   });
-  if(!hasData){
-    doc.setTextColor(150,150,150);doc.setFontSize(11);doc.setFont('helvetica','italic');
-    doc.text('No vendor assignments for this date.',pw/2,y+10,{align:'center'});
-  }
+  if(!hasData){doc.setTextColor(150,150,150);doc.setFontSize(11);doc.setFont('helvetica','italic');doc.text('No vendor assignments for this date.',pw/2,y+10,{align:'center'});}
   var pc=doc.internal.getNumberOfPages();
   for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | Vendors | '+fd(d),mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
-  doc.save('GAVS_Vendors_'+ndd+'.pdf');toast('Vendor PDF downloaded!');
+  doc.save('GAVS_Vendor_Daily_'+d+'.pdf');toast('Vendor PDF downloaded!');
+}
+
+// ════════════════════════════════════════════════════════════
+// 2. VENUE VENDOR HISTORY
+// ════════════════════════════════════════════════════════════
+function populateVRVVenue(){
+  var now=new Date();
+  var firstDay=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+  var lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().slice(0,10);
+  if(g('VRVF')&&!g('VRVF').value)g('VRVF').value=firstDay;
+  if(g('VRVT')&&!g('VRVT').value)g('VRVT').value=lastDay;
+  var inEl=document.getElementById('VRV_IN');
+  var ddEl=document.getElementById('VRV_DD');
+  var hidEl=g('VRV');
+  if(inEl&&!inEl._wired){
+    inEl._wired=true;
+    inEl.addEventListener('input',function(){
+      var q=this.value.trim();
+      if(!q){ddEl.style.display='none';return;}
+      var matches=venues.filter(function(v){return v.name.toLowerCase().indexOf(q.toLowerCase())>=0;}).slice(0,12);
+      ddEl.innerHTML='';
+      matches.forEach(function(v){
+        var item=document.createElement('div');
+        item.style.cssText='padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f4ff;';
+        item.textContent='🏨 '+v.name;
+        item.addEventListener('mouseenter',function(){this.style.background='#e3f2fd';});
+        item.addEventListener('mouseleave',function(){this.style.background='';});
+        item.addEventListener('click',(function(vid,vname){return function(){
+          inEl.value=vname;hidEl.value=vid;ddEl.style.display='none';
+        };})(v.id,v.name));
+        ddEl.appendChild(item);
+      });
+      ddEl.style.display=matches.length?'block':'none';
+    });
+    function closeVRVDD(ev){if(!inEl.contains(ev.target)&&!ddEl.contains(ev.target))ddEl.style.display='none';}
+    document.addEventListener('click',closeVRVDD);
+    document.addEventListener('touchstart',closeVRVDD,{passive:true});
+  }
+}
+
+var btnVRVR=document.getElementById('btnVRVR');
+if(btnVRVR)btnVRVR.addEventListener('click',drawVenueVendorHistory);
+var btnVRVPDF=document.getElementById('btnVRVPDF');
+if(btnVRVPDF)btnVRVPDF.addEventListener('click',makeVenueVendorHistoryPDF);
+
+function getVenueVendorEntriesForDate(vid,ds){
+  var today=getD();
+  var entries=[];
+  if(ds===today){
+    var vm=vendorAsgn[vid];if(!vm)return entries;
+    VENDOR_TYPES.forEach(function(vt){var arr=vm[vt.id];if(Array.isArray(arr))arr.forEach(function(entry){entries.push({entry:entry,vt:vt});});});
+  } else {
+    var log=vdlog[ds];if(!log||!log.venues||!log.venues[vid])return entries;
+    var vm2=log.venues[vid];
+    VENDOR_TYPES.forEach(function(vt){var arr=vm2[vt.id];if(Array.isArray(arr))arr.forEach(function(entry){entries.push({entry:entry,vt:vt});});});
+  }
+  return entries;
+}
+
+function drawVenueVendorHistory(){
+  var vid=(g('VRV')||{}).value||'';
+  var fromDate=(g('VRVF')||{}).value||'';
+  var toDate=(g('VRVT')||{}).value||'';
+  var el=g('VRVB');if(!el)return;
+  if(!vid){toast('Select a venue','w');return;}
+  if(!fromDate||!toDate){toast('Select date range','w');return;}
+  if(fromDate>toDate){toast('From date must be before To date','w');return;}
+  var v=getV(vid);if(!v)return;
+  var h='<div class="pvcard" style="grid-column:1/-1;">';
+  h+='<div class="pvname">'+esc(v.name)+'</div>';
+  h+='<div style="font-size:12px;color:#1565c0;font-weight:600;margin-bottom:14px;">'+fd(fromDate)+' → '+fd(toDate)+'</div>';
+  h+='<div style="display:grid;grid-template-columns:120px 1fr;gap:0;border:1px solid #e3eaff;border-radius:9px;overflow:hidden;">';
+  h+='<div style="background:#1565c0;color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Date</div>';
+  h+='<div style="background:#1565c0;color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Vendors</div>';
+  var cur=new Date(fromDate);var end=new Date(toDate);var rowIdx=0;
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    var entries=getVenueVendorEntriesForDate(vid,ds);
+    var bg=rowIdx%2===0?'#f8faff':'#fff';
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cur.getDay()];
+    h+='<div style="background:'+bg+';padding:8px 12px;font-size:12px;font-weight:600;color:#1565c0;border-top:1px solid #e3eaff;">'+dn+', '+fd(ds)+'</div>';
+    h+='<div style="background:'+bg+';padding:8px 12px;font-size:12px;border-top:1px solid #e3eaff;">';
+    if(entries.length){
+      h+=entries.map(function(item){
+        var c=CLRS[VENDOR_TYPES.indexOf(item.vt)%CLRS.length];
+        return'<span style="display:inline-block;background:'+c+'18;border-radius:4px;padding:1px 7px;margin:1px;font-size:11px;color:'+c+';">'+esc(vendorEntryLabel(item.entry,item.vt))+' (Qty '+(item.entry.qty||1)+')</span>';
+      }).join('');
+    } else {
+      h+='<span style="color:#bbb;font-size:11px;">No vendor assignments</span>';
+    }
+    h+='</div>';
+    cur.setDate(cur.getDate()+1);rowIdx++;
+  }
+  h+='</div></div>';
+  el.innerHTML=h;
+  g('btnVRVPDF').classList.remove('hide');
+}
+
+function makeVenueVendorHistoryPDF(){
+  var vid=(g('VRV')||{}).value||'';
+  var fromDate=(g('VRVF')||{}).value||'';
+  var toDate=(g('VRVT')||{}).value||'';
+  var v=getV(vid);
+  if(!v||!fromDate||!toDate||!window.jspdf){toast('Error','e');return;}
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,mg=12,y=mg;
+  function cp(n){if(y+n>283){doc.addPage();y=mg;}}
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
+  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,13,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Venue Vendor History Report',pw/2+10,21,{align:'center'});y=40;
+  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,20,3,3,'F');
+  doc.setTextColor(13,71,161);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(v.name,mg+5,y+9);
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(80,80,80);doc.text(fd(fromDate)+' to '+fd(toDate),mg+5,y+17);y+=26;
+  doc.setFillColor(21,101,192);doc.rect(mg,y,pw-mg*2,8,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+  doc.text('Date',mg+3,y+5.5);doc.text('Vendors',mg+50,y+5.5);y+=9;
+  var cur=new Date(fromDate);var end=new Date(toDate);var rowIdx=0;
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    var entries=getVenueVendorEntriesForDate(vid,ds);
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][cur.getDay()];
+    var nameStr=entries.length?entries.map(function(item){return vendorEntryLabel(item.entry,item.vt)+' (Qty '+(item.entry.qty||1)+')';}).join(', '):'No vendor assignments';
+    var maxW=pw-mg*2-52;
+    var lines=doc.splitTextToSize(nameStr,maxW);
+    var rh=Math.max(8,lines.length*5+4);
+    cp(rh);
+    if(rowIdx%2===0){doc.setFillColor(248,250,255);}else{doc.setFillColor(255,255,255);}
+    doc.rect(mg,y,pw-mg*2,rh,'F');
+    doc.setDrawColor(220,230,255);doc.rect(mg,y,pw-mg*2,rh,'S');
+    doc.setTextColor(21,101,192);doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text(dn+' '+String(cur.getDate()).padStart(2,'0')+'/'+String(cur.getMonth()+1).padStart(2,'0'),mg+3,y+5);
+    doc.setTextColor(entries.length?30:150,entries.length?30:150,entries.length?30:150);
+    doc.setFont('helvetica',entries.length?'normal':'italic');
+    doc.text(lines,mg+50,y+5);
+    y+=rh;cur.setDate(cur.getDate()+1);rowIdx++;
+  }
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | '+v.name,mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_Vendor_Venue_'+v.name.replace(/ /g,'_')+'_'+fromDate+'_to_'+toDate+'.pdf');toast('Venue vendor history PDF downloaded!');
+}
+
+// ════════════════════════════════════════════════════════════
+// 3. VENDOR COMPANY REPORT
+// ════════════════════════════════════════════════════════════
+function populateVRCCompany(){
+  var ms=g('VRCM');
+  if(ms&&!ms.options.length){MONS.forEach(function(m,i){var o=document.createElement('option');o.value=i;o.textContent=m;ms.appendChild(o);});ms.value=new Date().getMonth();}
+  var ys=g('VRCY');
+  if(ys&&!ys.options.length){var cy=new Date().getFullYear();for(var y2=cy;y2>=cy-2;y2--){var o=document.createElement('option');o.value=y2;o.textContent=y2;ys.appendChild(o);}ys.value=cy;}
+
+  var inEl=document.getElementById('VRC_IN');
+  var ddEl=document.getElementById('VRC_DD');
+  var hidEl=g('VRC');
+  if(inEl&&!inEl._wired){
+    inEl._wired=true;
+    inEl.addEventListener('input',function(){
+      var q=this.value.trim();
+      if(!q){ddEl.style.display='none';return;}
+      var allCompanies=[];
+      VENDOR_TYPES.forEach(function(vt){
+        (vendorCompanies[vt.id]||[]).forEach(function(co){
+          if(co.toLowerCase().indexOf(q.toLowerCase())>=0)allCompanies.push({company:co,vt:vt});
+        });
+      });
+      allCompanies=allCompanies.slice(0,12);
+      ddEl.innerHTML='';
+      allCompanies.forEach(function(item){
+        var c=CLRS[VENDOR_TYPES.indexOf(item.vt)%CLRS.length];
+        var el2=document.createElement('div');
+        el2.style.cssText='padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f4ff;';
+        el2.innerHTML='<div style="font-weight:700;">'+esc(item.company)+'</div><div style="font-size:11px;color:'+c+';">'+esc(item.vt.name)+'</div>';
+        el2.addEventListener('mouseenter',function(){this.style.background='#e3f2fd';});
+        el2.addEventListener('mouseleave',function(){this.style.background='';});
+        el2.addEventListener('click',(function(co,vtid){return function(){
+          inEl.value=co;hidEl.value=co+'||'+vtid;ddEl.style.display='none';
+        };})(item.company,item.vt.id));
+        ddEl.appendChild(el2);
+      });
+      ddEl.style.display=allCompanies.length?'block':'none';
+    });
+    function closeVRCDD(ev){if(!inEl.contains(ev.target)&&!ddEl.contains(ev.target))ddEl.style.display='none';}
+    document.addEventListener('click',closeVRCDD);
+    document.addEventListener('touchstart',closeVRCDD,{passive:true});
+  }
+}
+
+var btnVRCR=document.getElementById('btnVRCR');
+if(btnVRCR)btnVRCR.addEventListener('click',drawCompanyReport);
+var btnVRCPDF=document.getElementById('btnVRCPDF');
+if(btnVRCPDF)btnVRCPDF.addEventListener('click',makeCompanyReportPDF);
+
+function getCompanyMonthData(company,typeId,month,year){
+  saveVendorLog();
+  var dim=new Date(year,month+1,0).getDate();
+  var rows=[];var totalQty=0;
+  for(var day=1;day<=dim;day++){
+    var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    var today=getD();
+    var venuesUsed=[];
+    var src=null;
+    if(ds===today){src=vendorAsgn;}
+    else{var log=vdlog[ds];if(log)src=Object.keys(log.venues||{}).reduce(function(acc,vid){acc[vid]=log.venues[vid];return acc;},{});}
+    if(src){
+      Object.keys(src).forEach(function(vid){
+        var vm=src[vid];if(!vm)return;
+        var arr=vm[typeId];if(!Array.isArray(arr))return;
+        arr.forEach(function(entry){
+          if(entry.company===company){
+            var v=getV(vid);
+            venuesUsed.push({venue:v?v.name:'Unknown',qty:entry.qty||1,time:entry.time||'',entry:entry});
+            totalQty+=(entry.qty||1);
+          }
+        });
+      });
+    }
+    if(venuesUsed.length)rows.push({day:day,ds:ds,venues:venuesUsed});
+  }
+  return{rows:rows,totalQty:totalQty,dim:dim};
+}
+
+function drawCompanyReport(){
+  var hid=(g('VRC')||{}).value||'';
+  if(!hid){toast('Select a vendor company','w');return;}
+  var parts=hid.split('||');
+  var company=parts[0],typeId=parts[1];
+  var vt=VENDOR_TYPES.find(function(x){return x.id===typeId;});
+  if(!vt)return;
+  var month=parseInt((g('VRCM')||{}).value||'0');
+  var year=parseInt((g('VRCY')||{}).value||new Date().getFullYear());
+  var data=getCompanyMonthData(company,typeId,month,year);
+  var c=CLRS[VENDOR_TYPES.indexOf(vt)%CLRS.length];
+
+  var ss=g('VRCS');
+  if(ss)ss.innerHTML='<div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:14px;">'+
+    '<div style="font-size:16px;font-weight:800;color:'+c+';">'+vt.icon+' '+esc(company)+'</div>'+
+    '<div style="font-size:12px;color:'+c+';font-weight:600;margin-bottom:10px;">'+esc(vt.name)+'</div>'+
+    '<div style="font-size:15px;font-weight:800;color:#0d47a1;margin-bottom:10px;">'+MONS[month]+' '+year+'</div>'+
+    '<div style="display:flex;gap:8px;">'+
+    '<div style="background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:9px;padding:8px 16px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#1565c0;">'+data.rows.length+'</div><div style="font-size:10px;color:#888;">Days Used</div></div>'+
+    '<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:9px;padding:8px 16px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#1b5e20;">'+data.totalQty+'</div><div style="font-size:10px;color:#888;">Total Qty Supplied</div></div>'+
+    '</div></div>';
+
+  var sb=g('VRCB');
+  if(!data.rows.length){
+    if(sb)sb.innerHTML='<div style="text-align:center;color:#bbb;padding:40px;">No usage recorded this month.</div>';
+  } else {
+    var h='<div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;"><div style="font-size:10px;font-weight:800;color:#1565c0;letter-spacing:0.1em;margin-bottom:10px;">USAGE BY DAY</div>';
+    data.rows.forEach(function(row){
+      var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,row.day).getDay()];
+      h+='<div style="padding:8px 0;border-bottom:1px solid #f0f4ff;">';
+      h+='<div style="font-weight:800;color:#1565c0;font-size:13px;">'+dn+' '+row.day+' '+MONS[month]+'</div>';
+      row.venues.forEach(function(vu){
+        h+='<div style="font-size:12px;color:#555;padding:3px 0 3px 10px;">🏨 '+esc(vu.venue)+' — Qty '+vu.qty+(vu.time?' @ '+esc(vu.time):'')+(vu.entry.notes?' 📝 '+esc(vu.entry.notes):'')+'</div>';
+      });
+      h+='</div>';
+    });
+    h+='</div>';
+    if(sb)sb.innerHTML=h;
+  }
+  g('btnVRCPDF').classList.remove('hide');
+}
+
+function makeCompanyReportPDF(){
+  if(!window.jspdf){toast('PDF loading...','w');return;}
+  var hid=(g('VRC')||{}).value||'';
+  if(!hid)return;
+  var parts=hid.split('||');
+  var company=parts[0],typeId=parts[1];
+  var vt=VENDOR_TYPES.find(function(x){return x.id===typeId;});
+  if(!vt)return;
+  var month=parseInt((g('VRCM')||{}).value||'0');
+  var year=parseInt((g('VRCY')||{}).value||new Date().getFullYear());
+  var data=getCompanyMonthData(company,typeId,month,year);
+
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,mg=12,y=mg;
+  function cp(n){if(y+n>283){doc.addPage();y=mg;}}
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
+  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,28,28);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Vendor Company Report',pw/2+10,22,{align:'center'});y=42;
+  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,22,3,3,'F');
+  doc.setTextColor(13,71,161);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(company,mg+5,y+10);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(80,80,80);doc.text(vt.name,mg+5,y+17);
+  doc.setTextColor(13,71,161);doc.setFontSize(12);doc.setFont('helvetica','bold');doc.text(MONS[month]+' '+year,pw-mg-5,y+12,{align:'right'});y+=28;
+  doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,16,3,3,'F');
+  doc.setTextColor(120,120,120);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text('Days Used',mg+10,y+6);doc.text('Total Qty Supplied',mg+100,y+6);
+  doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(21,101,192);doc.text(String(data.rows.length),mg+10,y+13);
+  doc.setTextColor(27,94,32);doc.text(String(data.totalQty),mg+100,y+13);y+=22;
+  doc.setFillColor(21,101,192);doc.rect(mg,y,pw-mg*2,7,'F');doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','bold');
+  doc.text('Date',mg+2,y+5);doc.text('Venue(s)',mg+35,y+5);y+=8;
+  data.rows.forEach(function(row){
+    var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,row.day).getDay()];
+    var str=row.venues.map(function(vu){return vu.venue+' (Qty '+vu.qty+')';}).join(', ');
+    var lines=doc.splitTextToSize(str,pw-mg*2-37);
+    var rh=Math.max(6.5,lines.length*5+2);
+    cp(rh);
+    doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,rh,'F');doc.setDrawColor(220,220,220);doc.rect(mg,y,pw-mg*2,rh,'S');
+    doc.setTextColor(80,80,80);doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text(dn+' '+String(row.day).padStart(2,'0')+'/'+String(month+1).padStart(2,'0'),mg+2,y+4.5);
+    doc.setTextColor(30,30,30);doc.setFont('helvetica','normal');doc.text(lines,mg+35,y+4.5);
+    y+=rh;
+  });
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | '+company+' | '+MONS[month]+' '+year,mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_Vendor_'+company.replace(/ /g,'_')+'_'+MONS[month]+'_'+year+'.pdf');toast('Company PDF downloaded!');
 }
 
 // ── TOUCH DRAG & DROP FOR IPAD / MOBILE ──────────────────────
@@ -3328,6 +4104,7 @@ function saveCloud(){
 function actuallySaveCloud(){
   if(!DB_LOADED)return;
   saveLog();
+  saveVendorLog();
   try{
     var staffData=staff.map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
     var venueData=venues.map(function(v){return{id:v.id,name:v.name,vip:v.vip||false};});
@@ -3354,8 +4131,8 @@ function actuallySaveCloud(){
       staff:staffData,venues:venueData,asgn:asgnData,lvMap:lvData,offMap:offData,
       drafts:draftsData,roles:ROLES,dlog:dlog,activeVids:activeVids,
       vHalls:vHalls,
-      vendorAsgn:vendorAsgn,activeVendorVids:activeVendorVids,
-      vendorTypes:VENDOR_TYPES,vdlog:vdlog,
+      vendorAsgn:vendorAsgn,vendorCompanies:vendorCompanies,
+      vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,
       updatedAt:new Date().toISOString()
     };
     doSaveWithRetry(payload,0);
@@ -3433,8 +4210,9 @@ function loadFromCloud(callback){
       if(d.dlog)dlog=d.dlog;
       if(d.vHalls)vHalls=d.vHalls;
       if(d.vendorAsgn)vendorAsgn=d.vendorAsgn;
-      if(d.activeVendorVids)activeVendorVids=d.activeVendorVids;
-      if(d.vendorTypes&&d.vendorTypes.length)VENDOR_TYPES=d.vendorTypes;
+      if(d.vendorCompanies)vendorCompanies=d.vendorCompanies;
+      // Only override the fixed 9 categories if saved data has the new object structure (not old string array)
+      if(d.vendorTypesCustom&&d.vendorTypesCustom.length&&typeof d.vendorTypesCustom[0]==='object'){VENDOR_TYPES=d.vendorTypesCustom;}
       if(d.vdlog)vdlog=d.vdlog;
       // Restore drafts
       if(d.drafts){

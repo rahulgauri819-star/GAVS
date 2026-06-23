@@ -208,9 +208,9 @@ input,select,button{font-family:inherit;}
 .vbox{background:#fff;border:2px solid #e3eaff;border-radius:14px;overflow:visible;box-shadow:0 2px 8px rgba(21,101,192,0.05);transition:border-color 0.2s,box-shadow 0.2s;}
 .vbox.vip{border-color:#f9a825;}
 .vbox.drag-over{border-color:#1565c0!important;background:#f0f4ff;box-shadow:0 0 0 3px rgba(21,101,192,0.2);}
-.vbox-hdr{background:#1565c0;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;border-radius:12px 12px 0 0;}
+.vbox-hdr{background:#1565c0;color:#fff;padding:8px 10px;display:flex;align-items:center;gap:4px;border-radius:12px 12px 0 0;overflow:hidden;}
 .vbox.vip .vbox-hdr{background:linear-gradient(135deg,#1565c0 50%,#e65100);border-radius:12px 12px 0 0;}
-.vbox-name{font-size:13px;font-weight:700;flex:1;line-height:1.3;}
+.vbox-name{font-size:12px;font-weight:700;flex:1;line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .vbox-cnt{background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;}
 .vbox-close{background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .vbox-close:hover{background:rgba(255,0,0,0.3);}
@@ -1514,7 +1514,7 @@ function makeVenueBox(v,hasPinned,viewData){
   {
   // VIP button
   var vipBtn=document.createElement('button');
-  vipBtn.style.cssText='background:'+(v.vip?'#f9a825':'rgba(255,255,255,0.15)')+';border:1px solid '+(v.vip?'#f9a825':'rgba(255,255,255,0.4)')+';color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;';
+  vipBtn.style.cssText='background:'+(v.vip?'#f9a825':'rgba(255,255,255,0.15)')+';border:1px solid '+(v.vip?'#f9a825':'rgba(255,255,255,0.4)')+';color:#fff;border-radius:6px;padding:2px 6px;font-size:9px;font-weight:700;cursor:pointer;flex-shrink:0;';
   vipBtn.textContent='⭐ VIP';
   vipBtn.title='Toggle VIP';
   vipBtn.addEventListener('click',function(){v.vip=!v.vip;saveCloud();drawVenueGrid();});
@@ -1522,14 +1522,14 @@ function makeVenueBox(v,hasPinned,viewData){
   // Halls badge/button
   var hallsCount=vHalls[v.id]||0;
   var hallsBtn=document.createElement('button');
-  hallsBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;';
+  hallsBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 6px;font-size:9px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;';
   hallsBtn.textContent=hallsCount>0?('🏛️ '+hallsCount+' Hall'+(hallsCount>1?'s':'')):'🏛️ Halls';
   hallsBtn.title='Set number of halls for today';
   hallsBtn.addEventListener('click',(function(vid){return function(){showHallsPrompt(vid);};})(v.id));
   hdr.appendChild(hallsBtn);
   // All Same Time button
   var allTimeBtn=document.createElement('button');
-  allTimeBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;';
+  allTimeBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 5px;font-size:10px;cursor:pointer;flex-shrink:0;';
   allTimeBtn.textContent='⏰';
   allTimeBtn.title='Set same time for all staff';
   allTimeBtn.addEventListener('click',(function(vid){return function(){showBulkTime(vid);};})(v.id));

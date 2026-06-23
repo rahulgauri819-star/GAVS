@@ -797,6 +797,7 @@ var vdlog={}; // per-date vendor log: vdlog[date] = {venues:{vid:{typeId:[entrie
 var assignMode='staff'; // 'staff' or 'vendors' - toggle in Assign Duties left panel
 var collapsedVids=new Set(); // venues that are collapsed (session only, not saved)
 var contractedHiddenVids=new Set(); // contracted (pinned-staff) venues hidden from grid (session only, hidden by default)
+var pinnedVisibleVids=new Set(); // contracted venues where pinned staff are visible (eye toggled on)
 var lvCollapsed=false; // On Leave box collapsed state
 var offCollapsed=false; // GAVS Godown Duty box collapsed state
 var venueOrder=[]; // custom drag order for activeVids (saved to Firebase)
@@ -1000,9 +1001,19 @@ function initActiveVids(){
 }
 
 function updateADate(){
-  // Keep DP2 in sync with DP
   var dp2=document.getElementById('DP2');
   if(dp2&&g('DP'))dp2.value=g('DP').value;
+  // On date change: clear non-contracted venues from activeVids for fresh dates
+  var d=getD();
+  var hasLog=!!(dlog[d]&&(Object.keys(dlog[d].venues||{}).length||(dlog[d].leave&&dlog[d].leave.length)));
+  if(!hasLog){
+    // Remove non-contracted venues (no pinned staff) from activeVids on fresh dates
+    activeVids=activeVids.filter(function(id){
+      return staff.some(function(e){return e.pv===id;}); // keep contracted only
+    });
+    // Then filter out contracted-hidden ones
+    activeVids=activeVids.filter(function(id){return !contractedHiddenVids.has(id);});
+  }
 }
 
 // ── STATS ─────────────────────────────────────────────────────
@@ -1438,7 +1449,10 @@ function drawVenueGrid(){
 
 function makeVenueBox(v,hasPinned,viewData){
   // Use historical data if viewing a past date, otherwise live data
-  var t=viewData?(Object.values(viewData.asgn[v.id]||{})):getTeam(v.id);
+  var allT=viewData?(Object.values(viewData.asgn[v.id]||{})):getTeam(v.id);
+  // For contracted venues: hide pinned staff unless eye is toggled on
+  var eyeOn=pinnedVisibleVids.has(v.id);
+  var t=hasPinned?allT.filter(function(a){return !a.pinned||eyeOn;}):allT;
   var box=document.createElement('div');
   box.className='vbox'+(v.vip?' vip':'');
   box.id='vb-'+v.id;
@@ -1520,7 +1534,26 @@ function makeVenueBox(v,hasPinned,viewData){
   allTimeBtn.title='Set same time for all staff';
   allTimeBtn.addEventListener('click',(function(vid){return function(){showBulkTime(vid);};})(v.id));
   hdr.appendChild(allTimeBtn);
-  if(!hasPinned){
+  // Eye button for contracted venues — toggle pinned staff visibility
+  if(hasPinned){
+    var eyeOn=pinnedVisibleVids.has(v.id);
+    var eyeBtn=document.createElement('button');
+    eyeBtn.className='vbox-close';
+    eyeBtn.textContent=eyeOn?'👁':'👁';
+    eyeBtn.title=eyeOn?'Hide pinned staff':'Show pinned staff';
+    eyeBtn.style.background=eyeOn?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.1)';
+    eyeBtn.style.opacity=eyeOn?'1':'0.5';
+    eyeBtn.style.fontSize='12px';
+    eyeBtn.addEventListener('click',(function(vid2){return function(ev){
+      ev.stopPropagation();
+      if(pinnedVisibleVids.has(vid2))pinnedVisibleVids.delete(vid2);else pinnedVisibleVids.add(vid2);
+      drawVenueGrid();
+    };})(v.id));
+    hdr.appendChild(eyeBtn);
+  }
+  // ✕ only on venues with 0 staff
+  var currentStaffCount=getTeam(v.id).length;
+  if(!hasPinned&&currentStaffCount===0){
     var cls=document.createElement('button');cls.className='vbox-close';cls.textContent='✕';cls.title='Remove from view';
     cls.addEventListener('click',(function(vid2,vname,vt){return function(){
     var msg=vt?vt+' staff assigned. They will stay assigned but venue will be removed from view.':'Venue can be re-added anytime by searching.';
@@ -1533,10 +1566,10 @@ function makeVenueBox(v,hasPinned,viewData){
     );
     g('m-yes').onclick=function(){activeVids=activeVids.filter(function(id){return id!==vid2;});closeModal();drawVenueGrid();};
     g('m-no').onclick=closeModal;
-  };})(v.id,v.name,getTeam(v.id).length));
+  };})(v.id,v.name,currentStaffCount));
     hdr.appendChild(cls);
   }
-  } // end if isViewingToday() for interactive buttons
+  } // end interactive buttons block
   box.appendChild(hdr);
 
   // If collapsed, show only header - skip body entirely
@@ -1607,11 +1640,12 @@ function renderStaffBody(body,v,t){
     var activeRoles=ROLES.filter(function(r){return r!=='Manager'&&roleGroups[r]&&roleGroups[r].length;});
     if(activeRoles.length){
       var roleRow=document.createElement('div');
-      roleRow.style.cssText='column-width:150px;column-gap:8px;margin-top:6px;';
+      var numCols=Math.min(activeRoles.length,Math.max(2,Math.floor(activeRoles.length/1)));
+      roleRow.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-top:6px;';
       activeRoles.forEach(function(r){
         var grp=roleGroups[r];var c=cc(r);
         var col=document.createElement('div');
-        col.style.cssText='break-inside:avoid;display:inline-block;width:100%;margin-bottom:8px;';
+        col.style.cssText='min-width:0;';
         // Role heading
         var rh=document.createElement('div');
         rh.style.cssText='font-size:8px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+c+';padding:4px 2px 3px;border-bottom:1px solid '+c+'22;margin-bottom:3px;';
@@ -2072,6 +2106,10 @@ function showContractedDD(anchorBtn){
   });
   dd.appendChild(allRow);
 
+  // Sort by staff count descending
+  cvids.sort(function(a,b){
+    return Object.keys(asgn[b]||{}).length - Object.keys(asgn[a]||{}).length;
+  });
   cvids.forEach(function(vid){
     var v=getV(vid);if(!v)return;
     var isShown=!contractedHiddenVids.has(vid);
@@ -5173,11 +5211,11 @@ function makeEventSheetPDF(){
     if(nonPinned.length>0)pdfData[vid]=nonPinned;
   });
 
-  var doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-  var pw=297,ph=210,mg=8,y=mg;
-  var colW=88; // ~3 columns in landscape
-  var numCols=3;
-  var cols=[[],[],[]]; // distribute venues across columns
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,ph=297,mg=8,y=mg;
+  var colW=93; // 2 columns in portrait
+  var numCols=2;
+  var cols=[[],[]]; // distribute venues across 2 columns
   var vList=venues.filter(function(v){return pdfData[v.id]&&pdfData[v.id].length>0;});
 
   // Header
@@ -5196,7 +5234,7 @@ function makeEventSheetPDF(){
   }
 
   // Calculate column heights greedily
-  var colHeights=[0,0,0];
+  var colHeights=[0,0];
   vList.forEach(function(v){
     var entries=pdfData[v.id];
     var boxH=10+entries.length*5+4; // header + rows + padding
@@ -5205,17 +5243,16 @@ function makeEventSheetPDF(){
     colHeights[minCol]+=boxH;
   });
 
-  var colX=[mg, mg+colW+4, mg+(colW+4)*2];
-  var colY=[y,y,y];
-  var pageH=ph-mg;
+  var colX=[mg, mg+colW+5];
+  var colY=[y,y];
+  var pageH=ph-mg-10;
 
   cols.forEach(function(colVenues,ci){
     colVenues.forEach(function(v){
       var entries=pdfData[v.id];
       var boxH=10+entries.length*5+3;
       if(colY[ci]+boxH>pageH){
-        // new page - reset all cols if this is col 0, else just continue
-        if(ci===0){doc.addPage();colY=[y,y,y];}
+        if(ci===0){doc.addPage();colY=[y,y];}
         else{colY[ci]=y;}
       }
       var x=colX[ci],yy=colY[ci];

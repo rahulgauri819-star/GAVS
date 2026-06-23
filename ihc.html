@@ -74,6 +74,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mbtn.red{background:#c62828;color:#fff;}
 .mbtn.cancel{background:#f0f4ff;color:#555;}
 .minp{width:100%;padding:10px 12px;border:1.5px solid #e3eaff;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;}
+/* Leave zone */
+.lv-zone{background:linear-gradient(135deg,#c62828,#b71c1c);border-radius:12px;margin-bottom:12px;overflow:hidden;}
+.lv-hdr{padding:8px 12px;display:flex;align-items:center;gap:8px;color:#fff;}
+.lv-hdr-title{font-size:12px;font-weight:700;flex:1;}
+.lv-cnt{background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;color:#fff;}
+.lv-col-btn{background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;}
+.lv-body{padding:8px;min-height:50px;background:rgba(255,255,255,0.08);}
+.lv-zone.drag-over{box-shadow:0 0 0 3px #ffcdd2;}
 /* Saving indicator */
 #SAVE_IND{position:fixed;top:10px;right:10px;z-index:9999;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;display:none;box-shadow:0 2px 10px rgba(0,0,0,0.15);}
 @media(max-width:600px){.lp{width:200px;}.lp-hdr{font-size:11px;}.hall-name{font-size:12px;}}
@@ -123,6 +131,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="lp-list" id="LP_LIST"></div>
     </div>
     <div class="rp" id="RP">
+      <div id="LEAVE_ZONE_WRAP"></div>
       <div class="halls-grid" id="HALLS_GRID"></div>
     </div>
   </div>
@@ -158,6 +167,8 @@ var ihcVenueId='';  // found at load time
 var halls=[];       // [{id,name}]
 var asgn={};        // hallId -> {eid: {emp, duty, isFixed}}
 var dlog={};        // daily log
+var lvMap={};       // shared with admin - eid -> {emp, duty} for On Leave
+var lvCollapsed=false; // On Leave box collapsed state
 var TIMES=['6:00 AM','7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM','7:00 PM','8:00 PM','9:00 PM','10:00 PM','11:00 PM'];
 var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e','#37474f','#6a1b9a','#bf360c','#1565c0','#2e7d32'];
 var ROLES_LIST=[];
@@ -219,9 +230,17 @@ function loadFromCloud(){
       asgn=d[ASGN_KEY]||{};
       // Load log
       dlog=d[LOG_KEY]||{};
+      // Load shared lvMap (same as admin)
+      if(d.lvMap){
+        Object.keys(d.lvMap).forEach(function(eid){
+          var emp=getS(eid);
+          if(emp)lvMap[eid]={emp:emp,duty:d.lvMap[eid].duty||'6:00 AM'};
+        });
+      }
       DB_LOADED=true;
       drawStaffPanel();
       drawHalls();
+      drawLeaveZone();
     }
     showSaveInd('saved');
   }).catch(function(e){console.error(e);showSaveInd('error');});
@@ -247,6 +266,10 @@ function saveCloud(){
     });
     payload[ASGN_KEY]=asgnData;
     payload[LOG_KEY]=dlog;
+    // Save shared lvMap (same key as admin so it syncs)
+    var lvData={};
+    Object.keys(lvMap).forEach(function(eid){lvData[eid]={duty:lvMap[eid].duty||'6:00 AM'};});
+    payload['lvMap']=lvData;
     db.collection('gavs_data').doc('main').update(payload).then(function(){
       SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
       showSaveInd('saved');
@@ -278,6 +301,8 @@ function getDeployedEids(){
   return deps;
 }
 
+function isOnLeave(eid){return !!lvMap[eid];}
+
 function drawStaffPanel(){
   var el=g('LP_LIST');if(!el)return;
   el.innerHTML='';
@@ -306,14 +331,19 @@ function drawStaffPanel(){
       card.className='staff-card';
       card.draggable=!isDeployed;
       card.setAttribute('data-eid',e.id);
-      card.style.cssText='background:'+c+'12;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:'+(isDeployed?'default':'grab')+';margin-bottom:2px;opacity:'+(isDeployed?'0.55':'1')+';';
+      var onLeave=isOnLeave(e.id);
+      card.style.cssText='background:'+(onLeave?'#ffebee':c+'12')+';border-left:3px solid '+(onLeave?'#ef9a9a':c)+';border-bottom:1px solid '+(onLeave?'#ffcdd2':c+'22')+';padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:'+(isDeployed||onLeave?'default':'grab')+';margin-bottom:2px;opacity:'+(isDeployed||onLeave?'0.45':'1')+';';
+      card.draggable=!isDeployed&&!onLeave;
       var nm=document.createElement('div');nm.className='sc-name';nm.textContent=e.name;
       card.appendChild(nm);
-      if(isDeployed){
+      if(onLeave){
+        var tag=document.createElement('span');tag.className='deployed-tag';tag.textContent='🌴';tag.style.color='#c62828';
+        card.appendChild(tag);
+      } else if(isDeployed){
         var tag=document.createElement('span');tag.className='deployed-tag';tag.textContent='●';tag.style.color=c;
         card.appendChild(tag);
       }
-      if(!isDeployed){
+      if(!isDeployed&&!onLeave){
         card.addEventListener('dragstart',function(ev){
           ev.dataTransfer.setData('text/plain',e.id);
           ev.dataTransfer.effectAllowed='move';
@@ -424,6 +454,91 @@ function makeHallBox(h){
 
   return box;
 }
+
+// ── ON LEAVE ZONE ────────────────────────────────────────────
+function drawLeaveZone(){
+  var wrap=g('LEAVE_ZONE_WRAP');if(!wrap)return;
+  wrap.innerHTML='';
+  var lvList=Object.values(lvMap).filter(function(a){
+    return staff.some(function(s){return s.id===a.emp.id;});
+  });
+
+  var zone=document.createElement('div');zone.className='lv-zone';
+
+  var hdr=document.createElement('div');hdr.className='lv-hdr';
+  hdr.innerHTML='<span style="font-size:14px;">🌴</span><span class="lv-hdr-title">On Leave</span><span class="lv-cnt">'+lvList.length+' staff</span>';
+  var colBtn=document.createElement('button');colBtn.className='lv-col-btn';
+  colBtn.textContent=lvCollapsed?'▶':'▼';
+  colBtn.addEventListener('click',function(){lvCollapsed=!lvCollapsed;drawLeaveZone();});
+  hdr.appendChild(colBtn);
+  zone.appendChild(hdr);
+
+  if(!lvCollapsed){
+    var body=document.createElement('div');body.className='lv-body';
+    if(!lvList.length){
+      body.innerHTML='<div style="text-align:center;color:rgba(255,255,255,0.5);font-size:11px;padding:10px;">Drag staff here to mark On Leave</div>';
+    } else {
+      lvList.forEach(function(a){
+        var c=cc(a.emp.role);
+        var row=document.createElement('div');
+        row.style.cssText='background:'+c+'22;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;margin-bottom:2px;';
+        var nm=document.createElement('div');nm.style.cssText='font-size:9px;font-weight:700;color:#fff;flex:1;';nm.textContent=a.emp.name;
+        var rm=document.createElement('button');
+        rm.style.cssText='flex-shrink:0;width:14px;height:14px;background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:3px;cursor:pointer;font-size:8px;display:flex;align-items:center;justify-content:center;';
+        rm.textContent='✕';
+        rm.addEventListener('click',(function(eid,ename){return function(){
+          showModal('<div class="modal-title" style="color:#c62828;">Remove from On Leave?</div>'+
+            '<p style="text-align:center;margin-bottom:16px;">Remove <strong>'+esc(ename)+'</strong> from On Leave?</p>'+
+            '<button class="mbtn blue" id="m-yes">Yes, Remove</button>'+
+            '<button class="mbtn cancel" id="m-no">Cancel</button>');
+          g('m-yes').onclick=function(){delete lvMap[eid];closeModal();drawLeaveZone();drawStaffPanel();saveCloud();};
+          g('m-no').onclick=closeModal;
+        };})(a.emp.id,a.emp.name));
+        row.appendChild(nm);row.appendChild(rm);
+        body.appendChild(row);
+      });
+    }
+    zone.appendChild(body);
+  }
+
+  // Drop zone for marking leave
+  zone.addEventListener('dragover',function(ev){ev.preventDefault();zone.classList.add('drag-over');});
+  zone.addEventListener('dragleave',function(){zone.classList.remove('drag-over');});
+  zone.addEventListener('drop',function(ev){
+    ev.preventDefault();zone.classList.remove('drag-over');
+    var eid=ev.dataTransfer.getData('text/plain');
+    if(!eid)return;
+    var emp=getS(eid);if(!emp)return;
+    // Remove from any hall first
+    Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
+    lvMap[eid]={emp:emp,duty:'6:00 AM'};
+    drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();
+  });
+
+  wrap.appendChild(zone);
+}
+
+// Touch drop on leave zone
+document.addEventListener('touchend',function(ev){
+  if(!tEid)return;
+  var t=ev.changedTouches[0];
+  var el=document.elementFromPoint(t.clientX,t.clientY);
+  if(el){
+    var lz=el.closest('.lv-zone');
+    if(lz){
+      var emp=getS(tEid);
+      if(emp){
+        Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][tEid])delete asgn[hid][tEid];});
+        lvMap[tEid]={emp:emp,duty:'6:00 AM'};
+        drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();
+        if(tGhost){try{document.body.removeChild(tGhost);}catch(x){}tGhost=null;}
+        var card=document.querySelector('.staff-card[data-eid="'+tEid+'"]');
+        if(card)card.style.opacity='';
+        tEid=null;
+      }
+    }
+  }
+},{passive:true});
 
 // ── ADD HALL ──────────────────────────────────────────────────
 g('btnAddHall').addEventListener('click',function(){

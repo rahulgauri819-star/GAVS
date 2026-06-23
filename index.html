@@ -1318,6 +1318,12 @@ function drawVenueGrid(){
   el.appendChild(offBox);
   } // end if assignMode==='staff'
 
+  // ── IHC & Jaipur Available Staff zones (staff mode only, today only) ─────
+  if(assignMode==='staff'&&isViewingToday()){
+    drawAvailableStaffZone(el,'India Habitat Centre','#1565c0','🏛️ IHC Available Staff');
+    drawAvailableStaffZone(el,'Jaipur','#283593','📍 Jaipur Available Staff');
+  }
+
   // ── Venue boxes — sorted by staff count (most first) unless custom order set ─
   var sortedVids=activeVids.slice();
   if(venueOrder.length){
@@ -4318,6 +4324,58 @@ if(btnAddJPHall)btnAddJPHall.addEventListener('click',function(){
   toast(n+' added to Jaipur!');drawMHalls();saveCloud();
 });
 document.getElementById('NEW_JP_HALL').addEventListener('keydown',function(e){if(e.key==='Enter'&&document.getElementById('btnAddJPHall'))document.getElementById('btnAddJPHall').click();});
+
+
+// ── IHC / JAIPUR AVAILABLE STAFF ZONES ─────────────────────
+function drawAvailableStaffZone(parentEl,venueName,accentColor,label){
+  // Find the venue
+  var v=venues.find(function(x){return x.name===venueName;});
+  if(!v)return;
+
+  // Get staff pinned to this venue
+  var pinnedStaff=staff.filter(function(e){return e.pv===v.id;});
+  if(!pinnedStaff.length)return;
+
+  // Available = pinned but NOT assigned anywhere AND NOT on leave
+  var deployedEids={};
+  Object.keys(asgn).forEach(function(vid){Object.keys(asgn[vid]||{}).forEach(function(eid){deployedEids[eid]=vid;});});
+  // Also check ihcAsgn and jaipurAsgn
+  Object.keys(ihcAsgn||{}).forEach(function(hid){Object.keys(ihcAsgn[hid]||{}).forEach(function(eid){deployedEids[eid]=hid;});});
+  Object.keys(jaipurAsgn||{}).forEach(function(hid){Object.keys(jaipurAsgn[hid]||{}).forEach(function(eid){deployedEids[eid]=hid;});});
+
+  var availStaff=pinnedStaff.filter(function(e){return !deployedEids[e.id]&&!lvMap[e.id];});
+  if(!availStaff.length)return; // hide zone if no available staff
+
+  var box=document.createElement('div');
+  box.style.cssText='background:#fff;border:2px solid '+accentColor+';border-radius:12px;overflow:hidden;margin-bottom:0;';
+
+  var hdr=document.createElement('div');
+  hdr.style.cssText='background:'+accentColor+';color:#fff;padding:8px 12px;display:flex;align-items:center;gap:8px;';
+  hdr.innerHTML='<span style="font-size:14px;">'+label.slice(0,2)+'</span><span style="font-size:12px;font-weight:700;flex:1;">'+label.slice(3)+'</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;">'+availStaff.length+' available</span>';
+  box.appendChild(hdr);
+
+  var body=document.createElement('div');body.style.cssText='padding:8px;';
+  availStaff.forEach(function(e){
+    var c=cc(e.role);
+    var row=document.createElement('div');
+    row.className='v3card';
+    row.draggable=true;
+    row.setAttribute('data-eid',e.id);
+    row.style.cssText='background:'+c+'12;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:grab;margin-bottom:2px;';
+    var nm=document.createElement('div');nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;';nm.textContent=e.name;
+    var role=document.createElement('div');role.style.cssText='font-size:8px;color:'+c+';flex-shrink:0;';role.textContent=e.role;
+    row.appendChild(nm);row.appendChild(role);
+    row.addEventListener('dragstart',function(ev){
+      ev.dataTransfer.setData('text/plain',e.id);
+      ev.dataTransfer.effectAllowed='move';
+      row.style.opacity='0.4';
+    });
+    row.addEventListener('dragend',function(){row.style.opacity='';});
+    body.appendChild(row);
+  });
+  box.appendChild(body);
+  parentEl.appendChild(box);
+}
 
 // ── TOUCH DRAG & DROP FOR IPAD / MOBILE ──────────────────────
 var touchDragEid = null;

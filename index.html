@@ -310,8 +310,8 @@ input,select,button{font-family:inherit;}
   <!-- Compact topbar (desktop only, replaces main header) -->
   <div class="atb" id="ATB">
     <div class="atb-logo">
-      <img src="gavs_logo.png" alt="" onerror="this.style.display='none'"/>
-      <div><div class="atb-title">Grover Audio Visual Services</div><div class="atb-sub">Staff Deployment</div></div>
+      <img src="gavs_logo.png" alt="" style="height:32px;width:auto;" onerror="this.style.display='none'"/>
+
     </div>
     <div class="atb-sep"></div>
     <div id="ATB_STATS" style="display:flex;gap:4px;flex-shrink:0;"></div>
@@ -977,41 +977,25 @@ function initApp(){
 }
 
 function initActiveVids(){
-  // Contracted (pinned-staff) venues: hidden by default via contractedHiddenVids
-  // On first call, populate contractedHiddenVids with ALL contracted venues (default hidden)
-  if(contractedHiddenVids.size===0&&staff.some(function(e){return !!e.pv;})){
+  // On first load only: mark ALL contracted venues hidden by default
+  if(!contractedHiddenVids._initialized){
+    contractedHiddenVids._initialized=true;
     venues.forEach(function(v){
-      if(staff.some(function(e){return e.pv===v.id;})){
-        contractedHiddenVids.add(v.id);
-      }
+      if(staff.some(function(e){return e.pv===v.id;}))contractedHiddenVids.add(v.id);
     });
   }
-  // Always show venues with assignments
+  // Remove contracted-hidden venues from activeVids (enforce hidden state)
+  activeVids=activeVids.filter(function(id){
+    var isContracted=staff.some(function(e){return e.pv===id;});
+    return !isContracted||!contractedHiddenVids.has(id);
+  });
+  // Add visible venues that have assignments
   venues.forEach(function(v){
     var hasPinned=staff.some(function(e){return e.pv===v.id;});
     var hasAsgn=asgn[v.id]&&Object.keys(asgn[v.id]).length>0;
-    var isContracted=hasPinned;
-    var isHidden=isContracted&&contractedHiddenVids.has(v.id);
-    if(isHidden){
-      // Remove from activeVids if hidden (unless manually added via search)
-      // Don't touch activeVids for hidden ones - they won't be added
-    } else if(hasPinned||hasAsgn){
-      if(activeVids.indexOf(v.id)<0)activeVids.push(v.id);
-    }
-    // Auto-collapse pinned venues with no duties yet (fresh start)
-    if(hasPinned&&!hasAsgn){
-      collapsedVids.add(v.id);
-    }
-  });
-  // Also ensure non-hidden pinned-staff venues are always present
-  staff.forEach(function(e){
-    if(e.pv&&getV(e.pv)){
-      if(!contractedHiddenVids.has(e.pv)){
-        if(activeVids.indexOf(e.pv)<0)activeVids.push(e.pv);
-        var hasAsgn2=asgn[e.pv]&&Object.keys(asgn[e.pv]).length>0;
-        if(!hasAsgn2)collapsedVids.add(e.pv);
-      }
-    }
+    var isHidden=hasPinned&&contractedHiddenVids.has(v.id);
+    if(!isHidden&&(hasPinned||hasAsgn)){if(activeVids.indexOf(v.id)<0)activeVids.push(v.id);}
+    if(hasPinned&&!hasAsgn)collapsedVids.add(v.id);
   });
 }
 
@@ -1045,8 +1029,10 @@ function applyPinned(){
     Object.keys(asgn).forEach(function(vid){if(vid!==e.pv&&asgn[vid]&&asgn[vid][e.id])delete asgn[vid][e.id];});
     if(!asgn[e.pv])asgn[e.pv]={};
     if(!asgn[e.pv][e.id]){asgn[e.pv][e.id]={emp:e,duty:e.fixedDuty||'6:00 AM',pinned:true,isFixed:true};}
-    // Always add pinned venue to active list
-    if(activeVids.indexOf(e.pv)<0)activeVids.push(e.pv);
+    // Only add to activeVids if NOT contracted-hidden
+    if(!contractedHiddenVids.has(e.pv)){
+      if(activeVids.indexOf(e.pv)<0)activeVids.push(e.pv);
+    }
   });
 }
 
@@ -1269,25 +1255,9 @@ function drawVenueGrid(){
   var el=g('V_GRID');if(!el)return;
   el.innerHTML='';
 
-  // Read-only banner for past dates
-  var isToday=isViewingToday();
-  var pastBanner=document.getElementById('PAST_DATE_BANNER');
-  if(!pastBanner){
-    pastBanner=document.createElement('div');
-    pastBanner.id='PAST_DATE_BANNER';
-    pastBanner.style.cssText='background:#fff3e0;border:2px solid #ffb300;border-radius:10px;padding:10px 16px;margin-bottom:10px;font-size:12px;font-weight:700;color:#e65100;display:flex;align-items:center;gap:8px;';
-    pastBanner.innerHTML='📅 Viewing duties for <span id="PAST_DATE_LABEL" style="color:#c62828;"></span> — <span style="color:#888;font-weight:500;">Read-only. Switch to today\'s date to assign duties.</span>';
-    el.parentNode.insertBefore(pastBanner,el);
-  }
-  if(isToday){
-    pastBanner.style.display='none';
-  } else {
-    pastBanner.style.display='flex';
-    var lbl=document.getElementById('PAST_DATE_LABEL');
-    if(lbl)lbl.textContent=fd(getD());
-  }
+  // All dates are fully editable — no read-only mode
 
-  if(assignMode==='staff'&&isViewingToday()){
+  if(assignMode==='staff'){
   // ── Leave drop zone ─────────────────────────────────────────
   var lvBox=document.createElement('div');
   var lvCount=Object.keys(lvMap).length;
@@ -1412,11 +1382,11 @@ function drawVenueGrid(){
     sortedVids.filter(function(id){return ordered.indexOf(id)<0;}).forEach(function(id){ordered.push(id);});
     sortedVids=ordered;
   } // no auto-sort: keep add/original order when no custom venueOrder
-  var viewData=isViewingToday()?null:getViewData();
+  // Always use live data — all dates fully editable
   sortedVids.forEach(function(vid){
     var v=getV(vid);if(!v)return;
-    var hasPinned=isViewingToday()&&staff.some(function(e){return e.pv===vid;});
-    var box=makeVenueBox(v,hasPinned,viewData);
+    var hasPinned=staff.some(function(e){return e.pv===vid;});
+    var box=makeVenueBox(v,hasPinned,null);
     // Drag-to-reorder: make the venue header draggable
     box.setAttribute('draggable','false'); // only header is draggable
     var boxHdr=box.querySelector('.vbox-hdr');
@@ -1453,7 +1423,7 @@ function drawVenueGrid(){
   });
 
   // ── IHC & Jaipur Available Staff zones — appear in masonry flow alongside venues ─
-  if(assignMode==='staff'&&isViewingToday()){
+  if(assignMode==='staff'){
     drawAvailableStaffZone(el,'India Habitat Centre','#2e7d32','🏛️ IHC Available Staff');
     drawAvailableStaffZone(el,'Jaipur','#1565c0','📍 Jaipur Available Staff');
   }
@@ -1473,21 +1443,19 @@ function makeVenueBox(v,hasPinned,viewData){
   box.className='vbox'+(v.vip?' vip':'');
   box.id='vb-'+v.id;
 
-  // Drag and drop - disabled in read-only (past date) mode
-  if(isViewingToday()){
-    box.addEventListener('dragover',function(ev){ev.preventDefault();ev.dataTransfer.dropEffect='move';this.classList.add('drag-over');});
-    box.addEventListener('dragleave',function(){this.classList.remove('drag-over');});
-    box.addEventListener('drop',function(ev){
-      ev.preventDefault();this.classList.remove('drag-over');
-      var vcardJson=ev.dataTransfer.getData('text/vendorcard');
-      if(vcardJson){
-        try{var payload=JSON.parse(vcardJson);addVendorCardToVenue(payload,v.id);}catch(err){}
-        return;
-      }
-      var eid=ev.dataTransfer.getData('text/plain');
-      if(eid)dropStaff(eid,v.id);
-    });
-  }
+  // Drag and drop — always enabled on all dates
+  box.addEventListener('dragover',function(ev){ev.preventDefault();ev.dataTransfer.dropEffect='move';this.classList.add('drag-over');});
+  box.addEventListener('dragleave',function(){this.classList.remove('drag-over');});
+  box.addEventListener('drop',function(ev){
+    ev.preventDefault();this.classList.remove('drag-over');
+    var vcardJson=ev.dataTransfer.getData('text/vendorcard');
+    if(vcardJson){
+      try{var payload=JSON.parse(vcardJson);addVendorCardToVenue(payload,v.id);}catch(err){}
+      return;
+    }
+    var eid=ev.dataTransfer.getData('text/plain');
+    if(eid)dropStaff(eid,v.id);
+  });
 
   // Header
   var hdr=document.createElement('div');
@@ -1495,7 +1463,7 @@ function makeVenueBox(v,hasPinned,viewData){
 
   var icon=document.createElement('span');icon.textContent=v.vip?'⭐':'🏨';
   var nm=document.createElement('div');nm.className='vbox-name';nm.textContent=v.name;
-  var cnt=document.createElement('span');cnt.className='vbox-cnt';
+  var cnt=document.createElement('span');cnt.className='vbox-cnt';cnt.style.cssText='background:rgba(255,255,255,0.2);border-radius:6px;padding:1px 6px;font-size:9px;font-weight:700;flex-shrink:0;';
   var vm0=vendorAsgn[v.id]||{};
   var totalVendorEntries=0;
   Object.keys(vm0).forEach(function(tid){
@@ -1528,8 +1496,8 @@ function makeVenueBox(v,hasPinned,viewData){
   };})(v.id));
   hdr.appendChild(colBtnEarly);
 
-  // Interactive buttons only shown when viewing today (not past dates)
-  if(isViewingToday()){
+  // Interactive buttons — always shown on all dates
+  {
   // VIP button
   var vipBtn=document.createElement('button');
   vipBtn.style.cssText='background:'+(v.vip?'#f9a825':'rgba(255,255,255,0.15)')+';border:1px solid '+(v.vip?'#f9a825':'rgba(255,255,255,0.4)')+';color:#fff;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;flex-shrink:0;';
@@ -1772,10 +1740,8 @@ function makeMgrRow(a,vid){
   nm.title=a.emp.name+(a.emp.phone?' Ph:'+a.emp.phone:'');
   var ts=makeTselEl(a.duty,a.isFixed,function(val){if(asgn[vid]&&asgn[vid][a.emp.id]){asgn[vid][a.emp.id].duty=val;asgn[vid][a.emp.id].isFixed=false;saveCloud();}});
   var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';rm.style.cssText='width:19px;height:19px;font-size:10px;flex-shrink:0;min-width:19px;';
-  if(isViewingToday()){
-    rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
-  }
-  d.appendChild(nm);d.appendChild(ts);if(isViewingToday())d.appendChild(rm);
+  rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
+  d.appendChild(nm);d.appendChild(ts);d.appendChild(rm);
   return d;
 }
 
@@ -1808,10 +1774,8 @@ function makeV3Card(a,vid,c){
   // Remove button - compact
   var rm=document.createElement('button');rm.className='v3rm';rm.textContent='✕';
   rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
-  if(isViewingToday()){
-    rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
-    d.appendChild(rm);
-  }
+  rm.addEventListener('click',(function(eid,vid2){return function(){remVConfirm(eid,vid2);};})(a.emp.id,vid));
+  d.appendChild(rm);
   return d;
 }
 
@@ -2032,7 +1996,21 @@ wireBtnCopy(document.getElementById('btnCopy2'));
 wireBtnDraft(document.getElementById('btnDraft2'));
 wireBtnDrafts(document.getElementById('btnDrafts2'));
 wireBtnSave(document.getElementById('btnSave2'));
-function wireBtnPDF(el){if(el)el.addEventListener('click',function(){saveLog();makePDF();});}
+function wireBtnPDF(el){
+  if(!el)return;
+  el.addEventListener('click',function(){
+    saveLog();
+    showModal(
+      '<div class="mt">📄 Choose PDF Type</div>'+
+      '<button class="mbtn blue" id="m-full">📋 Full Report<br><span style="font-size:11px;font-weight:400;opacity:0.85;">All staff, all venues, grouped by role</span></button>'+
+      '<button class="mbtn grn" id="m-event">⚡ Event Sheet<br><span style="font-size:11px;font-weight:400;opacity:0.85;">Compact, multi-venue per page, no contracted staff</span></button>'+
+      '<button class="mcancel" id="m-no">Cancel</button>'
+    );
+    g('m-full').onclick=function(){closeModal();makePDF();};
+    g('m-event').onclick=function(){closeModal();makeEventSheetPDF();};
+    g('m-no').onclick=closeModal;
+  });
+}
 wireBtnPDF(document.getElementById('btnExportPDF'));
 // Mobile action bar buttons (were previously completely unwired)
 wireBtnCopy(document.getElementById('mbtnCopy'));
@@ -4005,13 +3983,7 @@ function addVendorCardToVenue(payload,vid){
   if(activeVids.indexOf(vid)<0)activeVids.push(vid);
   if(!vendorAsgn[vid])vendorAsgn[vid]={};
   if(!vendorAsgn[vid][payload.typeId])vendorAsgn[vid][payload.typeId]=[];
-  // Prevent duplicate: check if same company+service already assigned to this venue
-  var existing=vendorAsgn[vid][payload.typeId];
-  var isDup=existing.some(function(e){
-    if(payload.service)return e.company===payload.company&&e.serviceLabel===payload.service;
-    return e.company===payload.company&&!e.serviceLabel;
-  });
-  if(isDup){toast('Already assigned to this venue','w');return;}
+  // Allow same vendor multiple times (different times) — no duplicate block
   var entry={company:payload.company,qty:1,time:'9:00 AM',notes:''};
   if(vt.special==='photovideo'&&payload.service){
     entry.serviceLabel=payload.service;
@@ -5037,7 +5009,7 @@ function actuallySaveCloud(){
       drafts:draftsData,roles:ROLES,dlog:dlog,activeVids:activeVids,
       vHalls:vHalls,venueOrder:venueOrder,
       vendorAsgn:vendorAsgn,vendorCompanies:vendorCompanies,
-      vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,portalPasswords:Object.fromEntries(PORTAL_ACCOUNTS.map(function(a){return[a.id,{username:a.username,password:a.password}];})),portalAccess:PORTAL_ACCESS,ihcHalls:ihcHalls,portalPasswords:portalPasswords,portalAccess:portalAccess,jaipurHalls:jaipurHalls,ihcAsgn:ihcAsgn,jaipurAsgn:jaipurAsgn,ihcLog:ihcLog,jaipurLog:jaipurLog,
+      vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,portalPasswords:portalPasswords,portalAccess:portalAccess,ihcHalls:ihcHalls,jaipurHalls:jaipurHalls,ihcAsgn:ihcAsgn,jaipurAsgn:jaipurAsgn,ihcLog:ihcLog,jaipurLog:jaipurLog,
       updatedAt:new Date().toISOString()
     };
     doSaveWithRetry(payload,0);
@@ -5185,6 +5157,94 @@ function loadFromCloud(callback){
     DB_LOADED=true;showLoad(false);
     if(callback){callback();callback=null;}
   });
+}
+
+
+// ── EVENT SHEET PDF ───────────────────────────────────────────
+function makeEventSheetPDF(){
+  if(!window.jspdf){toast('PDF library loading...','w');return;}
+  var d=getD();
+  // Build assignment data - exclude pinned staff in their own venue
+  var pdfData={};
+  Object.keys(asgn).forEach(function(vid){
+    var entries=Object.values(asgn[vid]||{});
+    // Only include staff who are NOT pinned to this venue (i.e. not contracted)
+    var nonPinned=entries.filter(function(a){return !(a.pinned&&a.emp.pv===vid);});
+    if(nonPinned.length>0)pdfData[vid]=nonPinned;
+  });
+
+  var doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  var pw=297,ph=210,mg=8,y=mg;
+  var colW=88; // ~3 columns in landscape
+  var numCols=3;
+  var cols=[[],[],[]]; // distribute venues across columns
+  var vList=venues.filter(function(v){return pdfData[v.id]&&pdfData[v.id].length>0;});
+
+  // Header
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,18,'F');
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv2=document.createElement('canvas');cv2.width=img.naturalWidth;cv2.height=img.naturalHeight;cv2.getContext('2d').drawImage(img,0,0);doc.addImage(cv2.toDataURL('image/png'),'PNG',mg,2,12,12);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(11);doc.setFont('helvetica','bold');
+  doc.text('GAVS EVENT SHEET',pw/2,8,{align:'center'});
+  doc.setFontSize(7);doc.setFont('helvetica','normal');
+  doc.text(fd(d),pw/2,13,{align:'center'});
+  y=22;
+
+  if(!vList.length){
+    doc.setTextColor(150,150,150);doc.setFontSize(12);
+    doc.text('No non-contracted staff assigned today.',pw/2,ph/2,{align:'center'});
+    doc.save('GAVS_EventSheet_'+d+'.pdf');toast('Event Sheet downloaded!');return;
+  }
+
+  // Calculate column heights greedily
+  var colHeights=[0,0,0];
+  vList.forEach(function(v){
+    var entries=pdfData[v.id];
+    var boxH=10+entries.length*5+4; // header + rows + padding
+    var minCol=0;colHeights.forEach(function(h,i){if(h<colHeights[minCol])minCol=i;});
+    cols[minCol].push(v);
+    colHeights[minCol]+=boxH;
+  });
+
+  var colX=[mg, mg+colW+4, mg+(colW+4)*2];
+  var colY=[y,y,y];
+  var pageH=ph-mg;
+
+  cols.forEach(function(colVenues,ci){
+    colVenues.forEach(function(v){
+      var entries=pdfData[v.id];
+      var boxH=10+entries.length*5+3;
+      if(colY[ci]+boxH>pageH){
+        // new page - reset all cols if this is col 0, else just continue
+        if(ci===0){doc.addPage();colY=[y,y,y];}
+        else{colY[ci]=y;}
+      }
+      var x=colX[ci],yy=colY[ci];
+      // Venue header
+      doc.setFillColor(21,101,192);doc.roundedRect(x,yy,colW,8,1.5,1.5,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+      var vname=v.name.length>34?v.name.slice(0,33)+'…':v.name;
+      doc.text(vname,x+3,yy+5.2);
+      doc.setFontSize(6.5);
+      doc.text(entries.length+' staff',x+colW-3,yy+5.2,{align:'right'});
+      yy+=9;
+      // Staff rows
+      entries.forEach(function(a,idx){
+        var bg=idx%2===0?[245,248,255]:[255,255,255];
+        doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(x,yy,colW,4.5,'F');
+        doc.setTextColor(30,30,30);doc.setFontSize(6);doc.setFont('helvetica','normal');
+        var name=a.emp.name.length>28?a.emp.name.slice(0,27)+'…':a.emp.name;
+        doc.text(name,x+2,yy+3.1);
+        doc.setTextColor(21,101,192);
+        doc.text(shortTime(a.duty),x+colW-2,yy+3.1,{align:'right'});
+        yy+=4.5;
+      });
+      yy+=2;
+      colY[ci]=yy;
+    });
+  });
+
+  doc.save('GAVS_EventSheet_'+d+'.pdf');
+  toast('Event Sheet downloaded!');
 }
 
 </script>

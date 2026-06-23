@@ -323,50 +323,53 @@ function drawStaffPanel(){
   var deps=getDeployedEids();
   var cntEl=g('LP_CNT');if(cntEl)cntEl.textContent=staff.length;
 
-  // Group by role
-  var groups={};
-  staff.forEach(function(e){
-    if(q&&e.name.toLowerCase().indexOf(q)<0)return;
-    if(!groups[e.role])groups[e.role]=[];
-    groups[e.role].push(e);
-  });
+  // Split staff into pinned and temporary
+  var pinnedStaff=staff.filter(function(e){return e.pv===ihcVenueId;});
+  var tempStaff=staff.filter(function(e){return e.pv!==ihcVenueId;});
 
-  Object.keys(groups).forEach(function(r){
-    var c=cc(r);
-    var hdr=document.createElement('div');
-    hdr.className='role-hdr';
-    hdr.style.color=c;
-    hdr.textContent=r;
-    el.appendChild(hdr);
-    groups[r].forEach(function(e){
-      var isDeployed=!!deps[e.id];
-      var card=document.createElement('div');
-      card.className='staff-card';
-      card.draggable=!isDeployed;
-      card.setAttribute('data-eid',e.id);
-      var onLeave=isOnLeave(e.id);
-      card.style.cssText='background:'+(onLeave?'#ffebee':c+'12')+';border-left:3px solid '+(onLeave?'#ef9a9a':c)+';border-bottom:1px solid '+(onLeave?'#ffcdd2':c+'22')+';padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:'+(isDeployed||onLeave?'default':'grab')+';margin-bottom:2px;opacity:'+(isDeployed||onLeave?'0.45':'1')+';';
-      card.draggable=!isDeployed&&!onLeave;
-      var nm=document.createElement('div');nm.className='sc-name';nm.textContent=e.name;
-      card.appendChild(nm);
-      if(onLeave){
-        var tag=document.createElement('span');tag.className='deployed-tag';tag.textContent='🌴';tag.style.color='#c62828';
-        card.appendChild(tag);
-      } else if(isDeployed){
-        var tag=document.createElement('span');tag.className='deployed-tag';tag.textContent='●';tag.style.color=c;
-        card.appendChild(tag);
-      }
-      if(!isDeployed&&!onLeave){
-        card.addEventListener('dragstart',function(ev){
-          ev.dataTransfer.setData('text/plain',e.id);
-          ev.dataTransfer.effectAllowed='move';
-        });
-      }
-      el.appendChild(card);
+  function renderGroup(list,label,labelStyle){
+    if(!list.length)return;
+    if(label){
+      var sec=document.createElement('div');
+      sec.style.cssText='margin:10px 0 5px;padding:5px 6px;background:#1565c0;color:#fff;font-size:11px;font-weight:800;letter-spacing:0.05em;border-radius:6px;';
+      sec.textContent=label;
+      el.appendChild(sec);
+    }
+    var groups={};
+    list.forEach(function(e){
+      if(q&&e.name.toLowerCase().indexOf(q)<0)return;
+      if(!groups[e.role])groups[e.role]=[];
+      groups[e.role].push(e);
     });
-  });
+    Object.keys(groups).forEach(function(r){
+      var c=cc(r);
+      var hdr=document.createElement('div');
+      hdr.className='role-hdr';hdr.style.color=c;hdr.textContent=r;
+      el.appendChild(hdr);
+      groups[r].forEach(function(e){
+        var isDeployed=!!deps[e.id];
+        var card=document.createElement('div');
+        card.className='staff-card';
+        card.setAttribute('data-eid',e.id);
+        var onLeave=isOnLeave(e.id);
+        card.style.cssText='background:'+(onLeave?'#ffebee':c+'12')+';border-left:3px solid '+(onLeave?'#ef9a9a':c)+';border-bottom:1px solid '+(onLeave?'#ffcdd2':c+'22')+';padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:'+(isDeployed||onLeave?'default':'grab')+';margin-bottom:2px;opacity:'+(isDeployed||onLeave?'0.45':'1')+';';
+        card.draggable=!isDeployed&&!onLeave;
+        var nm=document.createElement('div');nm.className='sc-name';nm.textContent=e.name;
+        card.appendChild(nm);
+        if(onLeave){var tag=document.createElement('span');tag.textContent='🌴';tag.style.color='#c62828';card.appendChild(tag);}
+        else if(isDeployed){var tag=document.createElement('span');tag.textContent='●';tag.style.color=c;card.appendChild(tag);}
+        if(!isDeployed&&!onLeave){card.addEventListener('dragstart',function(ev){ev.dataTransfer.setData('text/plain',e.id);ev.dataTransfer.effectAllowed='move';});}
+        el.appendChild(card);
+      });
+    });
+  }
 
-  if(!Object.keys(groups).length){
+  renderGroup(pinnedStaff,null);
+  if(tempStaff.length){
+    renderGroup(tempStaff,'👤 Temporary Staff');
+  }
+
+  if(!el.children.length){
     el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px;font-size:12px;">No staff found</div>';
   }
 }

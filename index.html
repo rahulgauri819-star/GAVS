@@ -368,6 +368,7 @@ input,select,button{font-family:inherit;}
     <button class="mtab" data-mtab="roles">🏷️ Roles</button>
     <button class="mtab" data-mtab="vendors">📋 Vendor Types</button>
     <button class="mtab" data-mtab="halls">🏛️ Venue Halls</button>
+    <button class="mtab" data-mtab="portals">🔑 Portal Access</button>
   </div>
   <div id="mp-staff">
     <div class="mgrid">
@@ -449,6 +450,39 @@ input,select,button{font-family:inherit;}
           <button class="bigbtn" id="btnAddJPHall">+ Add Jaipur Hall</button>
         </div>
         <div id="JP_HALLS_LIST" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTAL ACCESS PANEL -->
+  <div id="mp-portals" class="hide">
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;">
+      <div>
+        <div class="abt" style="margin-bottom:12px;">PORTALS</div>
+        <div id="PORTAL_LIST"></div>
+      </div>
+      <div id="PORTAL_DETAIL">
+        <div style="text-align:center;padding:60px 20px;color:#bbb;">
+          <div style="font-size:40px;">🔑</div>
+          <div style="font-size:14px;font-weight:700;color:#1565c0;margin-top:10px;">Select a Portal</div>
+          <div style="font-size:12px;color:#aaa;margin-top:4px;">to manage access and password</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mp-portals" class="hide">
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;">
+      <div>
+        <div class="abt" style="margin-bottom:10px;">PORTAL ACCOUNTS</div>
+        <div id="PORTAL_LIST"></div>
+      </div>
+      <div id="PORTAL_DETAIL">
+        <div style="text-align:center;padding:60px 20px;color:#bbb;">
+          <div style="font-size:40px;">🔑</div>
+          <div style="font-size:14px;font-weight:700;color:#1565c0;margin-top:10px;">Select a Portal</div>
+          <div style="font-size:12px;color:#aaa;margin-top:4px;">to manage access and password</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1318,12 +1352,6 @@ function drawVenueGrid(){
   el.appendChild(offBox);
   } // end if assignMode==='staff'
 
-  // ── IHC & Jaipur Available Staff zones (staff mode only, today only) ─────
-  if(assignMode==='staff'&&isViewingToday()){
-    drawAvailableStaffZone(el,'India Habitat Centre','#1565c0','🏛️ IHC Available Staff');
-    drawAvailableStaffZone(el,'Jaipur','#283593','📍 Jaipur Available Staff');
-  }
-
   // ── Venue boxes — sorted by staff count (most first) unless custom order set ─
   var sortedVids=activeVids.slice();
   if(venueOrder.length){
@@ -1375,6 +1403,12 @@ function drawVenueGrid(){
     });
     el.appendChild(box);
   });
+
+  // ── IHC & Jaipur Available Staff zones — appear in masonry flow alongside venues ─
+  if(assignMode==='staff'&&isViewingToday()){
+    drawAvailableStaffZone(el,'India Habitat Centre','#2e7d32','🏛️ IHC Available Staff');
+    drawAvailableStaffZone(el,'Jaipur','#1565c0','📍 Jaipur Available Staff');
+  }
 
   // ── Add new venue box ────────────────────────────────────────
   var addBox=document.createElement('div');
@@ -1573,6 +1607,8 @@ function renderStaffBody(body,v,t){
       body.appendChild(roleRow);
     }
   }
+  // Show hall-wise assignments from IHC/Jaipur portals
+  renderHallsInVenueBox(body,v);
 }
 
 function renderVendorBody(body,v){
@@ -2020,7 +2056,7 @@ document.querySelectorAll('.mtab').forEach(function(btn){
     mStaffRole='All'; // Reset role filter when switching tabs
     document.querySelectorAll('.mtab').forEach(function(b){b.classList.remove('on');});
     this.classList.add('on');
-    ['staff','venues','roles','vendors','halls'].forEach(function(t){
+    ['staff','venues','roles','vendors','halls','portals'].forEach(function(t){
       var el=g('mp-'+t);
       if(el)el.classList.toggle('hide',t!==curMtab);
     });
@@ -2034,6 +2070,7 @@ function drawManage(){
   else if(curMtab==='venues')drawMVenues();
   else if(curMtab==='vendors')drawMVendorTypes();
   else if(curMtab==='halls')drawMHalls();
+  else if(curMtab==='portals')drawMPortals();
   else drawMRoles();
 }
 
@@ -3595,13 +3632,53 @@ function switchAssignMode(mode){
 }
 
 var deskVendorType='All'; // filter state for vendor pills
+// ── PORTAL CONFIGURATION ─────────────────────────────────────
+// Portal accounts - passwords stored here and in Firebase (portalPasswords key)
+var PORTAL_ACCOUNTS=[
+  {id:'admin',   label:'Admin',          username:'admin',       password:'gavs2024'},
+  {id:'grover',  label:'Grover',         username:'grover',      password:'audio123'},
+  {id:'ihc',     label:'IHC Manager',    username:'ihc',         password:'ihc2024'},
+  {id:'jaipur',  label:'Jaipur Manager', username:'jaipur',      password:'jaipur2024'},
+  {id:'fab',     label:'Fabrication Team',username:'fabrication', password:'fab2024'},
+  {id:'led',     label:'LED Team',        username:'led',         password:'led2024'},
+  {id:'lt',      label:'Light & Truss',   username:'lighttruss',  password:'lt2024'},
+  {id:'labour',  label:'Labour Team',     username:'labour',      password:'labour2024'},
+];
+
+// Portal access control - which roles/vendors each team portal can manage
+// Loaded from Firebase (portalAccess key), overrides defaults below
+var PORTAL_ACCESS={
+  fab:  {roles:['Fabrication Manager','Fabrication Field Team','Fabrication Store Team','IHC Fabrication'], vendors:['fabrication']},
+  led:  {roles:['LED'], vendors:['led']},
+  lt:   {roles:['Light','Truss'], vendors:[]},
+  labour:{roles:[], vendors:['labour']},
+};
+
 // Sub-venue halls for IHC and Jaipur
+// Portal passwords - stored in Firebase so admin can change them
+var portalPasswords={
+  ihc:'ihc2024',
+  jaipur:'jaipur2024',
+  fabrication:'fab2024',
+  led:'led2024',
+  lighttruss:'lt2024',
+  labour:'labour2024'
+};
 var ihcHalls=[];   // [{id,name}] for India Habitat Centre
 var jaipurHalls=[]; // [{id,name}] for Jaipur
 var ihcAsgn={};    // hallId -> {eid:{duty,isFixed}}
 var jaipurAsgn={}; // hallId -> {eid:{duty,isFixed}}
 var ihcLog={};
-var jaipurLog={};  // mirrors deskRole for staff but for vendor types
+var jaipurLog={};
+// Portal access config - which roles/vendors each portal can manage
+var portalAccess={
+  fabrication:{roles:['Fabrication Manager','Fabrication Field Team','Fabrication Store Team','IHC Fabrication'],vendors:['fabrication']},
+  led:{roles:['LED'],vendors:['led']},
+  lighttruss:{roles:['Light','Truss'],vendors:[]},
+  labour:{roles:[],vendors:['labour']},
+  ihc:{roles:[],vendors:[]},
+  jaipur:{roles:[],vendors:[]}
+};  // mirrors deskRole for staff but for vendor types
 
 function drawVendorTypeList(){
   var el=document.getElementById('VT_LIST');if(!el)return;
@@ -4328,53 +4405,294 @@ document.getElementById('NEW_JP_HALL').addEventListener('keydown',function(e){if
 
 // ── IHC / JAIPUR AVAILABLE STAFF ZONES ─────────────────────
 function drawAvailableStaffZone(parentEl,venueName,accentColor,label){
-  // Find the venue
+  // Find the venue by name
   var v=venues.find(function(x){return x.name===venueName;});
   if(!v)return;
 
-  // Get staff pinned to this venue
+  // Get ALL staff pinned to this venue
   var pinnedStaff=staff.filter(function(e){return e.pv===v.id;});
   if(!pinnedStaff.length)return;
 
-  // Available = pinned but NOT assigned anywhere AND NOT on leave
+  // Build full deployed map from ALL assignment sources
   var deployedEids={};
-  Object.keys(asgn).forEach(function(vid){Object.keys(asgn[vid]||{}).forEach(function(eid){deployedEids[eid]=vid;});});
-  // Also check ihcAsgn and jaipurAsgn
-  Object.keys(ihcAsgn||{}).forEach(function(hid){Object.keys(ihcAsgn[hid]||{}).forEach(function(eid){deployedEids[eid]=hid;});});
-  Object.keys(jaipurAsgn||{}).forEach(function(hid){Object.keys(jaipurAsgn[hid]||{}).forEach(function(eid){deployedEids[eid]=hid;});});
+  // Main venue assignments
+  Object.keys(asgn).forEach(function(vid){Object.keys(asgn[vid]||{}).forEach(function(eid){deployedEids[eid]=true;});});
+  // IHC hall assignments
+  var ihcA=ihcAsgn||{};
+  Object.keys(ihcA).forEach(function(hid){Object.keys(ihcA[hid]||{}).forEach(function(eid){deployedEids[eid]=true;});});
+  // Jaipur hall assignments
+  var jpA=jaipurAsgn||{};
+  Object.keys(jpA).forEach(function(hid){Object.keys(jpA[hid]||{}).forEach(function(eid){deployedEids[eid]=true;});});
 
-  var availStaff=pinnedStaff.filter(function(e){return !deployedEids[e.id]&&!lvMap[e.id];});
+  var availStaff=pinnedStaff.filter(function(e){return !deployedEids[e.id]&&!lvMap[e.id]&&!offMap[e.id];});
   if(!availStaff.length)return; // hide zone if no available staff
 
+  // Render as a green-bordered box in the masonry grid (same as venue boxes)
+  var wrapper=document.createElement('div');
+  wrapper.style.cssText='break-inside:avoid;display:inline-block;width:100%;margin-bottom:14px;';
   var box=document.createElement('div');
-  box.style.cssText='background:#fff;border:2px solid '+accentColor+';border-radius:12px;overflow:hidden;margin-bottom:0;';
+  box.style.cssText='background:#f1f8e9;border:2px solid #4caf50;border-radius:14px;overflow:visible;';
 
   var hdr=document.createElement('div');
-  hdr.style.cssText='background:'+accentColor+';color:#fff;padding:8px 12px;display:flex;align-items:center;gap:8px;';
-  hdr.innerHTML='<span style="font-size:14px;">'+label.slice(0,2)+'</span><span style="font-size:12px;font-weight:700;flex:1;">'+label.slice(3)+'</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;">'+availStaff.length+' available</span>';
+  hdr.style.cssText='background:linear-gradient(90deg,#2e7d32,#388e3c);color:#fff;padding:8px 12px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:8px;';
+  hdr.innerHTML='<span style="font-size:14px;">'+label.slice(0,2)+'</span><span style="font-size:13px;font-weight:800;flex:1;">'+label.slice(3)+'</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;">'+availStaff.length+' available</span>';
   box.appendChild(hdr);
 
   var body=document.createElement('div');body.style.cssText='padding:8px;';
-  availStaff.forEach(function(e){
-    var c=cc(e.role);
-    var row=document.createElement('div');
-    row.className='v3card';
-    row.draggable=true;
-    row.setAttribute('data-eid',e.id);
-    row.style.cssText='background:'+c+'12;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:grab;margin-bottom:2px;';
-    var nm=document.createElement('div');nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;';nm.textContent=e.name;
-    var role=document.createElement('div');role.style.cssText='font-size:8px;color:'+c+';flex-shrink:0;';role.textContent=e.role;
-    row.appendChild(nm);row.appendChild(role);
-    row.addEventListener('dragstart',function(ev){
-      ev.dataTransfer.setData('text/plain',e.id);
-      ev.dataTransfer.effectAllowed='move';
-      row.style.opacity='0.4';
+  var hint=document.createElement('div');hint.style.cssText='font-size:10px;color:#388e3c;font-weight:600;padding:2px 4px 6px;';hint.textContent='Drag any staff below to assign them to a venue';body.appendChild(hint);
+
+  // Group by role
+  var groups={};
+  availStaff.forEach(function(e){if(!groups[e.role])groups[e.role]=[];groups[e.role].push(e);});
+  Object.keys(groups).forEach(function(r){
+    var c=cc(r);
+    var rh=document.createElement('div');rh.style.cssText='font-size:8px;font-weight:800;text-transform:uppercase;color:'+c+';padding:3px 2px 2px;border-bottom:1px solid '+c+'22;margin-bottom:2px;';rh.textContent=r;body.appendChild(rh);
+    groups[r].forEach(function(e){
+      var row=document.createElement('div');
+      row.draggable=true;
+      row.setAttribute('data-eid',e.id);
+      row.style.cssText='background:'+c+'12;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:grab;margin-bottom:2px;';
+      var nm=document.createElement('div');nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;';nm.textContent=e.name;
+      row.appendChild(nm);
+      row.addEventListener('dragstart',function(ev){ev.dataTransfer.setData('text/plain',e.id);ev.dataTransfer.effectAllowed='move';row.style.opacity='0.4';});
+      row.addEventListener('dragend',function(){row.style.opacity='';});
+      body.appendChild(row);
     });
-    row.addEventListener('dragend',function(){row.style.opacity='';});
-    body.appendChild(row);
   });
-  box.appendChild(body);
-  parentEl.appendChild(box);
+  box.appendChild(body);wrapper.appendChild(box);parentEl.appendChild(wrapper);
+}
+
+
+// ════════════════════════════════════════════════════════════
+// MANAGE → PORTAL ACCESS & PASSWORDS
+// ════════════════════════════════════════════════════════════
+var PORTAL_DEFS=[
+  {id:'fabrication',label:'Fabrication Team',icon:'🔧',user:'fabrication'},
+  {id:'led',label:'LED Team',icon:'💡',user:'led'},
+  {id:'lighttruss',label:'Light & Truss Team',icon:'🔆',user:'lighttruss'},
+  {id:'labour',label:'Labour Team',icon:'👷',user:'labour'},
+  {id:'ihc',label:'IHC Manager',icon:'🏛️',user:'ihc'},
+  {id:'jaipur',label:'Jaipur Manager',icon:'📍',user:'jaipur'}
+];
+var curPortalId=null;
+
+function drawMPortals(){
+  var listEl=g('PORTAL_LIST');if(!listEl)return;
+  listEl.innerHTML='';
+  PORTAL_DEFS.forEach(function(p){
+    var row=document.createElement('div');
+    row.className='srow';row.style.cursor='pointer';
+    if(curPortalId===p.id)row.style.cssText+='border-color:#1565c0;box-shadow:0 2px 8px #1565c033;';
+    var info=document.createElement('div');info.className='sr-info';
+    info.innerHTML='<div class="sr-name">'+p.icon+' '+p.label+'</div><div class="sr-sub">@'+p.user+'</div>';
+    row.appendChild(info);
+    var arr=document.createElement('div');arr.style.cssText='color:#ccc;font-size:16px;';arr.textContent='›';
+    row.appendChild(arr);
+    row.addEventListener('click',(function(pid){return function(){curPortalId=pid;drawPortalDetail();};})(p.id));
+    listEl.appendChild(row);
+  });
+  if(curPortalId)drawPortalDetail();
+}
+
+function drawPortalDetail(){
+  var el=g('PORTAL_DETAIL');if(!el)return;
+  var p=PORTAL_DEFS.find(function(x){return x.id===curPortalId;});if(!p)return;
+  var access=portalAccess[p.id]||{roles:[],vendors:[]};
+  var pwd=portalPasswords[p.id]||'';
+
+  var h='<div class="addbox"><div class="abt">'+p.icon+' '+p.label+'</div>';
+
+  // Password section
+  h+='<div style="margin-bottom:16px;padding:12px;background:#f8faff;border-radius:10px;border:1.5px solid #e3eaff;">';
+  h+='<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px;">🔑 Password</div>';
+  h+='<div style="display:flex;gap:8px;align-items:center;">';
+  h+='<input id="PA_PWD" class="inp" type="password" placeholder="New password..." value="'+esc(pwd)+'" style="margin-bottom:0;flex:1;"/>';
+  h+='<button class="bigbtn" id="btnSavePwd" style="width:auto;padding:10px 16px;flex-shrink:0;">Save</button>';
+  h+='</div></div>';
+
+  // Staff roles section (only for portals that manage staff)
+  h+='<div style="margin-bottom:16px;">';
+  h+='<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px;">👥 Allowed Staff Roles</div>';
+  ROLES.forEach(function(r){
+    var checked=access.roles.indexOf(r)>=0;
+    h+='<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;cursor:pointer;">';
+    h+='<input type="checkbox" class="pa-role-chk" data-role="'+esc(r)+'" '+(checked?'checked':'')+' style="width:16px;height:16px;cursor:pointer;"/>';
+    h+=esc(r)+'</label>';
+  });
+  h+='</div>';
+
+  // Vendor types section
+  h+='<div style="margin-bottom:16px;">';
+  h+='<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px;">📋 Allowed Vendor Types</div>';
+  VENDOR_TYPES.forEach(function(vt){
+    var checked=access.vendors.indexOf(vt.id)>=0;
+    h+='<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;cursor:pointer;">';
+    h+='<input type="checkbox" class="pa-vendor-chk" data-vtid="'+esc(vt.id)+'" '+(checked?'checked':'')+' style="width:16px;height:16px;cursor:pointer;"/>';
+    h+=vt.icon+' '+esc(vt.name)+'</label>';
+  });
+  h+='</div>';
+
+  h+='<button class="bigbtn" id="btnSaveAccess">💾 Save Access Settings</button></div>';
+  el.innerHTML=h;
+
+  // Wire Save Password
+  document.getElementById('btnSavePwd').addEventListener('click',function(){
+    var newPwd=(document.getElementById('PA_PWD').value||'').trim();
+    if(!newPwd){toast('Enter a password','w');return;}
+    portalPasswords[curPortalId]=newPwd;
+    saveCloud();toast('Password updated for '+p.label+'!');
+  });
+
+  // Wire Save Access
+  document.getElementById('btnSaveAccess').addEventListener('click',function(){
+    var roles=[];
+    document.querySelectorAll('.pa-role-chk').forEach(function(cb){if(cb.checked)roles.push(cb.getAttribute('data-role'));});
+    var vendors=[];
+    document.querySelectorAll('.pa-vendor-chk').forEach(function(cb){if(cb.checked)vendors.push(cb.getAttribute('data-vtid'));});
+    if(!portalAccess[curPortalId])portalAccess[curPortalId]={};
+    portalAccess[curPortalId].roles=roles;
+    portalAccess[curPortalId].vendors=vendors;
+    saveCloud();toast('Access settings saved for '+p.label+'!');drawMPortals();
+  });
+}
+
+
+// ── HALL ASSIGNMENTS DISPLAY IN VENUE BOX ────────────────────
+function renderHallsInVenueBox(body,v){
+  // Check if this venue is IHC or Jaipur and has hall assignments
+  var halls=null,hallAsgn=null,label='';
+  if(v.name==='India Habitat Centre'){halls=ihcHalls;hallAsgn=ihcAsgn;label='🏛️ IHC HALLS';}
+  else if(v.name==='Jaipur'){halls=jaipurHalls;hallAsgn=jaipurAsgn;label='📍 JAIPUR HALLS';}
+  if(!halls||!halls.length)return;
+
+  var hasHallData=halls.some(function(h){return hallAsgn[h.id]&&Object.keys(hallAsgn[h.id]).length>0;});
+  if(!hasHallData)return;
+
+  // Divider
+  var div=document.createElement('div');
+  div.style.cssText='height:2px;background:linear-gradient(90deg,#1565c0,#6a1b9a);margin:8px -8px;';
+  body.appendChild(div);
+
+  var lbl=document.createElement('div');
+  lbl.style.cssText='font-size:8px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#6a1b9a;padding:4px 0 6px;';
+  lbl.textContent=label;
+  body.appendChild(lbl);
+
+  halls.forEach(function(h){
+    var ha=hallAsgn[h.id]||{};
+    var entries=Object.keys(ha).map(function(eid){var emp=getS(eid);return emp?{emp:emp,duty:ha[eid].duty}:null;}).filter(Boolean);
+    if(!entries.length)return;
+
+    var hallHdr=document.createElement('div');
+    hallHdr.style.cssText='font-size:9px;font-weight:800;color:#283593;background:#f0f4ff;border-radius:5px;padding:3px 7px;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;';
+    hallHdr.innerHTML='🏛️ '+esc(h.name)+'<span style="font-size:8px;color:#888;">'+entries.length+' staff</span>';
+    body.appendChild(hallHdr);
+
+    // Show staff in hall grouped by role
+    var groups={};
+    entries.forEach(function(a){if(!groups[a.emp.role])groups[a.emp.role]=[];groups[a.emp.role].push(a);});
+    Object.keys(groups).forEach(function(r){
+      var c=cc(r);
+      groups[r].forEach(function(a){
+        var row=document.createElement('div');
+        row.style.cssText='background:'+c+'10;border-left:2px solid '+c+';padding:2px 4px 2px 6px;display:flex;align-items:center;gap:4px;margin-bottom:1px;';
+        var nm=document.createElement('div');nm.style.cssText='font-size:8px;font-weight:700;color:#333;flex:1;';nm.textContent=a.emp.name;
+        var dt=document.createElement('div');dt.style.cssText='font-size:8px;color:#1565c0;flex-shrink:0;';dt.textContent=shortTime(a.duty);
+        row.appendChild(nm);row.appendChild(dt);
+        body.appendChild(row);
+      });
+    });
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════
+// MANAGE → PORTAL ACCESS & PASSWORDS
+// ════════════════════════════════════════════════════════════
+var curPortalId=null;
+
+function drawMPortals(){
+  var listEl=g('PORTAL_LIST');if(!listEl)return;
+  listEl.innerHTML='';
+  var teamPortals=PORTAL_ACCOUNTS.filter(function(a){return a.id!=='admin'&&a.id!=='grover';});
+  teamPortals.forEach(function(acct){
+    var row=document.createElement('div');row.className='srow';row.style.cursor='pointer';
+    if(curPortalId===acct.id)row.style.cssText+='border-color:#1565c0;box-shadow:0 2px 8px #1565c033;';
+    var info=document.createElement('div');info.className='sr-info';
+    info.innerHTML='<div class="sr-name">'+esc(acct.label)+'</div><div class="sr-sub">'+esc(acct.username)+'</div>';
+    row.appendChild(info);
+    var arrow=document.createElement('div');arrow.style.cssText='color:#ccc;font-size:16px;';arrow.textContent='›';
+    row.appendChild(arrow);
+    row.addEventListener('click',(function(id){return function(){curPortalId=id;drawPortalDetail();drawMPortals();};})(acct.id));
+    listEl.appendChild(row);
+  });
+}
+
+function drawPortalDetail(){
+  var el=g('PORTAL_DETAIL');if(!el)return;
+  var acct=PORTAL_ACCOUNTS.find(function(a){return a.id===curPortalId;});
+  if(!acct)return;
+  var access=PORTAL_ACCESS[acct.id]||{roles:[],vendors:[]};
+  var isTeamPortal=['fab','led','lt','labour'].indexOf(acct.id)>=0;
+
+  var html='<div class="addbox" style="margin-bottom:16px;">';
+  html+='<div class="abt" style="margin-bottom:12px;">🔑 '+esc(acct.label)+' — Password</div>';
+  html+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
+  html+='<div style="flex:1;"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Username</label>';
+  html+='<input class="inp" value="'+esc(acct.username)+'" disabled style="background:#f5f5f5;color:#888;margin-bottom:0;"/></div>';
+  html+='<div style="flex:1;"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">New Password</label>';
+  html+='<input class="inp" id="PORTAL_PW" type="text" value="'+esc(acct.password)+'" placeholder="New password..." style="margin-bottom:0;"/></div>';
+  html+='<button class="bigbtn" id="btnSavePortalPW" style="width:auto;padding:10px 20px;margin-top:20px;">Save Password</button>';
+  html+='</div></div>';
+
+  if(isTeamPortal){
+    html+='<div class="addbox">';
+    html+='<div class="abt" style="margin-bottom:12px;">👥 Staff Roles Access</div>';
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin-bottom:16px;" id="PORTAL_ROLES_LIST">';
+    var allRoles=ROLES.slice();
+    allRoles.forEach(function(r){
+      var checked=(access.roles||[]).indexOf(r)>=0;
+      html+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:4px;">';
+      html+='<input type="checkbox" class="portal-role-chk" data-role="'+esc(r)+'" '+(checked?'checked':'')+' style="width:16px;height:16px;"/>';
+      html+=esc(r)+'</label>';
+    });
+    html+='</div>';
+    html+='<div class="abt" style="margin-bottom:12px;">📋 Vendor Types Access</div>';
+    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin-bottom:16px;" id="PORTAL_VENDORS_LIST">';
+    VENDOR_TYPES.forEach(function(vt){
+      var checked=(access.vendors||[]).indexOf(vt.id)>=0;
+      html+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:4px;">';
+      html+='<input type="checkbox" class="portal-vendor-chk" data-vtid="'+esc(vt.id)+'" '+(checked?'checked':'')+' style="width:16px;height:16px;"/>';
+      html+=esc(vt.name)+'</label>';
+    });
+    html+='</div>';
+    html+='<button class="bigbtn" id="btnSavePortalAccess">Save Access Settings</button>';
+    html+='</div>';
+  }
+
+  el.innerHTML=html;
+
+  // Wire save password
+  document.getElementById('btnSavePortalPW').addEventListener('click',function(){
+    var newPw=(document.getElementById('PORTAL_PW').value||'').trim();
+    if(!newPw||newPw.length<4){toast('Password must be at least 4 characters','w');return;}
+    acct.password=newPw;
+    toast(acct.label+' password updated!');saveCloud();drawPortalDetail();
+  });
+
+  // Wire save access (team portals only)
+  if(isTeamPortal){
+    document.getElementById('btnSavePortalAccess').addEventListener('click',function(){
+      var roles=[];
+      document.querySelectorAll('.portal-role-chk:checked').forEach(function(chk){roles.push(chk.getAttribute('data-role'));});
+      var vendors=[];
+      document.querySelectorAll('.portal-vendor-chk:checked').forEach(function(chk){vendors.push(chk.getAttribute('data-vtid'));});
+      if(!PORTAL_ACCESS[acct.id])PORTAL_ACCESS[acct.id]={};
+      PORTAL_ACCESS[acct.id].roles=roles;
+      PORTAL_ACCESS[acct.id].vendors=vendors;
+      toast(acct.label+' access updated!');saveCloud();
+    });
+  }
 }
 
 // ── TOUCH DRAG & DROP FOR IPAD / MOBILE ──────────────────────
@@ -4547,7 +4865,7 @@ function actuallySaveCloud(){
       drafts:draftsData,roles:ROLES,dlog:dlog,activeVids:activeVids,
       vHalls:vHalls,venueOrder:venueOrder,
       vendorAsgn:vendorAsgn,vendorCompanies:vendorCompanies,
-      vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,ihcHalls:ihcHalls,jaipurHalls:jaipurHalls,ihcAsgn:ihcAsgn,jaipurAsgn:jaipurAsgn,ihcLog:ihcLog,jaipurLog:jaipurLog,
+      vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,portalPasswords:Object.fromEntries(PORTAL_ACCOUNTS.map(function(a){return[a.id,{username:a.username,password:a.password}];})),portalAccess:PORTAL_ACCESS,ihcHalls:ihcHalls,portalPasswords:portalPasswords,portalAccess:portalAccess,jaipurHalls:jaipurHalls,ihcAsgn:ihcAsgn,jaipurAsgn:jaipurAsgn,ihcLog:ihcLog,jaipurLog:jaipurLog,
       updatedAt:new Date().toISOString()
     };
     doSaveWithRetry(payload,0);
@@ -4627,7 +4945,17 @@ function loadFromCloud(callback){
       if(d.venueOrder&&d.venueOrder.length)venueOrder=d.venueOrder;
       if(d.vendorAsgn)vendorAsgn=d.vendorAsgn;
       if(d.vendorCompanies)vendorCompanies=d.vendorCompanies;
+      if(d.portalPasswords){
+        PORTAL_ACCOUNTS.forEach(function(a){
+          if(d.portalPasswords[a.id])a.password=d.portalPasswords[a.id].password;
+        });
+        // Update CREDS array from portal accounts
+        CREDS=[{u:'admin',p:PORTAL_ACCOUNTS.find(function(a){return a.id==='admin';}).password},{u:'grover',p:PORTAL_ACCOUNTS.find(function(a){return a.id==='grover';}).password}];
+      }
+      if(d.portalAccess)PORTAL_ACCESS=d.portalAccess;
       if(d.ihcHalls)ihcHalls=d.ihcHalls;
+      if(d.portalPasswords)Object.assign(portalPasswords,d.portalPasswords);
+      if(d.portalAccess)Object.assign(portalAccess,d.portalAccess);
       if(d.jaipurHalls)jaipurHalls=d.jaipurHalls;
       if(d.ihcAsgn)ihcAsgn=d.ihcAsgn;
       if(d.jaipurAsgn)jaipurAsgn=d.jaipurAsgn;

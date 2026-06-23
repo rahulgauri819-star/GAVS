@@ -74,14 +74,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mbtn.red{background:#c62828;color:#fff;}
 .mbtn.cancel{background:#f0f4ff;color:#555;}
 .minp{width:100%;padding:10px 12px;border:1.5px solid #e3eaff;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;}
-/* Leave zone */
-.lv-zone{background:linear-gradient(135deg,#c62828,#b71c1c);border-radius:12px;margin-bottom:12px;overflow:hidden;}
-.lv-hdr{padding:8px 12px;display:flex;align-items:center;gap:8px;color:#fff;}
+/* Leave zone - matches admin panel style */
+.lv-zone{background:#fff;border:2px solid #ef9a9a;border-radius:14px;margin-bottom:12px;overflow:hidden;}
+.lv-hdr{background:linear-gradient(90deg,#c62828,#b71c1c);padding:8px 12px;display:flex;align-items:center;gap:8px;color:#fff;}
 .lv-hdr-title{font-size:12px;font-weight:700;flex:1;}
 .lv-cnt{background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;color:#fff;}
-.lv-col-btn{background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;}
-.lv-body{padding:8px;min-height:50px;background:rgba(255,255,255,0.08);}
-.lv-zone.drag-over{box-shadow:0 0 0 3px #ffcdd2;}
+.lv-col-btn{background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;}
+.lv-body{padding:8px;min-height:40px;background:#fff;}
+.lv-zone.drag-over{border-color:#c62828;box-shadow:0 0 0 3px rgba(198,40,40,0.15);}
 /* Saving indicator */
 #SAVE_IND{position:fixed;top:10px;right:10px;z-index:9999;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;display:none;box-shadow:0 2px 10px rgba(0,0,0,0.15);}
 @media(max-width:600px){.lp{width:200px;}.lp-hdr{font-size:11px;}.hall-name{font-size:12px;}}
@@ -213,7 +213,8 @@ function doLogin(){
 // ── FIREBASE ──────────────────────────────────────────────────
 function loadFromCloud(){
   showSaveInd('saving');
-  db.collection('gavs_data').doc('main').get().then(function(doc){
+  // Use onSnapshot for real-time updates across all portals
+  db.collection('gavs_data').doc('main').onSnapshot(function(doc){
     if(doc.exists){
       var d=doc.data();
       allStaff=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
@@ -243,7 +244,7 @@ function loadFromCloud(){
       drawLeaveZone();
     }
     showSaveInd('saved');
-  }).catch(function(e){console.error(e);showSaveInd('error');});
+  },function(e){console.error(e);showSaveInd('error');});
 }
 
 function saveCloud(){
@@ -476,15 +477,15 @@ function drawLeaveZone(){
   if(!lvCollapsed){
     var body=document.createElement('div');body.className='lv-body';
     if(!lvList.length){
-      body.innerHTML='<div style="text-align:center;color:rgba(255,255,255,0.5);font-size:11px;padding:10px;">Drag staff here to mark On Leave</div>';
+      body.innerHTML='<div style="text-align:center;color:#ef9a9a;font-size:12px;padding:12px;">Drag staff here to mark On Leave</div>';
     } else {
       lvList.forEach(function(a){
         var c=cc(a.emp.role);
         var row=document.createElement('div');
         row.style.cssText='background:'+c+'22;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;margin-bottom:2px;';
-        var nm=document.createElement('div');nm.style.cssText='font-size:9px;font-weight:700;color:#fff;flex:1;';nm.textContent=a.emp.name;
+        var nm=document.createElement('div');nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;';nm.textContent=a.emp.name;
         var rm=document.createElement('button');
-        rm.style.cssText='flex-shrink:0;width:14px;height:14px;background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:3px;cursor:pointer;font-size:8px;display:flex;align-items:center;justify-content:center;';
+        rm.style.cssText='flex-shrink:0;width:14px;height:14px;background:#ffebee;border:none;color:#c62828;border-radius:3px;cursor:pointer;font-size:8px;display:flex;align-items:center;justify-content:center;';
         rm.textContent='✕';
         rm.addEventListener('click',(function(eid,ename){return function(){
           showModal('<div class="modal-title" style="color:#c62828;">Remove from On Leave?</div>'+

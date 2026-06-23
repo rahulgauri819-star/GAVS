@@ -969,6 +969,7 @@ function initApp(){
   loadFromCloud(function(){
     populateRoleDD();populateVenueDD();populateTimeDD();
     populateSRDrops();
+    _lastLoadedDate=todayIST(); // mark today as the loaded date
     applyPinned();
     drawStats();
     initActiveVids();
@@ -1003,16 +1004,64 @@ function initActiveVids(){
 function updateADate(){
   var dp2=document.getElementById('DP2');
   if(dp2&&g('DP'))dp2.value=g('DP').value;
-  // On date change: clear non-contracted venues from activeVids for fresh dates
-  var d=getD();
-  var hasLog=!!(dlog[d]&&(Object.keys(dlog[d].venues||{}).length||(dlog[d].leave&&dlog[d].leave.length)));
-  if(!hasLog){
-    // Remove non-contracted venues (no pinned staff) from activeVids on fresh dates
-    activeVids=activeVids.filter(function(id){
-      return staff.some(function(e){return e.pv===id;}); // keep contracted only
+}
+
+// ── DATE SWITCH: save current date data, load new date data ──
+var _lastLoadedDate=''; // track which date is currently loaded in asgn/lvMap/offMap
+function switchToDate(newDate){
+  if(!DB_LOADED)return;
+  // 1. Save current date's live data to dlog before switching
+  if(_lastLoadedDate){
+    saveLog();
+    saveVendorLog();
+  }
+  _lastLoadedDate=newDate;
+  var log=dlog[newDate];
+  var vlog=vdlog[newDate];
+  // 2. Reset live data
+  asgn={};lvMap={};offMap={};vendorAsgn={};
+  // 3. Load from dlog if entry exists
+  if(log){
+    Object.keys(log.venues||{}).forEach(function(vid){
+      asgn[vid]={};
+      Object.keys(log.venues[vid]||{}).forEach(function(eid){
+        var emp=getS(eid);
+        if(emp)asgn[vid][eid]={emp:emp,duty:log.venues[vid][eid],pinned:emp.pv===vid,isFixed:emp.pv===vid};
+      });
     });
-    // Then filter out contracted-hidden ones
-    activeVids=activeVids.filter(function(id){return !contractedHiddenVids.has(id);});
+    (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});
+    (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)offMap[o.id]={emp:emp,duty:o.duty||'6:00 AM'};});
+  }
+  if(vlog){
+    Object.keys(vlog.venues||{}).forEach(function(vid){
+      vendorAsgn[vid]={};
+      Object.keys(vlog.venues[vid]||{}).forEach(function(tid){
+        if(Array.isArray(vlog.venues[vid][tid]))vendorAsgn[vid][tid]=vlog.venues[vid][tid];
+      });
+    });
+  }
+  // 4. Apply pinned staff on top (base layer)
+  applyPinned();
+  // 5. Rebuild activeVids for this date
+  var hasLog=!!(log&&(Object.keys(log.venues||{}).length||(log.leave&&log.leave.length)));
+  if(!hasLog){
+    // Fresh date: only show contracted venues that are toggled on
+    activeVids=[];
+    venues.forEach(function(v){
+      var isContracted=staff.some(function(e){return e.pv===v.id;});
+      if(isContracted&&!contractedHiddenVids.has(v.id))activeVids.push(v.id);
+    });
+  } else {
+    // Rebuild from log - show venues that had assignments
+    activeVids=[];
+    Object.keys(asgn).forEach(function(vid){
+      if(Object.keys(asgn[vid]||{}).length>0&&activeVids.indexOf(vid)<0)activeVids.push(vid);
+    });
+    // Also show toggled-on contracted venues
+    venues.forEach(function(v){
+      var isContracted=staff.some(function(e){return e.pv===v.id;});
+      if(isContracted&&!contractedHiddenVids.has(v.id)&&activeVids.indexOf(v.id)<0)activeVids.push(v.id);
+    });
   }
 }
 
@@ -3528,7 +3577,9 @@ g('btnLogout').addEventListener('click',doLogout);
 // ── DATE CHANGE ───────────────────────────────────────────────
 g('DP').addEventListener('change',function(){
   var dp2=document.getElementById('DP2');if(dp2)dp2.value=this.value;
-  updateADate();applyPinned();drawStats();updateATBStats();
+  updateADate();
+  switchToDate(this.value);
+  drawStats();updateATBStats();
   if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
 });
 
@@ -3556,7 +3607,9 @@ var dp2el=document.getElementById('DP2');
 if(dp2el){dp2el.addEventListener('change',function(){
   var dp=document.getElementById('DP');
   if(dp)dp.value=this.value;
-  updateADate();applyPinned();drawStats();updateATBStats();
+  updateADate();
+  switchToDate(this.value);
+  drawStats();updateATBStats();
   drawStaffPanel();drawVenueGrid();
 });}
 
@@ -5206,76 +5259,93 @@ function makeEventSheetPDF(){
   var pdfData={};
   Object.keys(asgn).forEach(function(vid){
     var entries=Object.values(asgn[vid]||{});
-    // Only include staff who are NOT pinned to this venue (i.e. not contracted)
     var nonPinned=entries.filter(function(a){return !(a.pinned&&a.emp.pv===vid);});
     if(nonPinned.length>0)pdfData[vid]=nonPinned;
   });
 
   var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  var pw=210,ph=297,mg=8,y=mg;
-  var colW=93; // 2 columns in portrait
-  var numCols=2;
-  var cols=[[],[]]; // distribute venues across 2 columns
+  var pw=210,ph=297,mg=10,gap=6;
+  var colW=(pw-mg*2-gap)/2; // ~92mm each
+  var cols=[[],[]];
   var vList=venues.filter(function(v){return pdfData[v.id]&&pdfData[v.id].length>0;});
+  var rowH=6.5; // bigger row height for readability
+  var hdrH=10;  // venue header height
 
-  // Header
-  doc.setFillColor(21,101,192);doc.rect(0,0,pw,18,'F');
-  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv2=document.createElement('canvas');cv2.width=img.naturalWidth;cv2.height=img.naturalHeight;cv2.getContext('2d').drawImage(img,0,0);doc.addImage(cv2.toDataURL('image/png'),'PNG',mg,2,12,12);}}catch(er){}
-  doc.setTextColor(255,255,255);doc.setFontSize(11);doc.setFont('helvetica','bold');
-  doc.text('GAVS EVENT SHEET',pw/2,8,{align:'center'});
-  doc.setFontSize(7);doc.setFont('helvetica','normal');
-  doc.text(fd(d),pw/2,13,{align:'center'});
-  y=22;
+  // Header bar
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,22,'F');
+  // Logo - preserve aspect ratio
+  try{
+    var img=g('logoImg');
+    if(img&&img.complete&&img.naturalWidth>0){
+      var cv2=document.createElement('canvas');
+      cv2.width=img.naturalWidth;cv2.height=img.naturalHeight;
+      cv2.getContext('2d').drawImage(img,0,0);
+      var aspect=img.naturalWidth/img.naturalHeight;
+      var lh=14,lw=Math.round(lh*aspect);
+      doc.addImage(cv2.toDataURL('image/png'),'PNG',mg,4,lw,lh);
+    }
+  }catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text('GAVS EVENT SHEET',pw/2,11,{align:'center'});
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text(fd(d),pw/2,17,{align:'center'});
+  var y=26;
 
   if(!vList.length){
     doc.setTextColor(150,150,150);doc.setFontSize(12);
-    doc.text('No non-contracted staff assigned today.',pw/2,ph/2,{align:'center'});
+    doc.text('No non-contracted staff assigned.',pw/2,ph/2,{align:'center'});
     doc.save('GAVS_EventSheet_'+d+'.pdf');toast('Event Sheet downloaded!');return;
   }
 
-  // Calculate column heights greedily
+  // Greedy column fill: assign each venue to shortest column
   var colHeights=[0,0];
   vList.forEach(function(v){
     var entries=pdfData[v.id];
-    var boxH=10+entries.length*5+4; // header + rows + padding
-    var minCol=0;colHeights.forEach(function(h,i){if(h<colHeights[minCol])minCol=i;});
+    var boxH=hdrH+entries.length*rowH+3;
+    var minCol=0;
+    colHeights.forEach(function(h,i){if(h<colHeights[minCol])minCol=i;});
     cols[minCol].push(v);
     colHeights[minCol]+=boxH;
   });
 
-  var colX=[mg, mg+colW+5];
+  var colX=[mg, mg+colW+gap];
   var colY=[y,y];
-  var pageH=ph-mg-10;
+  var pageH=ph-mg;
 
   cols.forEach(function(colVenues,ci){
     colVenues.forEach(function(v){
       var entries=pdfData[v.id];
-      var boxH=10+entries.length*5+3;
+      var boxH=hdrH+entries.length*rowH+3;
       if(colY[ci]+boxH>pageH){
-        if(ci===0){doc.addPage();colY=[y,y];}
-        else{colY[ci]=y;}
+        doc.addPage();
+        // Reset both cols on new page
+        colY=[y,y];
       }
       var x=colX[ci],yy=colY[ci];
       // Venue header
-      doc.setFillColor(21,101,192);doc.roundedRect(x,yy,colW,8,1.5,1.5,'F');
-      doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-      var vname=v.name.length>34?v.name.slice(0,33)+'…':v.name;
-      doc.text(vname,x+3,yy+5.2);
-      doc.setFontSize(6.5);
-      doc.text(entries.length+' staff',x+colW-3,yy+5.2,{align:'right'});
-      yy+=9;
+      doc.setFillColor(21,101,192);doc.roundedRect(x,yy,colW,hdrH,2,2,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
+      var maxChars=Math.floor(colW/2.2);
+      var vname=v.name.length>maxChars?v.name.slice(0,maxChars-1)+'…':v.name;
+      doc.text(vname,x+3,yy+6.8);
+      doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+      doc.text(entries.length+' staff',x+colW-3,yy+6.8,{align:'right'});
+      yy+=hdrH+1;
       // Staff rows
       entries.forEach(function(a,idx){
-        var bg=idx%2===0?[245,248,255]:[255,255,255];
-        doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(x,yy,colW,4.5,'F');
-        doc.setTextColor(30,30,30);doc.setFontSize(6);doc.setFont('helvetica','normal');
-        var name=a.emp.name.length>28?a.emp.name.slice(0,27)+'…':a.emp.name;
-        doc.text(name,x+2,yy+3.1);
-        doc.setTextColor(21,101,192);
-        doc.text(shortTime(a.duty),x+colW-2,yy+3.1,{align:'right'});
-        yy+=4.5;
+        var bg=idx%2===0?[240,245,255]:[255,255,255];
+        doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(x,yy,colW,rowH,'F');
+        // Left border accent
+        doc.setFillColor(21,101,192);doc.rect(x,yy,1.5,rowH,'F');
+        doc.setTextColor(20,20,20);doc.setFontSize(8);doc.setFont('helvetica','normal');
+        var nameMax=Math.floor((colW-20)/2);
+        var name=a.emp.name.length>nameMax?a.emp.name.slice(0,nameMax-1)+'…':a.emp.name;
+        doc.text(name,x+4,yy+rowH-1.8);
+        doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+        doc.text(shortTime(a.duty),x+colW-2,yy+rowH-1.8,{align:'right'});
+        yy+=rowH;
       });
-      yy+=2;
+      yy+=3;
       colY[ci]=yy;
     });
   });

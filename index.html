@@ -367,6 +367,7 @@ input,select,button{font-family:inherit;}
     <button class="mtab" data-mtab="venues">🏨 Venues</button>
     <button class="mtab" data-mtab="roles">🏷️ Roles</button>
     <button class="mtab" data-mtab="vendors">📋 Vendor Types</button>
+    <button class="mtab" data-mtab="halls">🏛️ Venue Halls</button>
   </div>
   <div id="mp-staff">
     <div class="mgrid">
@@ -427,6 +428,27 @@ input,select,button{font-family:inherit;}
             <div style="font-size:12px;color:#aaa;margin-top:4px;">to manage its registered companies</div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mp-halls" class="hide">
+    <div class="mgrid">
+      <div>
+        <div class="abt" style="margin-bottom:10px;">🏛️ INDIA HABITAT CENTRE HALLS</div>
+        <div class="addbox">
+          <input class="inp" id="NEW_IHC_HALL" placeholder="e.g. Durbar Hall, Amphitheatre..."/>
+          <button class="bigbtn" id="btnAddIHCHall">+ Add IHC Hall</button>
+        </div>
+        <div id="IHC_HALLS_LIST" style="margin-top:10px;"></div>
+      </div>
+      <div>
+        <div class="abt" style="margin-bottom:10px;">🏛️ JAIPUR HALLS</div>
+        <div class="addbox">
+          <input class="inp" id="NEW_JP_HALL" placeholder="e.g. Banquet Hall, Conference..."/>
+          <button class="bigbtn" id="btnAddJPHall">+ Add Jaipur Hall</button>
+        </div>
+        <div id="JP_HALLS_LIST" style="margin-top:10px;"></div>
       </div>
     </div>
   </div>
@@ -1992,7 +2014,7 @@ document.querySelectorAll('.mtab').forEach(function(btn){
     mStaffRole='All'; // Reset role filter when switching tabs
     document.querySelectorAll('.mtab').forEach(function(b){b.classList.remove('on');});
     this.classList.add('on');
-    ['staff','venues','roles','vendors'].forEach(function(t){
+    ['staff','venues','roles','vendors','halls'].forEach(function(t){
       var el=g('mp-'+t);
       if(el)el.classList.toggle('hide',t!==curMtab);
     });
@@ -2005,6 +2027,7 @@ function drawManage(){
   if(curMtab==='staff')drawMStaff();
   else if(curMtab==='venues')drawMVenues();
   else if(curMtab==='vendors')drawMVendorTypes();
+  else if(curMtab==='halls')drawMHalls();
   else drawMRoles();
 }
 
@@ -3565,7 +3588,14 @@ function switchAssignMode(mode){
   drawVenueGrid(); // redraw venue boxes to show staff or vendor content
 }
 
-var deskVendorType='All'; // filter state for vendor pills, mirrors deskRole for staff
+var deskVendorType='All'; // filter state for vendor pills
+// Sub-venue halls for IHC and Jaipur
+var ihcHalls=[];   // [{id,name}] for India Habitat Centre
+var jaipurHalls=[]; // [{id,name}] for Jaipur
+var ihcAsgn={};    // hallId -> {eid:{duty,isFixed}}
+var jaipurAsgn={}; // hallId -> {eid:{duty,isFixed}}
+var ihcLog={};
+var jaipurLog={};  // mirrors deskRole for staff but for vendor types
 
 function drawVendorTypeList(){
   var el=document.getElementById('VT_LIST');if(!el)return;
@@ -4216,6 +4246,79 @@ function makeCompanyReportPDF(){
   doc.save('GAVS_Vendor_'+company.replace(/ /g,'_')+'_'+MONS[month]+'_'+year+'.pdf');toast('Company PDF downloaded!');
 }
 
+
+// ════════════════════════════════════════════════════════════
+// MANAGE → VENUE HALLS (IHC & JAIPUR)
+// ════════════════════════════════════════════════════════════
+function drawMHalls(){
+  drawHallsList('IHC_HALLS_LIST', ihcHalls, 'ihc');
+  drawHallsList('JP_HALLS_LIST', jaipurHalls, 'jaipur');
+}
+
+function drawHallsList(elId, halls, prefix){
+  var el=document.getElementById(elId);if(!el)return;
+  el.innerHTML='';
+  if(!halls.length){
+    el.innerHTML='<div style="text-align:center;color:#bbb;padding:20px;font-size:13px;">No halls added yet.</div>';
+    return;
+  }
+  halls.forEach(function(h,i){
+    var row=document.createElement('div');row.className='srow';
+    var info=document.createElement('div');info.className='sr-info';
+    info.innerHTML='<div class="sr-name">'+esc(h.name)+'</div>';
+    var db=document.createElement('button');db.className='ibtn db';db.textContent='🗑️';
+    db.addEventListener('click',(function(idx,hname,pfx){return function(){
+      showModal(
+        '<div class="mt" style="color:#c62828;">🔐 Verify to Delete Hall</div>'+
+        '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:6px;">Delete hall <strong>'+esc(hname)+'</strong>?</div>'+
+        '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Username</label>'+
+        '<input id="DEL_HL_U" class="inp" placeholder="Username" autocomplete="off"/>'+
+        '<label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Password</label>'+
+        '<input id="DEL_HL_P" class="inp" type="password" placeholder="Password"/>'+
+        '<div id="DEL_HL_ERR" style="color:#c62828;font-size:12px;text-align:center;display:none;background:#ffebee;padding:8px;border-radius:8px;margin-bottom:10px;">Incorrect credentials.</div>'+
+        '<button class="mbtn red" id="m-yes">Verify & Delete</button>'+
+        '<button class="mcancel" id="m-no">Cancel</button>'
+      );
+      g('m-yes').onclick=function(){
+        var u=(g('DEL_HL_U').value||'').trim().toLowerCase();
+        var p=(g('DEL_HL_P').value||'').trim();
+        var ok=CREDS.some(function(c){return c.u===u&&c.p===p;});
+        if(!ok){g('DEL_HL_ERR').style.display='block';g('DEL_HL_P').value='';return;}
+        if(pfx==='ihc'){ihcHalls.splice(idx,1);delete ihcAsgn[ihcHalls[idx]?ihcHalls[idx].id:''];}
+        else{jaipurHalls.splice(idx,1);}
+        closeModal();toast(hname+' deleted','w');drawMHalls();saveCloud();
+      };
+      g('m-no').onclick=closeModal;
+      g('DEL_HL_P').addEventListener('keydown',function(e){if(e.key==='Enter')g('m-yes').click();});
+    };})(i,h.name,prefix));
+    row.appendChild(info);row.appendChild(db);
+    el.appendChild(row);
+  });
+}
+
+// Wire Add Hall buttons
+var btnAddIHCHall=document.getElementById('btnAddIHCHall');
+if(btnAddIHCHall)btnAddIHCHall.addEventListener('click',function(){
+  var n=(document.getElementById('NEW_IHC_HALL').value||'').trim();
+  if(!n){toast('Enter hall name','w');return;}
+  if(ihcHalls.some(function(h){return h.name.toLowerCase()===n.toLowerCase();})){toast('Hall already exists','w');return;}
+  ihcHalls.push({id:mkId(),name:n});
+  document.getElementById('NEW_IHC_HALL').value='';
+  toast(n+' added to IHC!');drawMHalls();saveCloud();
+});
+document.getElementById('NEW_IHC_HALL').addEventListener('keydown',function(e){if(e.key==='Enter'&&document.getElementById('btnAddIHCHall'))document.getElementById('btnAddIHCHall').click();});
+
+var btnAddJPHall=document.getElementById('btnAddJPHall');
+if(btnAddJPHall)btnAddJPHall.addEventListener('click',function(){
+  var n=(document.getElementById('NEW_JP_HALL').value||'').trim();
+  if(!n){toast('Enter hall name','w');return;}
+  if(jaipurHalls.some(function(h){return h.name.toLowerCase()===n.toLowerCase();})){toast('Hall already exists','w');return;}
+  jaipurHalls.push({id:mkId(),name:n});
+  document.getElementById('NEW_JP_HALL').value='';
+  toast(n+' added to Jaipur!');drawMHalls();saveCloud();
+});
+document.getElementById('NEW_JP_HALL').addEventListener('keydown',function(e){if(e.key==='Enter'&&document.getElementById('btnAddJPHall'))document.getElementById('btnAddJPHall').click();});
+
 // ── TOUCH DRAG & DROP FOR IPAD / MOBILE ──────────────────────
 var touchDragEid = null;
 var touchGhost = null;
@@ -4386,7 +4489,7 @@ function actuallySaveCloud(){
       drafts:draftsData,roles:ROLES,dlog:dlog,activeVids:activeVids,
       vHalls:vHalls,venueOrder:venueOrder,
       vendorAsgn:vendorAsgn,vendorCompanies:vendorCompanies,
-      vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,
+      vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,ihcHalls:ihcHalls,jaipurHalls:jaipurHalls,ihcAsgn:ihcAsgn,jaipurAsgn:jaipurAsgn,ihcLog:ihcLog,jaipurLog:jaipurLog,
       updatedAt:new Date().toISOString()
     };
     doSaveWithRetry(payload,0);
@@ -4466,6 +4569,12 @@ function loadFromCloud(callback){
       if(d.venueOrder&&d.venueOrder.length)venueOrder=d.venueOrder;
       if(d.vendorAsgn)vendorAsgn=d.vendorAsgn;
       if(d.vendorCompanies)vendorCompanies=d.vendorCompanies;
+      if(d.ihcHalls)ihcHalls=d.ihcHalls;
+      if(d.jaipurHalls)jaipurHalls=d.jaipurHalls;
+      if(d.ihcAsgn)ihcAsgn=d.ihcAsgn;
+      if(d.jaipurAsgn)jaipurAsgn=d.jaipurAsgn;
+      if(d.ihcLog)ihcLog=d.ihcLog;
+      if(d.jaipurLog)jaipurLog=d.jaipurLog;
       // Only override the fixed 9 categories if saved data has the new object structure (not old string array)
       if(d.vendorTypesCustom&&d.vendorTypesCustom.length&&typeof d.vendorTypesCustom[0]==='object'){VENDOR_TYPES=d.vendorTypesCustom;}
       if(d.vdlog)vdlog=d.vdlog;

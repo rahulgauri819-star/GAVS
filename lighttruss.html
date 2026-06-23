@@ -17,7 +17,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .lerr{color:#c62828;font-size:12px;text-align:center;margin-top:8px;display:none;background:#ffebee;padding:8px;border-radius:8px;}
 .app{display:none;flex-direction:column;height:100vh;}
 .hdr{background:linear-gradient(90deg,#37474f,#283593);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
-.hdr-logo{width:36px;height:36px;object-fit:contain;border-radius:8px;background:#fff;padding:2px;}
+.hdr-logo{width:48px;height:48px;object-fit:contain;border-radius:10px;background:#fff;padding:3px;}
 .hdr-info{flex:1;}
 .hdr-t{font-size:15px;font-weight:800;}
 .hdr-s{font-size:10px;opacity:0.8;}
@@ -60,7 +60,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div id="SIND"></div>
 <div class="ls" id="LS">
   <div class="lc">
-    <div style="text-align:center;margin-bottom:20px;"><img src="gavs_logo.png" style="width:70px;height:70px;object-fit:contain;border-radius:12px;" id="logoImg"/></div>
+    <div style="text-align:center;margin-bottom:20px;"><img src="gavs_logo.png" style="width:100px;height:100px;object-fit:contain;border-radius:14px;" id="logoImg"/></div>
     <div class="lt">🔦 Light & Truss Team</div>
     <div class="ls2">GAVS Staff Deployment Portal</div>
     <input class="inp" id="LU" placeholder="Username" autocomplete="off"/>
@@ -103,7 +103,7 @@ var TMS=['6:00 AM','7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM','12:00 PM
 var DBL=false,ST=null,curTab='staff',myAccess={roles:[],vendors:[]};
 function g(id){return document.getElementById(id);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function getD(){return g('DP').value||new Date().toISOString().slice(0,10);}
+function getD(){return g('DP').value||todayIST();}
 function fd(d){if(!d)return '';var x=new Date(d+'T00:00:00');return x.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][x.getMonth()]+' '+x.getFullYear();}
 function mkId(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function st(t){return (t||'').replace(':00 ',' ');}
@@ -122,25 +122,30 @@ function doLogin(){
   var ok=(u===DUSER&&p===DPASS)||(AUSER&&u===AUSER&&p===APASS);
   if(!ok){g('LERR').style.display='block';g('LP').value='';return;}
   g('LS').style.display='none';g('APP').style.display='flex';
-  g('DP').value=new Date().toISOString().slice(0,10);
+  g('DP').value=todayIST();
   loadData();
 }
+var _fbUnsub=null;
 function loadData(){
   sv('saving');
-  db.collection('gavs_data').doc('main').get().then(function(doc){
+  if(_fbUnsub){try{_fbUnsub();}catch(e){} _fbUnsub=null;}
+  var firstLoad=true;
+  _fbUnsub=db.collection('gavs_data').doc('main').onSnapshot(function(doc){
+    if(!firstLoad&&doc.metadata&&doc.metadata.hasPendingWrites)return;
     if(!doc.exists){sv('error');return;}
     var d=doc.data();
     allS=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
     allV=d.venues||[];ROLES=d.roles||[];VTS=d.vendorTypesCustom||[];VCO=d.vendorCompanies||{};
     var ra=d.asgn||{};
-    Object.keys(ra).forEach(function(vid){asgn[vid]={};Object.keys(ra[vid]||{}).forEach(function(eid){var e=gS(eid);if(e)asgn[vid][eid]={emp:e,duty:ra[vid][eid]||'6:00 AM'};});});
+    asgn={};Object.keys(ra).forEach(function(vid){asgn[vid]={};Object.keys(ra[vid]||{}).forEach(function(eid){var e=gS(eid);if(e)asgn[vid][eid]={emp:e,duty:ra[vid][eid]||'6:00 AM'};});});
     var rv=d.vendorAsgn||{};
-    Object.keys(rv).forEach(function(vid){vAsgn[vid]={};Object.keys(rv[vid]||{}).forEach(function(tid){if(Array.isArray(rv[vid][tid]))vAsgn[vid][tid]=rv[vid][tid];});});
+    vAsgn={};Object.keys(rv).forEach(function(vid){vAsgn[vid]={};Object.keys(rv[vid]||{}).forEach(function(tid){if(Array.isArray(rv[vid][tid]))vAsgn[vid][tid]=rv[vid][tid];});});
     if(d.portalAccess&&d.portalAccess[PID])myAccess=d.portalAccess[PID];
     if(d.portalPasswords&&d.portalPasswords[PID]){APASS=d.portalPasswords[PID].password||DPASS;AUSER=d.portalPasswords[PID].username||DUSER;}
-    DBL=true;buildTabs();
+    DBL=true;
+    if(firstLoad){firstLoad=false;buildTabs();}else{drawSP();drawVP();drawGrid();}
     sv('saved');
-  }).catch(function(e){console.error(e);sv('error');});
+  },function(e){console.error(e);sv('error');});
 }
 function save(){
   if(!DBL)return;sv('saving');clearTimeout(ST);

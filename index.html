@@ -1316,6 +1316,9 @@ document.addEventListener('click',function(ev){
 // ── VENUE GRID ────────────────────────────────────────────────
 function drawVenueGrid(){
   var el=g('V_GRID');if(!el)return;
+  // Keep the stats bar (Staff/Out/Leave/Free) in sync on every grid redraw,
+  // so assigning/removing/moving staff always updates the numbers live.
+  try{drawStats();updateATBStats();}catch(e){}
   el.innerHTML='';
 
   // All dates are fully editable — no read-only mode

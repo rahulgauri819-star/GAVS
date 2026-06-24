@@ -134,7 +134,7 @@ input,select,button{font-family:inherit;}
   .atb{display:none!important;}
   .mob-ab{display:flex!important;}
   .assign-area{flex-direction:column;}
-  .asp{width:100%;border-right:none;border-bottom:1px solid #e3eaff;max-height:260px;}
+  .asp{width:100%;border-right:none;border-bottom:1px solid #e3eaff;max-height:340px;}
   .avp{padding:10px;}
 }
 .srow{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid #e3eaff;border-radius:11px;padding:11px 14px;margin-bottom:8px;}
@@ -188,8 +188,8 @@ input,select,button{font-family:inherit;}
 .scw{font-size:10px;color:#999;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:italic;}
 /* Venue panel */
 .vp{flex:1;display:flex;flex-direction:column;overflow:hidden;}
-.vs-wrap{position:relative;margin-bottom:12px;}
-.vsi{width:100%;border:1.5px solid #e0e7ff;border-radius:9px;padding:10px 14px;font-size:13px;outline:none;background:#fff;}
+.vs-wrap{position:relative;margin-bottom:12px;display:flex;gap:8px;align-items:center;}
+.vsi{flex:1;min-width:0;border:1.5px solid #e0e7ff;border-radius:9px;padding:10px 14px;font-size:13px;outline:none;background:#fff;}
 .vsi:focus{border-color:#1565c0;}
 .vdd{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid #90caf9;border-radius:9px;z-index:100;max-height:280px;overflow-y:auto;box-shadow:0 4px 20px rgba(21,101,192,0.15);display:none;}
 .vdd.show{display:block;}
@@ -481,21 +481,6 @@ input,select,button{font-family:inherit;}
     </div>
   </div>
 
-  <div id="mp-portals" class="hide">
-    <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;">
-      <div>
-        <div class="abt" style="margin-bottom:10px;">PORTAL ACCOUNTS</div>
-        <div id="PORTAL_LIST"></div>
-      </div>
-      <div id="PORTAL_DETAIL">
-        <div style="text-align:center;padding:60px 20px;color:#bbb;">
-          <div style="font-size:40px;">🔑</div>
-          <div style="font-size:14px;font-weight:700;color:#1565c0;margin-top:10px;">Select a Portal</div>
-          <div style="font-size:12px;color:#aaa;margin-top:4px;">to manage access and password</div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- LEAVE -->
@@ -821,35 +806,6 @@ function nowIST(){var n=new Date();return new Date(n.getTime()+((n.getTimezoneOf
 function todayIST(){return nowIST().toISOString().slice(0,10);}
 function getD(){return g('DP').value||todayIST();}
 function isViewingToday(){return getD()===todayIST();}
-function getViewData(){
-  // Returns {asgn, lvMap, offMap} for the currently selected date
-  // If today: returns live data. If past/future: returns dlog data (read-only) + pinned staff as base layer.
-  var d=getD();
-  var today=todayIST();
-  if(d===today)return null; // null = use live data
-  var log=dlog[d]; // may be undefined for future dates
-  var a={},lv={},of2={};
-  // Layer 1: pinned staff always shown in their fixed venue (base layer)
-  staff.forEach(function(e){
-    if(!e.pv)return;
-    if(!a[e.pv])a[e.pv]={};
-    a[e.pv][e.id]={emp:e,duty:e.fixedDuty||'6:00 AM',pinned:true,isFixed:true};
-  });
-  // Layer 2: date-specific dlog assignments on top (override pinned for that day)
-  if(log){
-    Object.keys(log.venues||{}).forEach(function(vid){
-      if(!a[vid])a[vid]={};
-      Object.keys(log.venues[vid]||{}).forEach(function(eid){
-        var emp=getS(eid);if(emp)a[vid][eid]={emp:emp,duty:log.venues[vid][eid],pinned:emp.pv===vid,isFixed:emp.pv===vid};
-      });
-    });
-    (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lv[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});
-    (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)of2[o.id]={emp:emp,duty:o.duty||'6:00 AM'};});
-  }
-  // Ensure venues with pinned staff appear in the view
-  Object.keys(a).forEach(function(vid){if(activeVids.indexOf(vid)<0)activeVids.push(vid);});
-  return{asgn:a,lvMap:lv,offMap:of2};
-}
 function isMgr(e){return e&&e.role==='Manager';}
 function getTeam(vid){return Object.values(asgn[vid]||{});}
 function getAids(){var r=[];Object.values(asgn).forEach(function(m){Object.keys(m||{}).forEach(function(id){r.push(id);});});return r;}
@@ -963,14 +919,13 @@ function initApp(){
   populateSRDrops();
   applyPinned();
   drawStats();
-  initActiveVids();
   drawStaffPanel();drawVenueGrid();
   showLoad(true);
   loadFromCloud(function(){
     populateRoleDD();populateVenueDD();populateTimeDD();
     populateSRDrops();
     // Live working set already hydrated by loadLiveFromDlog in the snapshot handler.
-    // Just paint the UI.
+    initActiveVids(); // run AFTER Firebase data loaded so contractedHiddenVids is correct
     drawStats();
     drawStaffPanel();drawVenueGrid();updateATBStats();
     showLoad(false);
@@ -1074,7 +1029,7 @@ function drawStats(){
   var f=Math.max(0,staff.length-a-l-o);
   g('SB').innerHTML=
     chip(staff.length,'Staff','#fff')+
-    chip(a,'Deployed','#90ef90')+
+    chip(a,'Out','#90ef90')+
     chip(l,'Leave','#ff8a80')+
     chip(o,'Godown','#ffcc80')+
     chip(f,'Free','#ce93d8');
@@ -1465,6 +1420,57 @@ function drawVenueGrid(){
         box.style.opacity='0.5';
       };})(vid));
       boxHdr.addEventListener('dragend',function(){box.style.opacity='';});
+      // Touch reorder for venue boxes (mobile)
+      (function(vid2,box2,hdr2){
+        var _tStart=null,_tMoved=false;
+        hdr2.addEventListener('touchstart',function(ev){
+          _tStart=ev.touches[0];_tMoved=false;
+          touchVenueDragId=vid2;
+          if(!touchVenueGhost){
+            touchVenueGhost=document.createElement('div');
+            touchVenueGhost.style.cssText='position:fixed;z-index:9999;pointer-events:none;background:#1565c0;color:#fff;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;opacity:0.85;box-shadow:0 4px 16px rgba(0,0,0,0.25);white-space:nowrap;';
+            var v2=getV(vid2);
+            touchVenueGhost.textContent=(v2?v2.name:'Venue');
+            document.body.appendChild(touchVenueGhost);
+          }
+          touchVenueGhost.style.left=(_tStart.clientX-10)+'px';
+          touchVenueGhost.style.top=(_tStart.clientY-20)+'px';
+          box2.style.opacity='0.4';
+          if(navigator.vibrate)navigator.vibrate(20);
+        },{passive:true});
+        hdr2.addEventListener('touchmove',function(ev){
+          if(!touchVenueDragId)return;
+          ev.stopPropagation();
+          _tMoved=true;
+          var t=ev.touches[0];
+          if(touchVenueGhost){touchVenueGhost.style.left=(t.clientX-10)+'px';touchVenueGhost.style.top=(t.clientY-20)+'px';}
+          document.querySelectorAll('.vbox').forEach(function(b){b.style.outline='';});
+          var el2=document.elementFromPoint(t.clientX,t.clientY);
+          if(el2){var vb2=el2.closest('.vbox');if(vb2&&vb2!==box2)vb2.style.outline='2px solid #f9a825';}
+        },{passive:false});
+        hdr2.addEventListener('touchend',function(ev){
+          box2.style.opacity='';
+          if(touchVenueGhost){try{document.body.removeChild(touchVenueGhost);}catch(x){}touchVenueGhost=null;}
+          document.querySelectorAll('.vbox').forEach(function(b){b.style.outline='';});
+          if(!_tMoved){touchVenueDragId=null;return;}
+          var t=ev.changedTouches[0];
+          var el2=document.elementFromPoint(t.clientX,t.clientY);
+          if(el2&&touchVenueDragId){
+            var vb2=el2.closest('.vbox');
+            if(vb2){
+              var toId=vb2.id.replace('vb-','');
+              if(toId&&toId!==touchVenueDragId){
+                var cur=sortedVids.slice();
+                var fi=cur.indexOf(touchVenueDragId),ti=cur.indexOf(toId);
+                if(fi>=0&&ti>=0){cur.splice(fi,1);cur.splice(ti,0,touchVenueDragId);}
+                venueOrder=cur;saveCloud();drawVenueGrid();
+                if(navigator.vibrate)navigator.vibrate([20,10,20]);
+              }
+            }
+          }
+          touchVenueDragId=null;
+        },{passive:true});
+      })(vid,box,boxHdr);
     }
     box.addEventListener('dragover',function(ev){
       var isVenueDrag=ev.dataTransfer.types&&(ev.dataTransfer.types.indexOf?ev.dataTransfer.types.indexOf('text/venueid')>=0:ev.dataTransfer.types.contains('text/venueid'));
@@ -2088,15 +2094,21 @@ wireBtnSave(document.getElementById('btnSave2'));
 function wireBtnPDF(el){
   if(!el)return;
   el.addEventListener('click',function(){
-    saveLog();
+    saveLog(_lastLoadedDate||getD());
     showModal(
       '<div class="mt">📄 Choose PDF Type</div>'+
       '<button class="mbtn blue" id="m-full">📋 Full Report<br><span style="font-size:11px;font-weight:400;opacity:0.85;">All staff, all venues, grouped by role</span></button>'+
-      '<button class="mbtn grn" id="m-event">⚡ Event Sheet<br><span style="font-size:11px;font-weight:400;opacity:0.85;">Compact, multi-venue per page, no contracted staff</span></button>'+
+      '<button class="mbtn grn" id="m-event">⚡ Event Sheet<br><span style="font-size:11px;font-weight:400;opacity:0.85;">Compact 2-column, pinned staff with lock icons</span></button>'+
+      '<button class="mbtn" style="background:#e8f5e9;border-color:#c8e6c9;color:#1b5e20;" id="m-daily">📊 Daily Summary<br><span style="font-size:11px;font-weight:400;opacity:0.85;">All venues + staff + vendors, full picture of the day</span></button>'+
+      '<button class="mbtn" style="background:#fff8f0;border-color:#ffe0b2;color:#e65100;" id="m-vendor">🚚 Vendor Summary<br><span style="font-size:11px;font-weight:400;opacity:0.85;">All vendors assigned, grouped by venue</span></button>'+
+      '<button class="mbtn" style="background:#f3e5f5;border-color:#ce93d8;color:#6a1b9a;" id="m-company">🏢 Company-Wise Vendors<br><span style="font-size:11px;font-weight:400;opacity:0.85;">Each vendor company and their assignments</span></button>'+
       '<button class="mcancel" id="m-no">Cancel</button>'
     );
     g('m-full').onclick=function(){closeModal();makePDF();};
     g('m-event').onclick=function(){closeModal();makeEventSheetPDF();};
+    g('m-daily').onclick=function(){closeModal();makeDailySummaryPDF();};
+    g('m-vendor').onclick=function(){closeModal();makeVendorSummaryPDF();};
+    g('m-company').onclick=function(){closeModal();makeCompanyWisePDF();};
     g('m-no').onclick=closeModal;
   });
 }
@@ -2499,6 +2511,26 @@ function drawMRoles(){
   });
 }
 
+// ── PINNED STAFF: propagate venue/time changes to today+future dlog entries ──
+function updatePinnedInFutureDlogs(eid, newPv, oldPv, newFt){
+  var today=todayIST();
+  Object.keys(dlog).forEach(function(date){
+    if(date<today)return; // past dates untouched
+    var log=dlog[date];if(!log)return;
+    if(!log.venues)log.venues={};
+    // Remove from old pinned venue
+    if(oldPv&&log.venues[oldPv]){
+      delete log.venues[oldPv][eid];
+      if(!Object.keys(log.venues[oldPv]).length)delete log.venues[oldPv];
+    }
+    // Add/update in new pinned venue
+    if(newPv){
+      if(!log.venues[newPv])log.venues[newPv]={};
+      log.venues[newPv][eid]=newFt||'6:00 AM';
+    }
+  });
+}
+
 function editStaff(eid){
   var e=getS(eid);if(!e)return;
   var roOpts=ROLES.map(function(r){return'<option value="'+esc(r)+'"'+(e.role===r?' selected':'')+'>'+esc(r)+'</option>';}).join('');
@@ -2519,7 +2551,7 @@ function editStaff(eid){
     if(!n){toast('Enter name','w');return;}
     if(staff.find(function(x){return x.name.toLowerCase()===n.toLowerCase()&&x.id!==eid;})){toast('"'+n+'" already exists!','e');return;}
     var r=g('ESR').value,ph=(g('ESP').value||'').trim(),pv=g('ESPV').value||'',ft=g('ESFT').value||'6:00 AM';
-    var oldPv=e.pv;
+    var oldPv=e.pv;var oldFt=e.fixedDuty||'6:00 AM';
     e.name=n;e.role=r;e.phone=ph;e.pv=pv;e.fixedDuty=ft;
     // Update in asgn
     Object.values(asgn).forEach(function(vm){if(vm&&vm[eid])vm[eid].emp=e;});
@@ -2534,6 +2566,8 @@ function editStaff(eid){
     } else if(!pv&&oldPv){
       Object.values(asgn).forEach(function(vm){if(vm&&vm[eid]){vm[eid].pinned=false;vm[eid].isFixed=false;}});
     }
+    // Propagate pinned venue/time changes to today + all future dlog entries
+    if(pv!==oldPv||ft!==oldFt){updatePinnedInFutureDlogs(eid,pv,oldPv,ft);}
     closeModal();toast(n+' updated!');drawMStaff();drawStats();populateSRDrops();
     if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
     saveCloud();
@@ -2865,7 +2899,7 @@ function drawReport(){
   // Get data for selected date
   var reportAsgn={},reportLv=[],reportOff=[];
   if(isToday){
-    saveLog();
+    saveLog(_lastLoadedDate||getD());
     Object.keys(asgn).forEach(function(vid){reportAsgn[vid]=asgn[vid];});
     reportLv=Object.values(lvMap);
     reportOff=Object.values(offMap);
@@ -3027,6 +3061,18 @@ function drawVenueHistory(){
   g('btnVHPDF').classList.remove('hide');
 }
 
+// ── GLOBAL PDF HELPER: draw tiny padlock icon ──
+function drawLock(doc,lx,ly,clr){
+  doc.setDrawColor(clr[0],clr[1],clr[2]);doc.setLineWidth(0.55);
+  doc.line(lx+0.7,ly+1.9,lx+0.7,ly+0.7);
+  doc.line(lx+2.3,ly+1.9,lx+2.3,ly+0.7);
+  doc.line(lx+0.7,ly+0.7,lx+2.3,ly+0.7);
+  doc.setFillColor(clr[0],clr[1],clr[2]);
+  doc.roundedRect(lx,ly+1.8,3,2.2,0.35,0.35,'F');
+  doc.setFillColor(255,255,255);
+  doc.circle(lx+1.5,ly+2.9,0.45,'F');
+  doc.setLineWidth(0.3);doc.setDrawColor(80,80,80);
+}
 function makeVHPDF(){
   var vid=(g('VHV')||{}).value||'';
   var fromDate=(g('VHF')||{}).value||'';
@@ -3034,21 +3080,6 @@ function makeVHPDF(){
   var v=getV(vid);
   if(!v||!fromDate||!toDate||!window.jspdf){toast('Error','e');return;}
   var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  // Helper: draw a tiny padlock icon using primitives
-  function drawLock(lx,ly,clr){
-    // Shackle (small arch using two short lines + top connector)
-    doc.setDrawColor(clr[0],clr[1],clr[2]);doc.setLineWidth(0.55);
-    doc.line(lx+0.7,ly+1.9,lx+0.7,ly+0.7);
-    doc.line(lx+2.3,ly+1.9,lx+2.3,ly+0.7);
-    doc.line(lx+0.7,ly+0.7,lx+2.3,ly+0.7);
-    // Body
-    doc.setFillColor(clr[0],clr[1],clr[2]);
-    doc.roundedRect(lx,ly+1.8,3,2.2,0.35,0.35,'F');
-    // Keyhole dot
-    doc.setFillColor(255,255,255);
-    doc.circle(lx+1.5,ly+2.9,0.45,'F');
-    doc.setLineWidth(0.3);doc.setDrawColor(80,80,80);
-  }
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
@@ -4960,6 +4991,8 @@ function drawPortalDetail(){
 // ── TOUCH DRAG & DROP FOR IPAD / MOBILE ──────────────────────
 var touchDragEid = null;
 var touchGhost = null;
+var touchVenueDragId = null;
+var touchVenueGhost = null;
 
 document.addEventListener('touchstart', function(ev) {
   var card = ev.target.closest('.scard.avail');
@@ -5090,9 +5123,7 @@ function saveCloud(){
   clearTimeout(SAVE_DEBOUNCE_TIMER);
   SAVE_DEBOUNCE_TIMER=setTimeout(function(){
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
-    // Always save log to the currently loaded date before cloud write
-    if(_lastLoadedDate)saveLog(_lastLoadedDate);
-    actuallySaveCloud();
+    actuallySaveCloud(); // actuallySaveCloud already calls saveLog internally
   },300);
 }
 function actuallySaveCloud(){
@@ -5215,7 +5246,14 @@ function loadFromCloud(callback){
           var migO=[];if(d.offMap)Object.keys(d.offMap).forEach(function(eid){migO.push({id:eid,duty:d.offMap[eid].duty||'6:00 AM'});});
           dlog[_curDate]={venues:migV,leave:migL,office:migO};
         }
-        // Initial load (or first paint): hydrate live data from dlog[_curDate]
+        // Initial load (or first paint): hide all contracted venues by default
+        contractedHiddenVids=new Set();
+        contractedHiddenVids._initialized=true;
+        venues.forEach(function(v){
+          if(staff.some(function(e){return e.pv===v.id;}))contractedHiddenVids.add(v.id);
+        });
+        pinnedVisibleVids=new Set();
+        // Hydrate live data from dlog[_curDate]
         _lastLoadedDate=_curDate;
         loadLiveFromDlog(_curDate);
       }
@@ -5231,8 +5269,6 @@ function loadFromCloud(callback){
       }
       if(d.portalAccess)PORTAL_ACCESS=d.portalAccess;
       if(d.ihcHalls)ihcHalls=d.ihcHalls;
-      if(d.portalPasswords)Object.assign(portalPasswords,d.portalPasswords);
-      if(d.portalAccess)Object.assign(portalAccess,d.portalAccess);
       if(d.jaipurHalls)jaipurHalls=d.jaipurHalls;
       if(d.ihcAsgn)ihcAsgn=d.ihcAsgn;
       if(d.jaipurAsgn)jaipurAsgn=d.jaipurAsgn;
@@ -5378,7 +5414,7 @@ function makeEventSheetPDF(){
       var vname=v.name.length>maxChars?v.name.slice(0,maxChars-1)+'…':v.name;
       doc.text(vname,x+3,yy+6.8);
       // Lock icon on venue header if it has pinned staff
-      if(venueHasPinned){drawLock(x+colW-8,yy+2.2,[255,215,100]);}
+      if(venueHasPinned){drawLock(doc,x+colW-8,yy+2.2,[255,215,100]);}
       doc.setFontSize(7.5);doc.setFont('helvetica','normal');
       doc.text(entries.length+' staff',x+colW-(venueHasPinned?11:2),yy+6.8,{align:'right'});
       yy+=hdrH+1;
@@ -5400,13 +5436,13 @@ function makeEventSheetPDF(){
           // Truncate if too long
           var mgrMax=Math.floor((colW-timeW-7-lockOffX)/1.9);
           if(mgrLabel.length>mgrMax)mgrLabel=mgrLabel.slice(0,mgrMax-1)+'…';
-          if(a._isPinned){drawLock(x+4,yy+(mgrRowH-4)/2,[180,130,0]);}
+          if(a._isPinned){drawLock(doc,x+4,yy+(mgrRowH-4)/2,[180,130,0]);}
           doc.setTextColor(100,65,0);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
           doc.text(mgrLabel,x+4+lockOffX,yy+mgrRowH/2+1.2);
           doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
           doc.text(timeStr,x+colW-2,yy+mgrRowH/2+1.2,{align:'right'});
         } else {
-          if(a._isPinned){drawLock(x+4,yy+(rowH-4)/2,[50,80,200]);}
+          if(a._isPinned){drawLock(doc,x+4,yy+(rowH-4)/2,[50,80,200]);}
           doc.setTextColor(20,20,20);doc.setFontSize(8);doc.setFont('helvetica','normal');
           var name=a.emp.name.length>nameMax?a.emp.name.slice(0,nameMax-1)+'…':a.emp.name;
           doc.text(name,x+4+lockOffX,yy+rowH-1.8);

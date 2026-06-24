@@ -969,10 +969,9 @@ function initApp(){
   loadFromCloud(function(){
     populateRoleDD();populateVenueDD();populateTimeDD();
     populateSRDrops();
-    _lastLoadedDate=getD(); // mark current date as loaded (DP may have been changed before load)
-    applyPinned();
+    // Live working set already hydrated by loadLiveFromDlog in the snapshot handler.
+    // Just paint the UI.
     drawStats();
-    initActiveVids();
     drawStaffPanel();drawVenueGrid();updateATBStats();
     showLoad(false);
   });
@@ -1008,30 +1007,14 @@ function updateADate(){
 
 // ── DATE SWITCH: save current date data, load new date data ──
 var _lastLoadedDate=''; // tracks the date whose data is currently in asgn/lvMap/offMap
-function switchToDate(newDate){
-  if(!DB_LOADED)return;
-  if(newDate===_lastLoadedDate)return; // already on this date
-  // 1. Save the date we're LEAVING to its own dlog entry
-  //    _lastLoadedDate holds the old date; getD() already shows newDate so we can't use it
-  if(_lastLoadedDate){
-    saveLog(_lastLoadedDate);
-    saveVendorLog(_lastLoadedDate);
-    actuallySaveCloud();
-  }
-  _lastLoadedDate=newDate;
-  // 2. Reset contracted venues to ALL hidden on every date switch
-  //    User must explicitly toggle on what they need for this date
-  contractedHiddenVids=new Set();
-  contractedHiddenVids._initialized=true;
-  venues.forEach(function(v){
-    if(staff.some(function(e){return e.pv===v.id;}))contractedHiddenVids.add(v.id);
-  });
-  // 2. Hard reset ALL live data and activeVids — no carryover
+
+// Hydrate the live working set (asgn/lvMap/offMap/vendorAsgn) from a date's dlog entry.
+// This is the SINGLE source of truth for loading a date. Always clears first.
+function loadLiveFromDlog(date){
   asgn={};lvMap={};offMap={};vendorAsgn={};
-  activeVids=[]; // MUST be empty before applyPinned
-  // 3. Load from dlog/vdlog
-  var log=dlog[newDate];
-  var vlog=vdlog[newDate];
+  activeVids=[];
+  var log=dlog[date];
+  var vlog=vdlog[date];
   if(log){
     Object.keys(log.venues||{}).forEach(function(vid){
       asgn[vid]={};
@@ -1051,20 +1034,38 @@ function switchToDate(newDate){
       });
     });
   }
-  // 4. Apply pinned staff — applyPinned respects contractedHiddenVids so
-  //    contracted-hidden venues stay out of activeVids automatically
+  // Pinned staff as base layer (respects contractedHiddenVids)
   applyPinned();
-  // 5. Add venues from log that had real assignments (non-contracted)
-  var hasLog=!!(log&&Object.keys(log.venues||{}).length);
-  if(hasLog){
+  // Add non-contracted venues that had real assignments in the log
+  if(log&&Object.keys(log.venues||{}).length){
     Object.keys(asgn).forEach(function(vid){
       if(Object.keys(asgn[vid]||{}).length>0&&activeVids.indexOf(vid)<0){
-        // Only add non-contracted venues from log (contracted already handled by applyPinned)
         var isContracted=staff.some(function(e){return e.pv===vid;});
         if(!isContracted)activeVids.push(vid);
       }
     });
   }
+}
+
+function switchToDate(newDate){
+  if(!DB_LOADED)return;
+  if(newDate===_lastLoadedDate)return; // already on this date
+  // 1. Save the date we're LEAVING into its OWN dlog entry, then persist.
+  //    Use _lastLoadedDate (old date) — getD() already shows newDate.
+  if(_lastLoadedDate){
+    saveLog(_lastLoadedDate);
+    saveVendorLog(_lastLoadedDate);
+    actuallySaveCloud();
+  }
+  _lastLoadedDate=newDate;
+  // 2. Reset contracted venues to ALL hidden on every date switch.
+  contractedHiddenVids=new Set();
+  contractedHiddenVids._initialized=true;
+  venues.forEach(function(v){
+    if(staff.some(function(e){return e.pv===v.id;}))contractedHiddenVids.add(v.id);
+  });
+  // 3. Hydrate live working set from this date's dlog (single source of truth).
+  loadLiveFromDlog(newDate);
 }
 
 // ── STATS ─────────────────────────────────────────────────────
@@ -5078,8 +5079,10 @@ function saveCloud(){
 }
 function actuallySaveCloud(){
   if(!DB_LOADED)return;
-  saveLog();
-  saveVendorLog();
+  // Always persist the live working set into the CURRENTLY LOADED date's log
+  var _sd=_lastLoadedDate||getD();
+  saveLog(_sd);
+  saveVendorLog(_sd);
   try{
     var staffData=staff.map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
     var venueData=venues.map(function(v){return{id:v.id,name:v.name,vip:v.vip||false};});
@@ -5150,6 +5153,7 @@ function loadFromCloud(callback){
   },10000);
   _snapshotUnsub=db.collection('gavs_data').doc('main').onSnapshot(function(doc){
     clearTimeout(timeout);
+    var _onlyStaticChangedFlag=false;
     // Ignore snapshots that come from our own pending write (hasPendingWrites = local)
     if(doc.metadata&&doc.metadata.hasPendingWrites){
       if(initialLoad){initialLoad=false;applyPinned();DB_LOADED=true;showLoad(false);if(callback){callback();callback=null;}}
@@ -5167,35 +5171,38 @@ function loadFromCloud(callback){
       }
       // Restore roles
       if(d.roles&&d.roles.length)ROLES=d.roles;
-      // Only restore live asgn/lvMap/offMap/activeVids when viewing today
-      // (when on another date, switchToDate manages these from dlog)
-      var _isViewingToday=(!_lastLoadedDate||_lastLoadedDate===getD());
-      if(_isViewingToday){
-        if(d.activeVids&&d.activeVids.length)activeVids=d.activeVids;
-        asgn={};
-        if(d.asgn){
+      // Restore dlog FIRST — it is the source of truth for every date's data
+      if(d.dlog)dlog=d.dlog;
+      if(d.vdlog)vdlog=d.vdlog;
+      // Build the live working set from dlog for the date currently shown.
+      // We deliberately IGNORE the stale top-level d.asgn (it may hold any date's
+      // data); each date's data lives only in dlog[date]. This is what prevents
+      // data from one date bleeding into another.
+      var _curDate=_lastLoadedDate||getD();
+      _onlyStaticChangedFlag=DB_LOADED&&!!_lastLoadedDate; // a later real-time update
+      if(!_onlyStaticChangedFlag){
+        // One-time migration: if this date has no dlog entry yet but Firebase
+        // still has a legacy top-level asgn/lvMap/offMap, seed dlog[_curDate]
+        // from it so existing data isn't lost on first load after this update.
+        var _hasDlogForDate=!!(dlog[_curDate]&&Object.keys(dlog[_curDate].venues||{}).length);
+        if(!_hasDlogForDate&&d.asgn&&Object.keys(d.asgn).length){
+          var migV={};
           Object.keys(d.asgn).forEach(function(vid){
-            asgn[vid]={};
+            migV[vid]={};
             Object.keys(d.asgn[vid]||{}).forEach(function(eid){
-              var a=d.asgn[vid][eid];
-              var emp=getS(eid);
-              if(emp){
-                asgn[vid][eid]={emp:emp,duty:a.duty||'6:00 AM',pinned:a.pinned||false,isFixed:a.isFixed||false};
-                if(activeVids.indexOf(vid)<0)activeVids.push(vid);
-              }
+              migV[vid][eid]=(d.asgn[vid][eid].duty)||'6:00 AM';
             });
           });
+          var migL=[];if(d.lvMap)Object.keys(d.lvMap).forEach(function(eid){migL.push({id:eid,duty:d.lvMap[eid].duty||'6:00 AM'});});
+          var migO=[];if(d.offMap)Object.keys(d.offMap).forEach(function(eid){migO.push({id:eid,duty:d.offMap[eid].duty||'6:00 AM'});});
+          dlog[_curDate]={venues:migV,leave:migL,office:migO};
         }
-        lvMap={};
-        if(d.lvMap){Object.keys(d.lvMap).forEach(function(eid){var emp=getS(eid);if(emp)lvMap[eid]={emp:emp,duty:d.lvMap[eid].duty||'6:00 AM'};});}
-        offMap={};
-        if(d.offMap){Object.keys(d.offMap).forEach(function(eid){var emp=getS(eid);if(emp)offMap[eid]={emp:emp,duty:d.offMap[eid].duty||'6:00 AM'};});}
+        // Initial load (or first paint): hydrate live data from dlog[_curDate]
+        _lastLoadedDate=_curDate;
+        loadLiveFromDlog(_curDate);
       }
-      // Restore dlog
-      if(d.dlog)dlog=d.dlog;
       if(d.vHalls)vHalls=d.vHalls;
       if(d.venueOrder&&d.venueOrder.length)venueOrder=d.venueOrder;
-      if(d.vendorAsgn)vendorAsgn=d.vendorAsgn;
       if(d.vendorCompanies)vendorCompanies=d.vendorCompanies;
       if(d.portalPasswords){
         PORTAL_ACCOUNTS.forEach(function(a){
@@ -5215,7 +5222,6 @@ function loadFromCloud(callback){
       if(d.jaipurLog)jaipurLog=d.jaipurLog;
       // Only override the fixed 9 categories if saved data has the new object structure (not old string array)
       if(d.vendorTypesCustom&&d.vendorTypesCustom.length&&typeof d.vendorTypesCustom[0]==='object'){VENDOR_TYPES=d.vendorTypesCustom;}
-      if(d.vdlog)vdlog=d.vdlog;
       // Restore drafts
       if(d.drafts){
         drafts=d.drafts.map(function(dr){
@@ -5239,10 +5245,11 @@ function loadFromCloud(callback){
     } else {
       console.log('No saved data in Firebase yet.');
     }
-    // Only apply pinned if viewing today (otherwise switchToDate manages it)
-    if(!_lastLoadedDate||_lastLoadedDate===getD()){
-      applyPinned();
-      initActiveVids();
+    // Live working set is hydrated by loadLiveFromDlog (initial load) or
+    // switchToDate (date change). For real-time updates from other portals
+    // while viewing the current date, re-hydrate so external edits show up.
+    if(_onlyStaticChangedFlag&&_lastLoadedDate){
+      loadLiveFromDlog(_lastLoadedDate);
     }
     DB_LOADED=true;showLoad(false);
     if(initialLoad){

@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}html{touch-action:manipulation;}button,a,input,select{touch-action:manipulation;}
 body{background:#f0f4ff;font-family:"Segoe UI",Arial,sans-serif;color:#111;font-size:14px;}
@@ -25,6 +26,10 @@ input,select,button{font-family:inherit;}
 .li:focus{border-color:#1565c0;}
 #lerr{color:#c62828;font-size:12px;text-align:center;margin-bottom:10px;display:none;background:#ffebee;padding:8px;border-radius:8px;}
 .lbtn{width:100%;background:#1565c0;border:none;color:#fff;border-radius:10px;padding:13px 0;font-size:16px;font-weight:700;cursor:pointer;}
+.lbtn:disabled{opacity:0.6;cursor:not-allowed;}
+.otp-back{background:none;border:none;color:#90caf9;font-size:13px;cursor:pointer;margin-bottom:14px;padding:0;text-align:left;}
+.otp-resend{background:none;border:none;color:#1565c0;font-size:12px;cursor:pointer;text-decoration:underline;margin-top:10px;display:block;text-align:center;}
+#otp-err{color:#c62828;font-size:12px;text-align:center;margin-bottom:10px;display:none;background:#ffebee;padding:8px;border-radius:8px;}
 /* Header */
 .hdr{background:#1565c0;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,0.2);}
 .hdr-i{display:flex;align-items:center;gap:12px;padding:8px 20px;}
@@ -262,13 +267,23 @@ input,select,button{font-family:inherit;}
   <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:4px;text-align:center;">Grover Audio Visual Services</div>
   <div style="font-size:11px;color:#bbdefb;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:24px;">Staff Deployment System</div>
   <div class="lb">
-    <h2>Login</h2>
-    <label class="lbl">Username</label>
-    <input id="LU" type="text" autocomplete="username" placeholder="Enter username" class="li"/>
-    <label class="lbl">Password</label>
-    <input id="LP" type="password" autocomplete="current-password" placeholder="Enter password" class="li"/>
-    <div id="lerr">Wrong username or password</div>
-    <button type="button" id="LB" class="lbtn">Login</button>
+    <h2>🔐 Admin Login</h2>
+    <div id="otp-err"></div>
+    <!-- Step 1: Phone -->
+    <div id="otp-step1">
+      <label class="lbl">Mobile Number</label>
+      <input id="LP_PHONE" type="tel" class="li" placeholder="+91XXXXXXXXXX" autocomplete="tel"/>
+      <button type="button" id="otp-send-btn" class="lbtn">Send OTP</button>
+    </div>
+    <!-- Step 2: OTP -->
+    <div id="otp-step2" style="display:none;">
+      <button type="button" class="otp-back" id="otp-back-btn">← Change number</button>
+      <label class="lbl">Enter OTP sent to your mobile</label>
+      <input id="LP_OTP" type="number" class="li" placeholder="6-digit OTP" autocomplete="one-time-code"/>
+      <button type="button" id="otp-verify-btn" class="lbtn">Verify OTP</button>
+      <button type="button" class="otp-resend" id="otp-resend-btn">Resend OTP</button>
+    </div>
+    <div id="recaptcha-container"></div>
   </div>
   <div style="font-size:10px;color:#90caf9;margin-top:20px;">GAVS 2026</div>
 </div>
@@ -884,37 +899,115 @@ g('modal').addEventListener('click',function(ev){
 // ── LOADING ───────────────────────────────────────────────────
 function showLoad(v){g('loadingOv').style.display=v?'flex':'none';}
 
-// ── LOGIN ─────────────────────────────────────────────────────
-function doLogin(){
-  var u=(g('LU').value||'').trim().toLowerCase();
-  var p=(g('LP').value||'').trim();
-  var ok=null;
-  for(var i=0;i<CREDS.length;i++){if(CREDS[i].u===u&&CREDS[i].p===p){ok=CREDS[i];break;}}
-  if(ok){
-    curUser=u;
-    g('LS').style.display='none';
-    g('AH').style.display='block';
-    g('AB').style.display='block';
-    g('lerr').style.display='none';
-    initApp();
-    toast('Welcome, '+u+'!');
-  } else {
-    g('lerr').style.display='block';
-    g('LP').value='';
-  }
+// ── PHONE OTP LOGIN ───────────────────────────────────────────
+var ALLOWED_PHONES=['+919999985011'];
+var _confirmResult=null;
+var _rcVerifier=null;
+
+function _initRC(){
+  if(_rcVerifier)return;
+  _rcVerifier=new firebase.auth.RecaptchaVerifier('recaptcha-container',{size:'invisible',callback:function(){}});
+}
+function _otpErr(msg){
+  var el=g('otp-err');
+  if(!el)return;
+  el.textContent=msg||'';
+  el.style.display=msg?'block':'none';
+}
+function _resetLoginUI(){
+  g('otp-step1').style.display='block';
+  g('otp-step2').style.display='none';
+  g('LP_PHONE').value='';
+  g('LP_OTP').value='';
+  _otpErr('');
+  var sb=g('otp-send-btn');if(sb){sb.disabled=false;sb.textContent='Send OTP';}
+  var vb=g('otp-verify-btn');if(vb){vb.disabled=false;vb.textContent='Verify OTP';}
+  _confirmResult=null;
+}
+function sendOTP(){
+  var raw=(g('LP_PHONE').value||'').replace(/\s/g,'');
+  var phone=raw.startsWith('+')?raw:('+91'+raw);
+  if(!ALLOWED_PHONES.includes(phone)){_otpErr('This number is not authorised.');return;}
+  var sb=g('otp-send-btn');sb.disabled=true;sb.textContent='Sending...';
+  _otpErr('');
+  _initRC();
+  firebase.auth().signInWithPhoneNumber(phone,_rcVerifier)
+    .then(function(result){
+      _confirmResult=result;
+      g('otp-step1').style.display='none';
+      g('otp-step2').style.display='block';
+      g('LP_OTP').focus();
+    })
+    .catch(function(err){
+      sb.disabled=false;sb.textContent='Send OTP';
+      _otpErr(err.message||'Failed to send OTP. Try again.');
+      if(_rcVerifier){try{_rcVerifier.clear();}catch(e){}_rcVerifier=null;}
+    });
+}
+function verifyOTP(){
+  var code=(g('LP_OTP').value||'').trim();
+  if(!code||!_confirmResult)return;
+  var vb=g('otp-verify-btn');vb.disabled=true;vb.textContent='Verifying...';
+  _otpErr('');
+  _confirmResult.confirm(code)
+    .then(function(result){
+      var phone=result.user.phoneNumber;
+      if(!ALLOWED_PHONES.includes(phone)){
+        firebase.auth().signOut();
+        _otpErr('This number is not authorised.');
+        vb.disabled=false;vb.textContent='Verify OTP';
+        return;
+      }
+      _onLoginSuccess(phone);
+    })
+    .catch(function(){
+      vb.disabled=false;vb.textContent='Verify OTP';
+      _otpErr('Invalid OTP. Please try again.');
+    });
+}
+function _onLoginSuccess(phone){
+  curUser=phone;
+  g('LS').style.display='none';
+  g('AH').style.display='block';
+  g('AB').style.display='block';
+  initApp();
+  toast('Welcome!');
 }
 function doLogout(){
+  firebase.auth().signOut().catch(function(){});
   curUser='';
   g('LS').style.display='flex';
   g('AH').style.display='none';
   g('AB').style.display='none';
-  g('LP').value='';g('LU').value='';
+  _resetLoginUI();
   toast('Logged out','w');
 }
 
-g('LB').addEventListener('click',doLogin);
-g('LP').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
-g('LU').addEventListener('keydown',function(e){if(e.key==='Enter')g('LP').focus();});
+// Auto-login if Firebase session still active
+firebase.auth().onAuthStateChanged(function(user){
+  if(user&&ALLOWED_PHONES.includes(user.phoneNumber)){
+    _onLoginSuccess(user.phoneNumber);
+  }
+});
+
+g('otp-send-btn').addEventListener('click',sendOTP);
+g('otp-verify-btn').addEventListener('click',verifyOTP);
+g('otp-back-btn').addEventListener('click',function(){
+  _resetLoginUI();
+  if(_rcVerifier){try{_rcVerifier.clear();}catch(e){}_rcVerifier=null;}
+});
+g('otp-resend-btn').addEventListener('click',function(){
+  if(_rcVerifier){try{_rcVerifier.clear();}catch(e){}_rcVerifier=null;}
+  _resetLoginUI();
+  // keep phone number
+  setTimeout(function(){
+    var phone=(g('LP_PHONE').value||'').replace(/\s/g,'');
+    if(!phone)return;
+    sendOTP();
+  },100);
+});
+g('LP_OTP').addEventListener('keydown',function(e){if(e.key==='Enter')verifyOTP();});
+g('LP_PHONE').addEventListener('keydown',function(e){if(e.key==='Enter')sendOTP();});
 
 // ── NAVIGATION ────────────────────────────────────────────────
 var curScreen='assign';
@@ -954,7 +1047,7 @@ document.querySelectorAll('.nb').forEach(function(btn){
 
 // ── INIT ──────────────────────────────────────────────────────
 function initApp(){
-  g('DP').value=todayIST();
+  g('DP').value=nd(todayIST()); // default to tomorrow
   var dp2init=document.getElementById('DP2');
   if(dp2init)dp2init.value=g('DP').value;
   document.body.classList.add('in-assign');
@@ -3034,6 +3127,21 @@ function makeVHPDF(){
   var v=getV(vid);
   if(!v||!fromDate||!toDate||!window.jspdf){toast('Error','e');return;}
   var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  // Helper: draw a tiny padlock icon using primitives
+  function drawLock(lx,ly,clr){
+    // Shackle (small arch using two short lines + top connector)
+    doc.setDrawColor(clr[0],clr[1],clr[2]);doc.setLineWidth(0.55);
+    doc.line(lx+0.7,ly+1.9,lx+0.7,ly+0.7);
+    doc.line(lx+2.3,ly+1.9,lx+2.3,ly+0.7);
+    doc.line(lx+0.7,ly+0.7,lx+2.3,ly+0.7);
+    // Body
+    doc.setFillColor(clr[0],clr[1],clr[2]);
+    doc.roundedRect(lx,ly+1.8,3,2.2,0.35,0.35,'F');
+    // Keyhole dot
+    doc.setFillColor(255,255,255);
+    doc.circle(lx+1.5,ly+2.9,0.45,'F');
+    doc.setLineWidth(0.3);doc.setDrawColor(80,80,80);
+  }
   var pw=210,mg=12,y=mg;
   function cp(n){if(y+n>283){doc.addPage();y=mg;}}
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
@@ -5282,15 +5390,18 @@ function makeEventSheetPDF(){
   var pdfData={};
   Object.keys(asgn).forEach(function(vid){
     var entries=Object.values(asgn[vid]||{});
-    var nonPinned=entries.filter(function(a){return !(a.pinned&&a.emp.pv===vid);});
-    if(nonPinned.length>0){
+    // Include ALL staff (pinned and non-pinned); mark pinned ones for lock icon
+    var allEntries=entries.map(function(a){
+      return Object.assign({},a,{_isPinned:!!(a.pinned&&a.emp.pv===vid)});
+    });
+    if(allEntries.length>0){
       // Sort: managers first, then alphabetical
-      nonPinned.sort(function(a,b){
+      allEntries.sort(function(a,b){
         var am=(a.emp.role==='Manager')?0:1,bm=(b.emp.role==='Manager')?0:1;
         if(am!==bm)return am-bm;
         return a.emp.name.localeCompare(b.emp.name);
       });
-      pdfData[vid]=nonPinned;
+      pdfData[vid]=allEntries;
     }
   });
 
@@ -5353,13 +5464,16 @@ function makeEventSheetPDF(){
       }
       var x=colX[ci],yy=colY[ci];
       // Venue header
+      var venueHasPinned=entries.some(function(a){return a._isPinned;});
       doc.setFillColor(21,101,192);doc.roundedRect(x,yy,colW,hdrH,2,2,'F');
       doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
       var maxChars=Math.floor((colW-timeW-4)/2.2);
       var vname=v.name.length>maxChars?v.name.slice(0,maxChars-1)+'…':v.name;
       doc.text(vname,x+3,yy+6.8);
+      // Lock icon on venue header if it has pinned staff
+      if(venueHasPinned){drawLock(x+colW-8,yy+2.2,[255,215,100]);}
       doc.setFontSize(7.5);doc.setFont('helvetica','normal');
-      doc.text(entries.length+' staff',x+colW-2,yy+6.8,{align:'right'});
+      doc.text(entries.length+' staff',x+colW-(venueHasPinned?11:2),yy+6.8,{align:'right'});
       yy+=hdrH+1;
       // Staff rows — managers first (yellow), then others
       entries.forEach(function(a,idx){
@@ -5371,21 +5485,24 @@ function makeEventSheetPDF(){
         doc.setFillColor(accentClr[0],accentClr[1],accentClr[2]);doc.rect(x,yy,2,mgrRowH,'F');
         var timeStr=shortTime(a.duty);
         var nameMax=Math.floor((colW-timeW-7)/2.1);
+        var lockOffX=a._isPinned?4.5:0; // extra left margin for lock icon
         if(isMgr){
           // Manager: name + phone on SAME line, bold, smaller font to fit
           var phoneStr=a.emp.phone?' · '+a.emp.phone:'';
           var mgrLabel=a.emp.name+phoneStr;
           // Truncate if too long
-          var mgrMax=Math.floor((colW-timeW-7)/1.9);
+          var mgrMax=Math.floor((colW-timeW-7-lockOffX)/1.9);
           if(mgrLabel.length>mgrMax)mgrLabel=mgrLabel.slice(0,mgrMax-1)+'…';
+          if(a._isPinned){drawLock(x+4,yy+(mgrRowH-4)/2,[180,130,0]);}
           doc.setTextColor(100,65,0);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-          doc.text(mgrLabel,x+4,yy+mgrRowH/2+1.2);
+          doc.text(mgrLabel,x+4+lockOffX,yy+mgrRowH/2+1.2);
           doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
           doc.text(timeStr,x+colW-2,yy+mgrRowH/2+1.2,{align:'right'});
         } else {
+          if(a._isPinned){drawLock(x+4,yy+(rowH-4)/2,[50,80,200]);}
           doc.setTextColor(20,20,20);doc.setFontSize(8);doc.setFont('helvetica','normal');
           var name=a.emp.name.length>nameMax?a.emp.name.slice(0,nameMax-1)+'…':a.emp.name;
-          doc.text(name,x+4,yy+rowH-1.8);
+          doc.text(name,x+4+lockOffX,yy+rowH-1.8);
           doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
           doc.text(timeStr,x+colW-2,yy+rowH-1.8,{align:'right'});
         }

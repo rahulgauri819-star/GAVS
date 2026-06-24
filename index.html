@@ -1010,27 +1010,45 @@ function updateADate(){
 var _lastLoadedDate=''; // track which date is currently loaded in asgn/lvMap/offMap
 function switchToDate(newDate){
   if(!DB_LOADED)return;
-  // 1. Save current date's live data to dlog before switching
-  if(_lastLoadedDate){
+  // 1. Save current date's data before switching away
+  if(_lastLoadedDate&&_lastLoadedDate!==newDate){
     saveLog();
     saveVendorLog();
+    actuallySaveCloud();
   }
   _lastLoadedDate=newDate;
+  var isToday=(newDate===todayIST());
+  // 2. Clear all live data
+  asgn={};lvMap={};offMap={};vendorAsgn={};
+  // 3. Load from dlog/vdlog for the target date
   var log=dlog[newDate];
   var vlog=vdlog[newDate];
-  // 2. Reset live data
-  asgn={};lvMap={};offMap={};vendorAsgn={};
-  // 3. Load from dlog if entry exists
-  if(log){
-    Object.keys(log.venues||{}).forEach(function(vid){
-      asgn[vid]={};
-      Object.keys(log.venues[vid]||{}).forEach(function(eid){
-        var emp=getS(eid);
-        if(emp)asgn[vid][eid]={emp:emp,duty:log.venues[vid][eid],pinned:emp.pv===vid,isFixed:emp.pv===vid};
+  if(isToday){
+    // For today: reload from Firebase snapshot data (already in memory)
+    // Re-parse from dlog[today] if available
+    if(log){
+      Object.keys(log.venues||{}).forEach(function(vid){
+        asgn[vid]={};
+        Object.keys(log.venues[vid]||{}).forEach(function(eid){
+          var emp=getS(eid);
+          if(emp)asgn[vid][eid]={emp:emp,duty:log.venues[vid][eid],pinned:emp.pv===vid,isFixed:emp.pv===vid};
+        });
       });
-    });
-    (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});
-    (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)offMap[o.id]={emp:emp,duty:o.duty||'6:00 AM'};});
+      (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});
+      (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)offMap[o.id]={emp:emp,duty:o.duty||'6:00 AM'};});
+    }
+  } else {
+    if(log){
+      Object.keys(log.venues||{}).forEach(function(vid){
+        asgn[vid]={};
+        Object.keys(log.venues[vid]||{}).forEach(function(eid){
+          var emp=getS(eid);
+          if(emp)asgn[vid][eid]={emp:emp,duty:log.venues[vid][eid],pinned:emp.pv===vid,isFixed:emp.pv===vid};
+        });
+      });
+      (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});
+      (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)offMap[o.id]={emp:emp,duty:o.duty||'6:00 AM'};});
+    }
   }
   if(vlog){
     Object.keys(vlog.venues||{}).forEach(function(vid){
@@ -1040,29 +1058,22 @@ function switchToDate(newDate){
       });
     });
   }
-  // 4. Apply pinned staff on top (base layer)
+  // 4. Apply pinned staff as base layer
   applyPinned();
-  // 5. Rebuild activeVids for this date
+  // 5. Rebuild activeVids — ALWAYS start from scratch (no Firebase carryover)
   var hasLog=!!(log&&(Object.keys(log.venues||{}).length||(log.leave&&log.leave.length)));
-  if(!hasLog){
-    // Fresh date: only show contracted venues that are toggled on
-    activeVids=[];
-    venues.forEach(function(v){
-      var isContracted=staff.some(function(e){return e.pv===v.id;});
-      if(isContracted&&!contractedHiddenVids.has(v.id))activeVids.push(v.id);
-    });
-  } else {
-    // Rebuild from log - show venues that had assignments
-    activeVids=[];
+  activeVids=[];
+  if(hasLog){
+    // Show venues that had actual assignments in the log
     Object.keys(asgn).forEach(function(vid){
       if(Object.keys(asgn[vid]||{}).length>0&&activeVids.indexOf(vid)<0)activeVids.push(vid);
     });
-    // Also show toggled-on contracted venues
-    venues.forEach(function(v){
-      var isContracted=staff.some(function(e){return e.pv===v.id;});
-      if(isContracted&&!contractedHiddenVids.has(v.id)&&activeVids.indexOf(v.id)<0)activeVids.push(v.id);
-    });
   }
+  // Always add contracted venues that are toggled ON
+  venues.forEach(function(v){
+    var isContracted=staff.some(function(e){return e.pv===v.id;});
+    if(isContracted&&!contractedHiddenVids.has(v.id)&&activeVids.indexOf(v.id)<0)activeVids.push(v.id);
+  });
 }
 
 // ── STATS ─────────────────────────────────────────────────────
@@ -5160,29 +5171,30 @@ function loadFromCloud(callback){
       }
       // Restore roles
       if(d.roles&&d.roles.length)ROLES=d.roles;
-      // Restore active vids
-      if(d.activeVids&&d.activeVids.length)activeVids=d.activeVids;
-      // Restore assignments
-      asgn={};
-      if(d.asgn){
-        Object.keys(d.asgn).forEach(function(vid){
-          asgn[vid]={};
-          Object.keys(d.asgn[vid]||{}).forEach(function(eid){
-            var a=d.asgn[vid][eid];
-            var emp=getS(eid);
-            if(emp){
-              asgn[vid][eid]={emp:emp,duty:a.duty||'6:00 AM',pinned:a.pinned||false,isFixed:a.isFixed||false};
-              if(activeVids.indexOf(vid)<0)activeVids.push(vid);
-            }
+      // Only restore live asgn/lvMap/offMap/activeVids when viewing today
+      // (when on another date, switchToDate manages these from dlog)
+      var _isViewingToday=(!_lastLoadedDate||_lastLoadedDate===todayIST());
+      if(_isViewingToday){
+        if(d.activeVids&&d.activeVids.length)activeVids=d.activeVids;
+        asgn={};
+        if(d.asgn){
+          Object.keys(d.asgn).forEach(function(vid){
+            asgn[vid]={};
+            Object.keys(d.asgn[vid]||{}).forEach(function(eid){
+              var a=d.asgn[vid][eid];
+              var emp=getS(eid);
+              if(emp){
+                asgn[vid][eid]={emp:emp,duty:a.duty||'6:00 AM',pinned:a.pinned||false,isFixed:a.isFixed||false};
+                if(activeVids.indexOf(vid)<0)activeVids.push(vid);
+              }
+            });
           });
-        });
+        }
+        lvMap={};
+        if(d.lvMap){Object.keys(d.lvMap).forEach(function(eid){var emp=getS(eid);if(emp)lvMap[eid]={emp:emp,duty:d.lvMap[eid].duty||'6:00 AM'};});}
+        offMap={};
+        if(d.offMap){Object.keys(d.offMap).forEach(function(eid){var emp=getS(eid);if(emp)offMap[eid]={emp:emp,duty:d.offMap[eid].duty||'6:00 AM'};});}
       }
-      // Restore leave
-      lvMap={};
-      if(d.lvMap){Object.keys(d.lvMap).forEach(function(eid){var emp=getS(eid);if(emp)lvMap[eid]={emp:emp,duty:d.lvMap[eid].duty||'6:00 AM'};});}
-      // Restore office
-      offMap={};
-      if(d.offMap){Object.keys(d.offMap).forEach(function(eid){var emp=getS(eid);if(emp)offMap[eid]={emp:emp,duty:d.offMap[eid].duty||'6:00 AM'};});}
       // Restore dlog
       if(d.dlog)dlog=d.dlog;
       if(d.vHalls)vHalls=d.vHalls;
@@ -5231,13 +5243,17 @@ function loadFromCloud(callback){
     } else {
       console.log('No saved data in Firebase yet.');
     }
-    applyPinned();
+    // Only apply pinned if viewing today (otherwise switchToDate manages it)
+    if(!_lastLoadedDate||_lastLoadedDate===todayIST()){
+      applyPinned();
+      initActiveVids();
+    }
     DB_LOADED=true;showLoad(false);
     if(initialLoad){
       initialLoad=false;
       if(callback){callback();callback=null;}
     } else {
-      // Subsequent real-time updates from other portals — refresh UI silently
+      // Subsequent real-time updates from other portals
       populateRoleDD();populateVenueDD();populateTimeDD();
       drawStaffPanel();drawVenueGrid();drawStats();updateATBStats();
     }
@@ -5297,58 +5313,61 @@ function makeEventSheetPDF(){
     doc.save('GAVS_EventSheet_'+d+'.pdf');toast('Event Sheet downloaded!');return;
   }
 
-  // Greedy column fill: assign each venue to shortest column
-  var colHeights=[0,0];
-  vList.forEach(function(v){
-    var entries=pdfData[v.id];
-    var boxH=hdrH+entries.length*rowH+3;
-    var minCol=0;
-    colHeights.forEach(function(h,i){if(h<colHeights[minCol])minCol=i;});
-    cols[minCol].push(v);
-    colHeights[minCol]+=boxH;
-  });
+  // Distribute venues alternately: odd→col0, even→col1 for reliable 2-col fill
+  vList.forEach(function(v,i){cols[i%2].push(v);});
 
   var colX=[mg, mg+colW+gap];
   var colY=[y,y];
   var pageH=ph-mg;
+  var timeW=14; // fixed width for time column
 
-  cols.forEach(function(colVenues,ci){
-    colVenues.forEach(function(v){
+  // Render both columns in interleaved order (row by row) for balanced output
+  var maxRows=Math.max(cols[0].length,cols[1].length);
+  for(var ri=0;ri<maxRows;ri++){
+    for(var ci=0;ci<2;ci++){
+      var v=cols[ci][ri];if(!v)continue;
       var entries=pdfData[v.id];
       var boxH=hdrH+entries.length*rowH+3;
       if(colY[ci]+boxH>pageH){
-        doc.addPage();
-        // Reset both cols on new page
-        colY=[y,y];
+        if(ci===0&&colY[1]+boxH<=pageH){
+          // col1 still has space, just move col0 to new page
+          doc.addPage();colY=[y,y];
+        } else {
+          doc.addPage();colY=[y,y];
+        }
       }
       var x=colX[ci],yy=colY[ci];
       // Venue header
       doc.setFillColor(21,101,192);doc.roundedRect(x,yy,colW,hdrH,2,2,'F');
       doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
-      var maxChars=Math.floor(colW/2.2);
+      var maxChars=Math.floor((colW-timeW-4)/2.2);
       var vname=v.name.length>maxChars?v.name.slice(0,maxChars-1)+'…':v.name;
       doc.text(vname,x+3,yy+6.8);
       doc.setFontSize(7.5);doc.setFont('helvetica','normal');
-      doc.text(entries.length+' staff',x+colW-3,yy+6.8,{align:'right'});
+      doc.text(entries.length+' staff',x+colW-2,yy+6.8,{align:'right'});
       yy+=hdrH+1;
-      // Staff rows
+      // Staff rows — name left, time right-aligned but close
       entries.forEach(function(a,idx){
         var bg=idx%2===0?[240,245,255]:[255,255,255];
         doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(x,yy,colW,rowH,'F');
-        // Left border accent
         doc.setFillColor(21,101,192);doc.rect(x,yy,1.5,rowH,'F');
-        doc.setTextColor(20,20,20);doc.setFontSize(8);doc.setFont('helvetica','normal');
-        var nameMax=Math.floor((colW-20)/2);
+        var timeStr=shortTime(a.duty);
+        // Time width approx
+        doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+        var nameW=colW-timeW-6; // leave fixed space for time
+        doc.setFontSize(8);doc.setFont('helvetica','normal');
+        doc.setTextColor(20,20,20);
+        var nameMax=Math.floor(nameW/2.1);
         var name=a.emp.name.length>nameMax?a.emp.name.slice(0,nameMax-1)+'…':a.emp.name;
-        doc.text(name,x+4,yy+rowH-1.8);
+        doc.text(name,x+3,yy+rowH-1.8);
         doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-        doc.text(shortTime(a.duty),x+colW-2,yy+rowH-1.8,{align:'right'});
+        doc.text(timeStr,x+colW-2,yy+rowH-1.8,{align:'right'});
         yy+=rowH;
       });
       yy+=3;
       colY[ci]=yy;
-    });
-  });
+    }
+  }
 
   doc.save('GAVS_EventSheet_'+d+'.pdf');
   toast('Event Sheet downloaded!');

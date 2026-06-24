@@ -1010,45 +1010,27 @@ function updateADate(){
 var _lastLoadedDate=''; // track which date is currently loaded in asgn/lvMap/offMap
 function switchToDate(newDate){
   if(!DB_LOADED)return;
-  // 1. Save current date's data before switching away
+  // 1. Save current date before switching
   if(_lastLoadedDate&&_lastLoadedDate!==newDate){
-    saveLog();
-    saveVendorLog();
-    actuallySaveCloud();
+    saveLog();saveVendorLog();actuallySaveCloud();
   }
   _lastLoadedDate=newDate;
-  var isToday=(newDate===todayIST());
-  // 2. Clear all live data
+  // 2. Hard reset ALL live data and activeVids — no carryover
   asgn={};lvMap={};offMap={};vendorAsgn={};
-  // 3. Load from dlog/vdlog for the target date
+  activeVids=[]; // MUST be empty before applyPinned
+  // 3. Load from dlog/vdlog
   var log=dlog[newDate];
   var vlog=vdlog[newDate];
-  if(isToday){
-    // For today: reload from Firebase snapshot data (already in memory)
-    // Re-parse from dlog[today] if available
-    if(log){
-      Object.keys(log.venues||{}).forEach(function(vid){
-        asgn[vid]={};
-        Object.keys(log.venues[vid]||{}).forEach(function(eid){
-          var emp=getS(eid);
-          if(emp)asgn[vid][eid]={emp:emp,duty:log.venues[vid][eid],pinned:emp.pv===vid,isFixed:emp.pv===vid};
-        });
+  if(log){
+    Object.keys(log.venues||{}).forEach(function(vid){
+      asgn[vid]={};
+      Object.keys(log.venues[vid]||{}).forEach(function(eid){
+        var emp=getS(eid);
+        if(emp)asgn[vid][eid]={emp:emp,duty:log.venues[vid][eid],pinned:emp.pv===vid,isFixed:emp.pv===vid};
       });
-      (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});
-      (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)offMap[o.id]={emp:emp,duty:o.duty||'6:00 AM'};});
-    }
-  } else {
-    if(log){
-      Object.keys(log.venues||{}).forEach(function(vid){
-        asgn[vid]={};
-        Object.keys(log.venues[vid]||{}).forEach(function(eid){
-          var emp=getS(eid);
-          if(emp)asgn[vid][eid]={emp:emp,duty:log.venues[vid][eid],pinned:emp.pv===vid,isFixed:emp.pv===vid};
-        });
-      });
-      (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});
-      (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)offMap[o.id]={emp:emp,duty:o.duty||'6:00 AM'};});
-    }
+    });
+    (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});
+    (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)offMap[o.id]={emp:emp,duty:o.duty||'6:00 AM'};});
   }
   if(vlog){
     Object.keys(vlog.venues||{}).forEach(function(vid){
@@ -1058,22 +1040,20 @@ function switchToDate(newDate){
       });
     });
   }
-  // 4. Apply pinned staff as base layer
+  // 4. Apply pinned staff — applyPinned respects contractedHiddenVids so
+  //    contracted-hidden venues stay out of activeVids automatically
   applyPinned();
-  // 5. Rebuild activeVids — ALWAYS start from scratch (no Firebase carryover)
-  var hasLog=!!(log&&(Object.keys(log.venues||{}).length||(log.leave&&log.leave.length)));
-  activeVids=[];
+  // 5. Add venues from log that had real assignments (non-contracted)
+  var hasLog=!!(log&&Object.keys(log.venues||{}).length);
   if(hasLog){
-    // Show venues that had actual assignments in the log
     Object.keys(asgn).forEach(function(vid){
-      if(Object.keys(asgn[vid]||{}).length>0&&activeVids.indexOf(vid)<0)activeVids.push(vid);
+      if(Object.keys(asgn[vid]||{}).length>0&&activeVids.indexOf(vid)<0){
+        // Only add non-contracted venues from log (contracted already handled by applyPinned)
+        var isContracted=staff.some(function(e){return e.pv===vid;});
+        if(!isContracted)activeVids.push(vid);
+      }
     });
   }
-  // Always add contracted venues that are toggled ON
-  venues.forEach(function(v){
-    var isContracted=staff.some(function(e){return e.pv===v.id;});
-    if(isContracted&&!contractedHiddenVids.has(v.id)&&activeVids.indexOf(v.id)<0)activeVids.push(v.id);
-  });
 }
 
 // ── STATS ─────────────────────────────────────────────────────
@@ -5272,11 +5252,20 @@ function makeEventSheetPDF(){
   if(!window.jspdf){toast('PDF library loading...','w');return;}
   var d=getD();
   // Build assignment data - exclude pinned staff in their own venue
+  // Managers always first, with phone number
   var pdfData={};
   Object.keys(asgn).forEach(function(vid){
     var entries=Object.values(asgn[vid]||{});
     var nonPinned=entries.filter(function(a){return !(a.pinned&&a.emp.pv===vid);});
-    if(nonPinned.length>0)pdfData[vid]=nonPinned;
+    if(nonPinned.length>0){
+      // Sort: managers first, then alphabetical
+      nonPinned.sort(function(a,b){
+        var am=(a.emp.role==='Manager')?0:1,bm=(b.emp.role==='Manager')?0:1;
+        if(am!==bm)return am-bm;
+        return a.emp.name.localeCompare(b.emp.name);
+      });
+      pdfData[vid]=nonPinned;
+    }
   });
 
   var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
@@ -5327,7 +5316,7 @@ function makeEventSheetPDF(){
     for(var ci=0;ci<2;ci++){
       var v=cols[ci][ri];if(!v)continue;
       var entries=pdfData[v.id];
-      var boxH=hdrH+entries.length*rowH+3;
+      var mgrCount=(entries||[]).filter(function(a){return a.emp.role==='Manager';}).length;var boxH=hdrH+(entries.length-mgrCount)*rowH+mgrCount*8+3;
       if(colY[ci]+boxH>pageH){
         if(ci===0&&colY[1]+boxH<=pageH){
           // col1 still has space, just move col0 to new page
@@ -5346,23 +5335,35 @@ function makeEventSheetPDF(){
       doc.setFontSize(7.5);doc.setFont('helvetica','normal');
       doc.text(entries.length+' staff',x+colW-2,yy+6.8,{align:'right'});
       yy+=hdrH+1;
-      // Staff rows — name left, time right-aligned but close
+      // Staff rows — managers first (yellow), then others
       entries.forEach(function(a,idx){
-        var bg=idx%2===0?[240,245,255]:[255,255,255];
-        doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(x,yy,colW,rowH,'F');
-        doc.setFillColor(21,101,192);doc.rect(x,yy,1.5,rowH,'F');
+        var isMgr=(a.emp.role==='Manager');
+        var mgrRowH=isMgr?8:rowH; // managers slightly taller for phone number
+        var bg=isMgr?[255,253,225]:idx%2===0?[240,245,255]:[255,255,255];
+        doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(x,yy,colW,mgrRowH,'F');
+        var accentClr=isMgr?[230,165,0]:[21,101,192];
+        doc.setFillColor(accentClr[0],accentClr[1],accentClr[2]);doc.rect(x,yy,2,mgrRowH,'F');
         var timeStr=shortTime(a.duty);
-        // Time width approx
-        doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-        var nameW=colW-timeW-6; // leave fixed space for time
-        doc.setFontSize(8);doc.setFont('helvetica','normal');
-        doc.setTextColor(20,20,20);
-        var nameMax=Math.floor(nameW/2.1);
-        var name=a.emp.name.length>nameMax?a.emp.name.slice(0,nameMax-1)+'…':a.emp.name;
-        doc.text(name,x+3,yy+rowH-1.8);
-        doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-        doc.text(timeStr,x+colW-2,yy+rowH-1.8,{align:'right'});
-        yy+=rowH;
+        var nameMax=Math.floor((colW-timeW-7)/2.1);
+        if(isMgr){
+          // Manager: name bold + phone on second line
+          doc.setTextColor(120,80,0);doc.setFontSize(8);doc.setFont('helvetica','bold');
+          var mname=a.emp.name.length>nameMax?a.emp.name.slice(0,nameMax-1)+'…':a.emp.name;
+          doc.text(mname,x+4,yy+3.2);
+          if(a.emp.phone){
+            doc.setFontSize(6.5);doc.setFont('helvetica','normal');doc.setTextColor(150,100,0);
+            doc.text('📞 '+a.emp.phone,x+4,yy+6.5);
+          }
+          doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+          doc.text(timeStr,x+colW-2,yy+3.2,{align:'right'});
+        } else {
+          doc.setTextColor(20,20,20);doc.setFontSize(8);doc.setFont('helvetica','normal');
+          var name=a.emp.name.length>nameMax?a.emp.name.slice(0,nameMax-1)+'…':a.emp.name;
+          doc.text(name,x+4,yy+rowH-1.8);
+          doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+          doc.text(timeStr,x+colW-2,yy+rowH-1.8,{align:'right'});
+        }
+        yy+=mgrRowH;
       });
       yy+=3;
       colY[ci]=yy;

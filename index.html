@@ -2135,7 +2135,6 @@ function wireBtnMultiView(el){
   });
 }
 wireBtnMultiView(document.getElementById('btnMultiView'));
-wireBtnMultiView(document.getElementById('btnMultiView'));
 wireBtnMultiView(document.getElementById('mbtnMultiView'));
 
 // ── CONTRACTED VENUES TOGGLE ─────────────────────────────────
@@ -5328,175 +5327,235 @@ function loadFromCloud(callback){
 function makeEventSheetPDF(){
   if(!window.jspdf){toast('PDF library loading...','w');return;}
   var d=getD();
-  // Build assignment data - exclude pinned staff in their own venue
-  // Managers always first, with phone number
   var pdfData={};
   Object.keys(asgn).forEach(function(vid){
     var entries=Object.values(asgn[vid]||{});
-    // Include ALL staff (pinned and non-pinned); mark pinned ones for lock icon
-    var allEntries=entries.map(function(a){
-      return Object.assign({},a,{_isPinned:!!(a.pinned&&a.emp.pv===vid)});
-    });
-    if(allEntries.length>0){
-      // Sort: managers first, then alphabetical
-      allEntries.sort(function(a,b){
-        var am=(a.emp.role==='Manager')?0:1,bm=(b.emp.role==='Manager')?0:1;
-        if(am!==bm)return am-bm;
+    var all=entries.map(function(a){return Object.assign({},a,{_isPinned:!!(a.pinned&&a.emp.pv===vid)});});
+    if(all.length>0){
+      all.sort(function(a,b){
+        var ag=a.emp.role==='Manager'?0:(a._isPinned?2:1);
+        var bg=b.emp.role==='Manager'?0:(b._isPinned?2:1);
+        if(ag!==bg)return ag-bg;
         return a.emp.name.localeCompare(b.emp.name);
       });
-      pdfData[vid]=allEntries;
+      pdfData[vid]=all;
     }
   });
-
   var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var pw=210,ph=297,mg=10,gap=6;
-  var colW=(pw-mg*2-gap)/2; // ~92mm each
-  var cols=[[],[]];
-  var vList=venues.filter(function(v){return pdfData[v.id]&&pdfData[v.id].length>0;});
-  var rowH=6.5; // bigger row height for readability
-  var hdrH=10;  // venue header height
-
-  // Header bar
+  var colW=(pw-mg*2-gap)/2;
+  var rowH=6.5,mgrH=7.5,hdrH=10,timeW=14;
+  var startY=26,pageH=ph-mg;
+  var colX=[mg,mg+colW+gap];
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,22,'F');
-  // Logo - preserve aspect ratio
-  try{
-    var img=g('logoImg');
-    if(img&&img.complete&&img.naturalWidth>0){
-      var cv2=document.createElement('canvas');
-      cv2.width=img.naturalWidth;cv2.height=img.naturalHeight;
-      cv2.getContext('2d').drawImage(img,0,0);
-      var aspect=img.naturalWidth/img.naturalHeight;
-      var lh=14,lw=Math.round(lh*aspect);
-      doc.addImage(cv2.toDataURL('image/png'),'PNG',mg,4,lw,lh);
-    }
-  }catch(er){}
-  doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
-  doc.text('GAVS EVENT SHEET',pw/2,11,{align:'center'});
-  doc.setFontSize(9);doc.setFont('helvetica','normal');
-  doc.text(fd(d),pw/2,17,{align:'center'});
-  var y=26;
-
-  if(!vList.length){
-    doc.setTextColor(150,150,150);doc.setFontSize(12);
-    doc.text('No non-contracted staff assigned.',pw/2,ph/2,{align:'center'});
-    doc.save('GAVS_EventSheet_'+d+'.pdf');toast('Event Sheet downloaded!');return;
-  }
-
-  // Distribute venues alternately: odd→col0, even→col1 for reliable 2-col fill
-  vList.forEach(function(v,i){cols[i%2].push(v);});
-
-  var colX=[mg, mg+colW+gap];
-  var colY=[y,y];
-  var pageH=ph-mg;
-  var timeW=14; // fixed width for time column
-
-  // Render both columns in interleaved order (row by row) for balanced output
-  var maxRows=Math.max(cols[0].length,cols[1].length);
-  for(var ri=0;ri<maxRows;ri++){
-    for(var ci=0;ci<2;ci++){
-      var v=cols[ci][ri];if(!v)continue;
-      var entries=pdfData[v.id];
-      var mgrCount=(entries||[]).filter(function(a){return a.emp.role==='Manager';}).length;var boxH=hdrH+(entries.length-mgrCount)*rowH+mgrCount*8+3;
-      if(colY[ci]+boxH>pageH){
-        if(ci===0&&colY[1]+boxH<=pageH){
-          // col1 still has space, just move col0 to new page
-          doc.addPage();colY=[y,y];
-        } else {
-          doc.addPage();colY=[y,y];
-        }
+  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv2=document.createElement('canvas');cv2.width=img.naturalWidth;cv2.height=img.naturalHeight;cv2.getContext('2d').drawImage(img,0,0);var lh=14,lw=Math.round(lh*(img.naturalWidth/img.naturalHeight));doc.addImage(cv2.toDataURL('image/png'),'PNG',mg,4,lw,lh);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text('GAVS EVENT SHEET',pw/2,11,{align:'center'});
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(fd(d),pw/2,17,{align:'center'});
+  var vList=venues.filter(function(v){return pdfData[v.id]&&pdfData[v.id].length>0;});
+  if(!vList.length){doc.setTextColor(150,150,150);doc.setFontSize(12);doc.text('No staff assigned.',pw/2,ph/2,{align:'center'});doc.save('GAVS_EventSheet_'+d+'.pdf');toast('Event Sheet downloaded!');return;}
+  var colY=[startY,startY];
+  function renderBlock(ci,yy,v,entries,si,isCont){
+    var x=colX[ci];
+    var hp=entries.some(function(a){return a._isPinned;});
+    if(v.vip){doc.setFillColor(180,60,0);}else{doc.setFillColor(21,101,192);}
+    doc.roundedRect(x,yy,colW,hdrH,2,2,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
+    var mc=Math.floor((colW-timeW-4)/2.2);
+    var vn=v.name.length>mc?v.name.slice(0,mc-1)+'...':v.name;
+    if(isCont)vn+=' (cont.)';
+    doc.text(vn,x+3,yy+6.8);
+    if(hp){drawLock(doc,x+colW-8,yy+2.2,[255,215,100]);}
+    doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+    doc.text(entries.length+' staff',x+colW-(hp?11:2),yy+6.8,{align:'right'});
+    yy+=hdrH+1;
+    var rendered=0;
+    for(var i=si;i<entries.length;i++){
+      var a=entries[i];var isMgr=a.emp.role==='Manager';var rh=isMgr?mgrH:rowH;
+      if(yy+rh>pageH)break;
+      var idx=i-si;
+      var bg=isMgr?[255,253,225]:idx%2===0?[240,245,255]:[255,255,255];
+      doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(x,yy,colW,rh,'F');
+      var ac=isMgr?[230,165,0]:[21,101,192];
+      doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(x,yy,2,rh,'F');
+      var ts=shortTime(a.duty);var nm=Math.floor((colW-timeW-7)/2.1);var lkX=a._isPinned?4.5:0;
+      if(isMgr){
+        var ph2=a.emp.phone?' - '+a.emp.phone:'';var ml=a.emp.name+ph2;
+        var mm=Math.floor((colW-timeW-7-lkX)/1.9);if(ml.length>mm)ml=ml.slice(0,mm-1)+'...';
+        if(a._isPinned){drawLock(doc,x+4,yy+(rh-4)/2,[180,130,0]);}
+        doc.setTextColor(100,65,0);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(ml,x+4+lkX,yy+rh/2+1.2);
+        doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(ts,x+colW-2,yy+rh/2+1.2,{align:'right'});
+      } else {
+        if(a._isPinned){drawLock(doc,x+4,yy+(rh-4)/2,[50,80,200]);}
+        doc.setTextColor(20,20,20);doc.setFontSize(8);doc.setFont('helvetica','normal');
+        var sn=a.emp.name.length>nm?a.emp.name.slice(0,nm-1)+'...':a.emp.name;
+        doc.text(sn,x+4+lkX,yy+rh-1.8);
+        doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(ts,x+colW-2,yy+rh-1.8,{align:'right'});
       }
-      var x=colX[ci],yy=colY[ci];
-      // Venue header
-      var venueHasPinned=entries.some(function(a){return a._isPinned;});
-      doc.setFillColor(21,101,192);doc.roundedRect(x,yy,colW,hdrH,2,2,'F');
-      doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
-      var maxChars=Math.floor((colW-timeW-4)/2.2);
-      var vname=v.name.length>maxChars?v.name.slice(0,maxChars-1)+'…':v.name;
-      doc.text(vname,x+3,yy+6.8);
-      // Lock icon on venue header if it has pinned staff
-      if(venueHasPinned){drawLock(doc,x+colW-8,yy+2.2,[255,215,100]);}
-      doc.setFontSize(7.5);doc.setFont('helvetica','normal');
-      doc.text(entries.length+' staff',x+colW-(venueHasPinned?11:2),yy+6.8,{align:'right'});
-      yy+=hdrH+1;
-      // Staff rows — managers first (yellow), then others
-      entries.forEach(function(a,idx){
-        var isMgr=(a.emp.role==='Manager');
-        var mgrRowH=isMgr?rowH+1:rowH; // managers just slightly taller
-        var bg=isMgr?[255,253,225]:idx%2===0?[240,245,255]:[255,255,255];
-        doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(x,yy,colW,mgrRowH,'F');
-        var accentClr=isMgr?[230,165,0]:[21,101,192];
-        doc.setFillColor(accentClr[0],accentClr[1],accentClr[2]);doc.rect(x,yy,2,mgrRowH,'F');
-        var timeStr=shortTime(a.duty);
-        var nameMax=Math.floor((colW-timeW-7)/2.1);
-        var lockOffX=a._isPinned?4.5:0; // extra left margin for lock icon
-        if(isMgr){
-          // Manager: name + phone on SAME line, bold, smaller font to fit
-          var phoneStr=a.emp.phone?' · '+a.emp.phone:'';
-          var mgrLabel=a.emp.name+phoneStr;
-          // Truncate if too long
-          var mgrMax=Math.floor((colW-timeW-7-lockOffX)/1.9);
-          if(mgrLabel.length>mgrMax)mgrLabel=mgrLabel.slice(0,mgrMax-1)+'…';
-          if(a._isPinned){drawLock(doc,x+4,yy+(mgrRowH-4)/2,[180,130,0]);}
-          doc.setTextColor(100,65,0);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-          doc.text(mgrLabel,x+4+lockOffX,yy+mgrRowH/2+1.2);
-          doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-          doc.text(timeStr,x+colW-2,yy+mgrRowH/2+1.2,{align:'right'});
-        } else {
-          if(a._isPinned){drawLock(doc,x+4,yy+(rowH-4)/2,[50,80,200]);}
-          doc.setTextColor(20,20,20);doc.setFontSize(8);doc.setFont('helvetica','normal');
-          var name=a.emp.name.length>nameMax?a.emp.name.slice(0,nameMax-1)+'…':a.emp.name;
-          doc.text(name,x+4+lockOffX,yy+rowH-1.8);
-          doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-          doc.text(timeStr,x+colW-2,yy+rowH-1.8,{align:'right'});
-        }
-        yy+=mgrRowH;
-      });
-      yy+=3;
-      colY[ci]=yy;
+      yy+=rh;rendered++;
     }
+    yy+=3;return{yy:yy,next:si+rendered};
   }
-
-  // ── Godown Duty section ──
-  var godownList=Object.values(offMap);
-  var leaveList=Object.values(lvMap);
-  if(godownList.length||leaveList.length){
-    // Find the lower of the two colY values for placing section below venues
-    var bottomY=Math.max(colY[0],colY[1])+4;
-    var sectionW=pw-mg*2;
-    var sRowH=6;
-    function renderBottomSection(title,list,bgColor,accentColor,textColor){
+  var minH=hdrH+rowH+5;
+  vList.forEach(function(v){
+    var entries=pdfData[v.id];var idx=0;var isCont=false;
+    while(idx<entries.length){
+      var ci=colY[0]<=colY[1]?0:1;
+      var avail=pageH-colY[ci];
+      if(avail<minH){
+        var ot=1-ci;
+        if(pageH-colY[ot]>=minH){ci=ot;avail=pageH-colY[ot];}
+        else{doc.addPage();colY=[startY,startY];ci=0;avail=pageH-startY;}
+      }
+      var res=renderBlock(ci,colY[ci],v,entries,idx,isCont);
+      colY[ci]=res.yy;idx=res.next;isCont=true;
+    }
+  });
+  var gdList=Object.values(offMap);var lvList=Object.values(lvMap);
+  if(gdList.length||lvList.length){
+    var botY=Math.max(colY[0],colY[1])+4;var sw=pw-mg*2;var srH=6;
+    function renderBot(title,list,bg,ac,tc){
       if(!list.length)return;
-      var secH=9+list.length*sRowH+3;
-      if(bottomY+secH>pageH){doc.addPage();bottomY=y;}
-      // Section header
-      doc.setFillColor(bgColor[0],bgColor[1],bgColor[2]);
-      doc.roundedRect(mg,bottomY,sectionW,9,2,2,'F');
+      if(botY+9+list.length*srH+3>pageH){doc.addPage();botY=startY;}
+      doc.setFillColor(bg[0],bg[1],bg[2]);doc.roundedRect(mg,botY,sw,9,2,2,'F');
       doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
-      doc.text(title,mg+4,bottomY+6.2);
-      doc.setFontSize(7.5);doc.setFont('helvetica','normal');
-      doc.text(list.length+' staff',mg+sectionW-3,bottomY+6.2,{align:'right'});
-      bottomY+=10;
-      list.forEach(function(a,idx){
-        var rb=idx%2===0?[245,245,255]:[255,255,255];
-        doc.setFillColor(rb[0],rb[1],rb[2]);doc.rect(mg,bottomY,sectionW,sRowH,'F');
-        doc.setFillColor(accentColor[0],accentColor[1],accentColor[2]);doc.rect(mg,bottomY,2,sRowH,'F');
-        doc.setTextColor(textColor[0],textColor[1],textColor[2]);doc.setFontSize(8);doc.setFont('helvetica','normal');
-        var nm=a.emp.name.length>50?a.emp.name.slice(0,49)+'…':a.emp.name;
-        doc.text(nm,mg+4,bottomY+sRowH-1.8);
-        doc.setTextColor(80,80,80);doc.setFontSize(7.5);
-        doc.text(shortTime(a.duty),mg+sectionW-2,bottomY+sRowH-1.8,{align:'right'});
-        bottomY+=sRowH;
-      });
-      bottomY+=4;
+      doc.text(title+' - '+list.length+' staff',mg+4,botY+6.2);botY+=10;
+      list.forEach(function(a,i2){
+        var rb=i2%2===0?[245,245,255]:[255,255,255];
+        doc.setFillColor(rb[0],rb[1],rb[2]);doc.rect(mg,botY,sw,srH,'F');
+        doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(mg,botY,2,srH,'F');
+        doc.setTextColor(tc[0],tc[1],tc[2]);doc.setFontSize(8);doc.setFont('helvetica','normal');
+        doc.text(a.emp.name,mg+4,botY+srH-1.8);
+        botY+=srH;
+      });botY+=4;
     }
-    renderBottomSection('GAVS GODOWN DUTY',godownList,[180,80,20],[230,100,20],[80,40,0]);
-    renderBottomSection('ON LEAVE',leaveList,[160,30,30],[200,50,50],[80,0,0]);
+    renderBot('GAVS GODOWN DUTY',gdList,[180,80,20],[230,100,20],[80,40,0]);
+    renderBot('ON LEAVE',lvList,[160,30,30],[200,50,50],[80,0,0]);
   }
-
-  doc.save('GAVS_EventSheet_'+d+'.pdf');
-  toast('Event Sheet downloaded!');
+  doc.save('GAVS_EventSheet_'+d+'.pdf');toast('Event Sheet downloaded!');
 }
 
+
+function _pdfH(doc,title,sub){
+  var pw=210,mg=12;
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,32,'F');
+  try{var img=document.getElementById('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);var lh=14,lw=Math.round(lh*(img.naturalWidth/img.naturalHeight));doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4,lw,lh);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,11,{align:'center'});
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(title,pw/2+10,18,{align:'center'});
+  if(sub)doc.text(sub,pw/2+10,24,{align:'center'});return 36;
+}
+function _tr2(s,n){s=String(s||'');return s.length>n?s.slice(0,n-1)+'...':s;}
+function makeVendorSummaryPDF(){
+  if(!window.jspdf){toast('PDF loading...','w');return;}
+  var d=getD(),pw=210,mg=12;
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var y=_pdfH(doc,'Vendor Summary',fd(d)),pg=pw-mg*2;
+  var vids=Object.keys(vendorAsgn).filter(function(vid){var vm=vendorAsgn[vid];return vm&&Object.keys(vm).some(function(tid){return Array.isArray(vm[tid])&&vm[tid].length>0;});});
+  if(!vids.length){doc.setTextColor(150,150,150);doc.setFontSize(11);doc.text('No vendors assigned.',pw/2,100,{align:'center'});doc.save('GAVS_VendorSummary_'+d+'.pdf');toast('Vendor Summary downloaded!');return;}
+  vids.forEach(function(vid){
+    var v=getV(vid);if(!v)return;
+    var vm=vendorAsgn[vid],rows=[];
+    VENDOR_TYPES.forEach(function(vt){var ens=vm[vt.id];if(!Array.isArray(ens)||!ens.length)return;ens.forEach(function(en){rows.push({type:vt.name,icon:vt.icon,company:en.company||'-',qty:en.qty||1,time:en.time||'-',notes:en.notes||''});});});
+    if(!rows.length)return;
+    if(y+14>285){doc.addPage();y=mg;}
+    doc.setFillColor(21,101,192);doc.roundedRect(mg,y,pg,9,1.5,1.5,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text(_tr2(v.name,45),mg+3,y+6.2);y+=11;
+    if(y+7>285){doc.addPage();y=mg;}
+    doc.setFillColor(240,244,255);doc.rect(mg,y,pg,7,'F');
+    doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+    doc.text('Vendor Type',mg+2,y+5);doc.text('Company',mg+55,y+5);doc.text('Qty',mg+120,y+5);doc.text('Time',mg+135,y+5);doc.text('Notes',mg+158,y+5);y+=7;
+    rows.forEach(function(row){
+      if(y+8>285){doc.addPage();y=mg;}
+      doc.setDrawColor(220,225,240);doc.setLineWidth(0.3);doc.line(mg,y+8,mg+pg,y+8);
+      doc.setTextColor(30,30,30);doc.setFontSize(8);doc.setFont('helvetica','normal');
+      doc.text(_tr2(row.icon+' '+row.type,28),mg+2,y+5.5);doc.text(_tr2(row.company,30),mg+55,y+5.5);
+      doc.text(String(row.qty),mg+120,y+5.5);doc.text(_tr2(row.time,14),mg+135,y+5.5);doc.text(_tr2(row.notes,20),mg+158,y+5.5);
+      y+=8;
+    });y+=4;
+  });
+  doc.save('GAVS_VendorSummary_'+d+'.pdf');toast('Vendor Summary downloaded!');
+}
+function makeCompanyWisePDF(){
+  if(!window.jspdf){toast('PDF loading...','w');return;}
+  var d=getD(),pw=210,mg=12;
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var y=_pdfH(doc,'Company-Wise Vendor Report',fd(d)),pg=pw-mg*2;
+  var byC={};
+  Object.keys(vendorAsgn).forEach(function(vid){var v=getV(vid);if(!v)return;var vm=vendorAsgn[vid];VENDOR_TYPES.forEach(function(vt){var ens=vm[vt.id];if(!Array.isArray(ens)||!ens.length)return;ens.forEach(function(en){var co=en.company||'Unknown';if(!byC[co])byC[co]=[];byC[co].push({venue:v.name,type:vt.name,icon:vt.icon,qty:en.qty||1,time:en.time||'-',notes:en.notes||''});});});});
+  var cos=Object.keys(byC).sort();
+  if(!cos.length){doc.setTextColor(150,150,150);doc.setFontSize(11);doc.text('No vendors assigned.',pw/2,100,{align:'center'});doc.save('GAVS_CompanyWise_'+d+'.pdf');toast('Company-Wise PDF downloaded!');return;}
+  cos.forEach(function(co){
+    var rows=byC[co];
+    if(y+14>285){doc.addPage();y=mg;}
+    doc.setFillColor(106,27,154);doc.roundedRect(mg,y,pg,9,1.5,1.5,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text(_tr2(co,44),mg+3,y+6.2);y+=11;
+    if(y+7>285){doc.addPage();y=mg;}
+    doc.setFillColor(243,229,245);doc.rect(mg,y,pg,7,'F');
+    doc.setTextColor(106,27,154);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+    doc.text('Venue',mg+2,y+5);doc.text('Type',mg+80,y+5);doc.text('Qty',mg+130,y+5);doc.text('Time',mg+145,y+5);doc.text('Notes',mg+168,y+5);y+=7;
+    rows.forEach(function(row){
+      if(y+8>285){doc.addPage();y=mg;}
+      doc.setDrawColor(220,210,240);doc.setLineWidth(0.3);doc.line(mg,y+8,mg+pg,y+8);
+      doc.setTextColor(30,30,30);doc.setFontSize(8);doc.setFont('helvetica','normal');
+      doc.text(_tr2(row.venue,40),mg+2,y+5.5);doc.text(_tr2(row.icon+' '+row.type,22),mg+80,y+5.5);
+      doc.text(String(row.qty),mg+130,y+5.5);doc.text(_tr2(row.time,12),mg+145,y+5.5);doc.text(_tr2(row.notes,15),mg+168,y+5.5);
+      y+=8;
+    });y+=5;
+  });
+  doc.save('GAVS_CompanyWise_'+d+'.pdf');toast('Company-Wise PDF downloaded!');
+}
+function makeDailySummaryPDF(){
+  if(!window.jspdf){toast('PDF loading...','w');return;}
+  var d=getD();saveLog(_lastLoadedDate||getD());
+  var pw=210,mg=10;
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var y=_pdfH(doc,'Daily Summary - All Venues Staff and Vendors',fd(d)),pg=pw-mg*2;
+  var allVids=[];
+  venues.forEach(function(v){var hs=asgn[v.id]&&Object.keys(asgn[v.id]).length>0;var hv=vendorAsgn[v.id]&&Object.keys(vendorAsgn[v.id]).some(function(tid){return Array.isArray(vendorAsgn[v.id][tid])&&vendorAsgn[v.id][tid].length>0;});if(hs||hv)allVids.push(v.id);});
+  if(!allVids.length){doc.setTextColor(150,150,150);doc.setFontSize(11);doc.text('No assignments for this date.',pw/2,100,{align:'center'});doc.save('GAVS_DailySummary_'+d+'.pdf');toast('Daily Summary downloaded!');return;}
+  allVids.forEach(function(vid){
+    var v=getV(vid);if(!v)return;
+    var entries=Object.values(asgn[vid]||{}).sort(function(a,b){var ag=a.emp.role==='Manager'?0:1,bg=b.emp.role==='Manager'?0:1;if(ag!==bg)return ag-bg;return a.emp.name.localeCompare(b.emp.name);});
+    var vm=vendorAsgn[vid]||{},vrows=[];
+    VENDOR_TYPES.forEach(function(vt){var ens=vm[vt.id];if(!Array.isArray(ens)||!ens.length)return;ens.forEach(function(en){vrows.push({type:vt.name,icon:vt.icon,company:en.company||'-',qty:en.qty||1,time:en.time||'-'});});});
+    if(y+12>285){doc.addPage();y=mg+4;}
+    var ip=staff.some(function(e){return e.pv===vid;});
+    if(ip){doc.setFillColor(180,60,0);}else{doc.setFillColor(21,101,192);}
+    doc.roundedRect(mg,y,pg,10,1.5,1.5,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text(_tr2(v.name,48),mg+3,y+7);
+    if(ip){drawLock(doc,mg+pg-8,y+1.5,[255,215,100]);}
+    doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(entries.length+' staff',mg+pg-2,y+7,{align:'right'});y+=12;
+    entries.forEach(function(a){
+      if(y+7>285){doc.addPage();y=mg;}
+      var isMgr=a.emp.role==='Manager';
+      if(isMgr){doc.setFillColor(255,253,231);}else{doc.setFillColor(248,250,255);}
+      doc.roundedRect(mg,y,pg,6.5,0.5,0.5,'F');
+      var nx=mg+3;if(a.pinned){drawLock(doc,nx,y+0.5,[50,100,200]);nx+=4;}
+      doc.setTextColor(isMgr?100:30,isMgr?65:30,isMgr?0:30);doc.setFontSize(isMgr?7.5:8);doc.setFont('helvetica',isMgr?'bold':'normal');
+      var lbl=a.emp.name+(isMgr&&a.emp.phone?' - '+a.emp.phone:'');
+      doc.text(_tr2(lbl,38),nx,y+4.5);
+      doc.setTextColor(80,80,150);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(_tr2(a.emp.role,18),mg+90,y+4.5);
+      doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(a.duty||'',mg+pg-2,y+4.5,{align:'right'});
+      y+=7;
+    });
+    if(vrows.length){
+      if(y+4>285){doc.addPage();y=mg;}
+      doc.setDrawColor(200,220,255);doc.setLineWidth(0.3);doc.line(mg,y+1,mg+pg,y+1);y+=3;
+      vrows.forEach(function(row){
+        if(y+7>285){doc.addPage();y=mg;}
+        doc.setFillColor(255,248,230);doc.roundedRect(mg,y,pg,6.5,0.5,0.5,'F');
+        doc.setTextColor(180,80,0);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(row.icon+' '+_tr2(row.type,20),mg+3,y+4.5);
+        doc.setTextColor(30,30,30);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(_tr2(row.company,28),mg+60,y+4.5);doc.text('x'+row.qty,mg+125,y+4.5);doc.text(_tr2(row.time,12),mg+140,y+4.5);
+        y+=7;
+      });
+    }
+    y+=5;
+  });
+  var lvl=Object.values(lvMap);
+  if(lvl.length){if(y+14>285){doc.addPage();y=mg;}doc.setFillColor(198,40,40);doc.roundedRect(mg,y,pg,9,1.5,1.5,'F');doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('On Leave - '+lvl.length+' staff',mg+3,y+6.2);y+=11;lvl.forEach(function(a){if(y+7>285){doc.addPage();y=mg;}doc.setFillColor(255,245,245);doc.roundedRect(mg,y,pg,6.5,0.5,0.5,'F');doc.setTextColor(30,30,30);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(_tr2(a.emp.name,38),mg+3,y+4.5);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+90,y+4.5);y+=7;});y+=4;}
+  var ofl=Object.values(offMap);
+  if(ofl.length){if(y+14>285){doc.addPage();y=mg;}doc.setFillColor(230,81,0);doc.roundedRect(mg,y,pg,9,1.5,1.5,'F');doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.text('GAVS Godown Duty - '+ofl.length+' staff',mg+3,y+6.2);y+=11;ofl.forEach(function(a){if(y+7>285){doc.addPage();y=mg;}doc.setFillColor(255,248,240);doc.roundedRect(mg,y,pg,6.5,0.5,0.5,'F');doc.setTextColor(30,30,30);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(_tr2(a.emp.name,38),mg+3,y+4.5);doc.setTextColor(100,100,100);doc.text(a.emp.role,mg+90,y+4.5);y+=7;});}
+  doc.save('GAVS_DailySummary_'+d+'.pdf');toast('Daily Summary downloaded!');
+}
 </script>
 <!-- Contracted venues dropdown panel -->
 <div id="contracted-dd" style="display:none;"></div>

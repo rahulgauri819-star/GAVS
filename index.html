@@ -1010,9 +1010,12 @@ function updateADate(){
 var _lastLoadedDate=''; // track which date is currently loaded in asgn/lvMap/offMap
 function switchToDate(newDate){
   if(!DB_LOADED)return;
-  // 1. Save current date before switching
+  // 1. Save current date's data to its OWN dlog entry before switching
+  //    Use _lastLoadedDate (the old date), NOT getD() which already has the new value
   if(_lastLoadedDate&&_lastLoadedDate!==newDate){
-    saveLog();saveVendorLog();actuallySaveCloud();
+    saveLog(_lastLoadedDate);
+    saveVendorLog(_lastLoadedDate);
+    actuallySaveCloud();
   }
   _lastLoadedDate=newDate;
   // 2. Hard reset ALL live data and activeVids — no carryover
@@ -2206,15 +2209,21 @@ function showResetDuties(){
       toast('Type "reset" to confirm','w');
       return;
     }
-    // Clear everything except pinned staff
-    asgn={};
-    lvMap={};
-    offMap={};
-    vendorAsgn={};
-    applyPinned(); // restore pinned staff
+    // Clear only current date's data
+    var currentDate=getD();
+    asgn={};lvMap={};offMap={};vendorAsgn={};
+    applyPinned(); // restore pinned staff base layer
+    // Save cleared state to this date's log only
+    saveLog(currentDate);saveVendorLog(currentDate);
+    // Rebuild activeVids for the clean state
+    activeVids=[];
+    venues.forEach(function(v){
+      var isContracted=staff.some(function(e){return e.pv===v.id;});
+      if(isContracted&&!contractedHiddenVids.has(v.id))activeVids.push(v.id);
+    });
     closeModal();
     drawStaffPanel();drawVenueGrid();drawStats();saveCloud();
-    toast('All duties reset. Pinned staff restored.');
+    toast('Duties reset for '+fd(currentDate)+'. Pinned staff restored.');
   };
   setTimeout(function(){if(g('RESET_CONFIRM'))g('RESET_CONFIRM').focus();},100);
 }
@@ -2781,8 +2790,8 @@ function buildLoMarkPanel(el,list,type){
 }
 
 // ── REPORT ────────────────────────────────────────────────────
-function saveLog(){
-  var d=getD();
+function saveLog(forDate){
+  var d=forDate||getD();
   var log={venues:{},leave:[],office:[]};
   Object.keys(asgn).forEach(function(vid){
     if(!asgn[vid])return;
@@ -2794,8 +2803,8 @@ function saveLog(){
   dlog[d]=log;
 }
 
-function saveVendorLog(){
-  var d=getD();
+function saveVendorLog(forDate){
+  var d=forDate||getD();
   var vlog={venues:{}};
   Object.keys(vendorAsgn).forEach(function(vid){
     var vm=vendorAsgn[vid];if(!vm)return;
@@ -3597,7 +3606,7 @@ document.querySelectorAll('[data-atb-screen]').forEach(function(btn){
 var dp2el=document.getElementById('DP2');
 if(dp2el){dp2el.addEventListener('change',function(){
   var dp=document.getElementById('DP');
-  if(dp)dp.value=this.value;
+  if(dp){dp.value=this.value;}
   updateADate();
   switchToDate(this.value);
   drawStats();updateATBStats();
@@ -5338,7 +5347,7 @@ function makeEventSheetPDF(){
       // Staff rows — managers first (yellow), then others
       entries.forEach(function(a,idx){
         var isMgr=(a.emp.role==='Manager');
-        var mgrRowH=isMgr?8:rowH; // managers slightly taller for phone number
+        var mgrRowH=isMgr?rowH+1:rowH; // managers just slightly taller
         var bg=isMgr?[255,253,225]:idx%2===0?[240,245,255]:[255,255,255];
         doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(x,yy,colW,mgrRowH,'F');
         var accentClr=isMgr?[230,165,0]:[21,101,192];
@@ -5346,16 +5355,16 @@ function makeEventSheetPDF(){
         var timeStr=shortTime(a.duty);
         var nameMax=Math.floor((colW-timeW-7)/2.1);
         if(isMgr){
-          // Manager: name bold + phone on second line
-          doc.setTextColor(120,80,0);doc.setFontSize(8);doc.setFont('helvetica','bold');
-          var mname=a.emp.name.length>nameMax?a.emp.name.slice(0,nameMax-1)+'…':a.emp.name;
-          doc.text(mname,x+4,yy+3.2);
-          if(a.emp.phone){
-            doc.setFontSize(6.5);doc.setFont('helvetica','normal');doc.setTextColor(150,100,0);
-            doc.text('📞 '+a.emp.phone,x+4,yy+6.5);
-          }
+          // Manager: name + phone on SAME line, bold, smaller font to fit
+          var phoneStr=a.emp.phone?' · '+a.emp.phone:'';
+          var mgrLabel=a.emp.name+phoneStr;
+          // Truncate if too long
+          var mgrMax=Math.floor((colW-timeW-7)/1.9);
+          if(mgrLabel.length>mgrMax)mgrLabel=mgrLabel.slice(0,mgrMax-1)+'…';
+          doc.setTextColor(100,65,0);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+          doc.text(mgrLabel,x+4,yy+mgrRowH/2+1.2);
           doc.setTextColor(21,101,192);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-          doc.text(timeStr,x+colW-2,yy+3.2,{align:'right'});
+          doc.text(timeStr,x+colW-2,yy+mgrRowH/2+1.2,{align:'right'});
         } else {
           doc.setTextColor(20,20,20);doc.setFontSize(8);doc.setFont('helvetica','normal');
           var name=a.emp.name.length>nameMax?a.emp.name.slice(0,nameMax-1)+'…':a.emp.name;

@@ -969,7 +969,7 @@ function initApp(){
   loadFromCloud(function(){
     populateRoleDD();populateVenueDD();populateTimeDD();
     populateSRDrops();
-    _lastLoadedDate=todayIST(); // mark today as the loaded date
+    _lastLoadedDate=getD(); // mark current date as loaded (DP may have been changed before load)
     applyPinned();
     drawStats();
     initActiveVids();
@@ -1007,17 +1007,25 @@ function updateADate(){
 }
 
 // ── DATE SWITCH: save current date data, load new date data ──
-var _lastLoadedDate=''; // track which date is currently loaded in asgn/lvMap/offMap
+var _lastLoadedDate=''; // tracks the date whose data is currently in asgn/lvMap/offMap
 function switchToDate(newDate){
   if(!DB_LOADED)return;
-  // 1. Save current date's data to its OWN dlog entry before switching
-  //    Use _lastLoadedDate (the old date), NOT getD() which already has the new value
-  if(_lastLoadedDate&&_lastLoadedDate!==newDate){
+  if(newDate===_lastLoadedDate)return; // already on this date
+  // 1. Save the date we're LEAVING to its own dlog entry
+  //    _lastLoadedDate holds the old date; getD() already shows newDate so we can't use it
+  if(_lastLoadedDate){
     saveLog(_lastLoadedDate);
     saveVendorLog(_lastLoadedDate);
     actuallySaveCloud();
   }
   _lastLoadedDate=newDate;
+  // 2. Reset contracted venues to ALL hidden on every date switch
+  //    User must explicitly toggle on what they need for this date
+  contractedHiddenVids=new Set();
+  contractedHiddenVids._initialized=true;
+  venues.forEach(function(v){
+    if(staff.some(function(e){return e.pv===v.id;}))contractedHiddenVids.add(v.id);
+  });
   // 2. Hard reset ALL live data and activeVids — no carryover
   asgn={};lvMap={};offMap={};vendorAsgn={};
   activeVids=[]; // MUST be empty before applyPinned
@@ -5058,14 +5066,13 @@ window.addEventListener('pagehide',function(){
 var SAVE_DEBOUNCE_TIMER=null;
 function saveCloud(){
   if(!DB_LOADED)return;
-  // Debounce: wait 300ms after the LAST change before writing, so rapid actions
-  // (e.g. adding many staff quickly) batch into one reliable write instead of many.
-  // SAVE_PENDING is incremented immediately so beforeunload warning fires right away.
   SAVE_PENDING++;
   showSaveIndicator('saving');
   clearTimeout(SAVE_DEBOUNCE_TIMER);
   SAVE_DEBOUNCE_TIMER=setTimeout(function(){
-    SAVE_PENDING=Math.max(0,SAVE_PENDING-1); // release the "pending" placeholder, doSaveWithRetry will track the real write
+    SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
+    // Always save log to the currently loaded date before cloud write
+    if(_lastLoadedDate)saveLog(_lastLoadedDate);
     actuallySaveCloud();
   },300);
 }
@@ -5162,7 +5169,7 @@ function loadFromCloud(callback){
       if(d.roles&&d.roles.length)ROLES=d.roles;
       // Only restore live asgn/lvMap/offMap/activeVids when viewing today
       // (when on another date, switchToDate manages these from dlog)
-      var _isViewingToday=(!_lastLoadedDate||_lastLoadedDate===todayIST());
+      var _isViewingToday=(!_lastLoadedDate||_lastLoadedDate===getD());
       if(_isViewingToday){
         if(d.activeVids&&d.activeVids.length)activeVids=d.activeVids;
         asgn={};
@@ -5233,7 +5240,7 @@ function loadFromCloud(callback){
       console.log('No saved data in Firebase yet.');
     }
     // Only apply pinned if viewing today (otherwise switchToDate manages it)
-    if(!_lastLoadedDate||_lastLoadedDate===todayIST()){
+    if(!_lastLoadedDate||_lastLoadedDate===getD()){
       applyPinned();
       initActiveVids();
     }
@@ -5377,6 +5384,43 @@ function makeEventSheetPDF(){
       yy+=3;
       colY[ci]=yy;
     }
+  }
+
+  // ── Godown Duty section ──
+  var godownList=Object.values(offMap);
+  var leaveList=Object.values(lvMap);
+  if(godownList.length||leaveList.length){
+    // Find the lower of the two colY values for placing section below venues
+    var bottomY=Math.max(colY[0],colY[1])+4;
+    var sectionW=pw-mg*2;
+    var sRowH=6;
+    function renderBottomSection(title,list,bgColor,accentColor,textColor){
+      if(!list.length)return;
+      var secH=9+list.length*sRowH+3;
+      if(bottomY+secH>pageH){doc.addPage();bottomY=y;}
+      // Section header
+      doc.setFillColor(bgColor[0],bgColor[1],bgColor[2]);
+      doc.roundedRect(mg,bottomY,sectionW,9,2,2,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
+      doc.text(title,mg+4,bottomY+6.2);
+      doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+      doc.text(list.length+' staff',mg+sectionW-3,bottomY+6.2,{align:'right'});
+      bottomY+=10;
+      list.forEach(function(a,idx){
+        var rb=idx%2===0?[245,245,255]:[255,255,255];
+        doc.setFillColor(rb[0],rb[1],rb[2]);doc.rect(mg,bottomY,sectionW,sRowH,'F');
+        doc.setFillColor(accentColor[0],accentColor[1],accentColor[2]);doc.rect(mg,bottomY,2,sRowH,'F');
+        doc.setTextColor(textColor[0],textColor[1],textColor[2]);doc.setFontSize(8);doc.setFont('helvetica','normal');
+        var nm=a.emp.name.length>50?a.emp.name.slice(0,49)+'…':a.emp.name;
+        doc.text(nm,mg+4,bottomY+sRowH-1.8);
+        doc.setTextColor(80,80,80);doc.setFontSize(7.5);
+        doc.text(shortTime(a.duty),mg+sectionW-2,bottomY+sRowH-1.8,{align:'right'});
+        bottomY+=sRowH;
+      });
+      bottomY+=4;
+    }
+    renderBottomSection('GAVS GODOWN DUTY',godownList,[180,80,20],[230,100,20],[80,40,0]);
+    renderBottomSection('ON LEAVE',leaveList,[160,30,30],[200,50,50],[80,0,0]);
   }
 
   doc.save('GAVS_EventSheet_'+d+'.pdf');

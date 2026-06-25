@@ -5081,9 +5081,10 @@ function showSaveIndicator(state){
     el.style.background='#e8f5e9';el.style.color='#1b5e20';
     el.style.display='block';el.style.opacity='1';
     setTimeout(function(){if(SAVE_PENDING===0){el.style.opacity='0';setTimeout(function(){el.style.display='none';},300);}},1200);
-  } else if(state==='error'){
-    el.textContent='⚠️ Save failed - retrying...';
-    el.style.background='#ffebee';el.style.color='#c62828';
+  } else if(state==='error'||state==='offline'){
+    el.textContent=state==='offline'?'📶 Offline — saving when reconnected':'⚠️ Retrying save...';
+    el.style.background=state==='offline'?'#fff8e1':'#ffebee';
+    el.style.color=state==='offline'?'#e65100':'#c62828';
     el.style.display='block';el.style.opacity='1';
   }
 }
@@ -5100,31 +5101,51 @@ window.addEventListener('beforeunload',function(ev){
 // CRITICAL: flush any pending debounced save immediately when tab is hidden/closed/backgrounded.
 // This is what actually prevents data loss when someone closes the tab right after typing.
 document.addEventListener('visibilitychange',function(){
-  if(document.visibilityState==='hidden'&&SAVE_DEBOUNCE_TIMER){
-    clearTimeout(SAVE_DEBOUNCE_TIMER);
-    SAVE_DEBOUNCE_TIMER=null;
-    actuallySaveCloud();
+  if(document.visibilityState==='hidden'){
+    if(SAVE_DEBOUNCE_TIMER){clearTimeout(SAVE_DEBOUNCE_TIMER);SAVE_DEBOUNCE_TIMER=null;actuallySaveCloud();}
+    else if(_offlineQueue){_backupLocal(_offlineQueue);} // ensure local backup is fresh
   }
 });
 // Also flush on pagehide (covers mobile Safari tab close / app switch better than beforeunload)
 window.addEventListener('pagehide',function(){
-  if(SAVE_DEBOUNCE_TIMER){
-    clearTimeout(SAVE_DEBOUNCE_TIMER);
-    SAVE_DEBOUNCE_TIMER=null;
-    actuallySaveCloud();
-  }
+  if(SAVE_DEBOUNCE_TIMER){clearTimeout(SAVE_DEBOUNCE_TIMER);SAVE_DEBOUNCE_TIMER=null;actuallySaveCloud();}
+  else if(_offlineQueue){_backupLocal(_offlineQueue);}
 });
 
 var SAVE_DEBOUNCE_TIMER=null;
+var _offlineQueue=null; // holds latest payload when offline, for retry on reconnect
+var _LS_KEY='gavs_unsaved_v1'; // localStorage backup key
+
+// Backup critical live data locally so nothing is lost if cloud write fails
+function _backupLocal(payload){
+  try{
+    var b=JSON.stringify({dlog:payload.dlog,vdlog:payload.vdlog,activeVids:payload.activeVids,
+      asgn:payload.asgn,lvMap:payload.lvMap,offMap:payload.offMap,
+      vendorAsgn:payload.vendorAsgn,updatedAt:payload.updatedAt});
+    localStorage.setItem(_LS_KEY,b);
+  }catch(e){}
+}
+function _clearBackupLocal(){try{localStorage.removeItem(_LS_KEY);}catch(e){}}
+
+// When internet reconnects, immediately flush the queued save
+window.addEventListener('online',function(){
+  if(_offlineQueue){
+    clearTimeout(SAVE_RETRY_TIMER);
+    showSaveIndicator('saving');
+    doSaveWithRetry(_offlineQueue,0);
+  }
+});
+
 function saveCloud(){
   if(!DB_LOADED)return;
   SAVE_PENDING++;
   showSaveIndicator('saving');
   clearTimeout(SAVE_DEBOUNCE_TIMER);
+  // 50ms debounce — practically immediate but batches rapid consecutive actions
   SAVE_DEBOUNCE_TIMER=setTimeout(function(){
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
-    actuallySaveCloud(); // actuallySaveCloud already calls saveLog internally
-  },300);
+    actuallySaveCloud();
+  },50);
 }
 function actuallySaveCloud(){
   if(!DB_LOADED)return;
@@ -5169,24 +5190,25 @@ function actuallySaveCloud(){
 function doSaveWithRetry(payload,attempt){
   SAVE_PENDING++;
   showSaveIndicator('saving');
+  // Backup to localStorage immediately so data is never lost even if cloud fails
+  _backupLocal(payload);
   db.collection('gavs_data').doc('main').set(payload).then(function(){
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
     LAST_SAVE_FAILED=false;
+    _offlineQueue=null;
+    _clearBackupLocal(); // cloud has it — local backup no longer needed
     showSaveIndicator('saved');
   }).catch(function(e){
-    console.error('Save error (attempt '+attempt+'):',e);
+    console.warn('Save error (attempt '+attempt+'):',e.message||e);
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
-    if(attempt<5){
-      LAST_SAVE_FAILED=true;
-      showSaveIndicator('error');
-      var delay=Math.min(1000*Math.pow(2,attempt),15000); // exponential backoff up to 15s
-      clearTimeout(SAVE_RETRY_TIMER);
-      SAVE_RETRY_TIMER=setTimeout(function(){doSaveWithRetry(payload,attempt+1);},delay);
-    } else {
-      LAST_SAVE_FAILED=true;
-      toast('⚠️ Could not save to cloud after several tries. Check your internet.','e');
-      showSaveIndicator('error');
-    }
+    LAST_SAVE_FAILED=true;
+    _offlineQueue=payload; // remember for retry on reconnect
+    // Show offline indicator (not a scary error toast)
+    showSaveIndicator('offline');
+    // Retry with exponential backoff, indefinitely — no attempt limit
+    var delay=Math.min(1500*Math.pow(2,Math.min(attempt,6)),60000);
+    clearTimeout(SAVE_RETRY_TIMER);
+    SAVE_RETRY_TIMER=setTimeout(function(){doSaveWithRetry(payload,attempt+1);},delay);
   });
 }
 
@@ -5299,25 +5321,34 @@ function loadFromCloud(callback){
     } else {
       console.log('No saved data in Firebase yet.');
     }
-    // Live working set is hydrated by loadLiveFromDlog (initial load) or
-    // switchToDate (date change). For real-time updates from other portals
-    // while viewing the current date, re-hydrate so external edits show up.
+    // On subsequent snapshots (after initial load): DO NOT call loadLiveFromDlog.
+    // Doing so would wipe unsaved local changes (assignments, newly added venues)
+    // because the live working set may be ahead of the last committed dlog entry.
+    // Instead: just refresh employee object references in the live set so any
+    // staff name/role changes from Settings show up immediately.
     if(_onlyStaticChangedFlag&&_lastLoadedDate){
-      loadLiveFromDlog(_lastLoadedDate);
+      Object.keys(asgn).forEach(function(vid){
+        Object.keys(asgn[vid]||{}).forEach(function(eid){
+          var emp=getS(eid);
+          if(emp){asgn[vid][eid].emp=emp;asgn[vid][eid].pinned=(emp.pv===vid);asgn[vid][eid].isFixed=(emp.pv===vid);}
+        });
+      });
+      Object.keys(lvMap).forEach(function(eid){var emp=getS(eid);if(emp)lvMap[eid].emp=emp;});
+      Object.keys(offMap).forEach(function(eid){var emp=getS(eid);if(emp)offMap[eid].emp=emp;});
     }
     DB_LOADED=true;showLoad(false);
     if(initialLoad){
       initialLoad=false;
       if(callback){callback();callback=null;}
     } else {
-      // Subsequent real-time updates from other portals
+      // Subsequent updates: repaint UI but keep live working set intact
       populateRoleDD();populateVenueDD();populateTimeDD();
       drawStaffPanel();drawVenueGrid();drawStats();updateATBStats();
     }
   },function(err){
     clearTimeout(timeout);
     console.error('Firebase snapshot error:',err);
-    toast('Could not connect to cloud — working offline','w');
+    showSaveIndicator('offline');console.warn('Firebase connection error — working offline');
     DB_LOADED=true;showLoad(false);
     if(callback){callback();callback=null;}
   });

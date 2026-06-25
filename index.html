@@ -5049,35 +5049,53 @@ document.addEventListener('touchmove', function(ev) {
   }
 }, {passive: false});
 
+// Shared cleanup for touch drag — called on touchend AND touchcancel
+function _cleanupStaffDrag(){
+  if(touchGhost){try{document.body.removeChild(touchGhost);}catch(x){}touchGhost=null;}
+  if(touchDragEid){
+    // Restore all staff cards in case of re-render during drag
+    document.querySelectorAll('.scard[data-eid="'+touchDragEid+'"]').forEach(function(c){c.style.opacity='';});
+    touchDragEid=null;
+  }
+  document.querySelectorAll('.vbox.drag-over').forEach(function(b){b.classList.remove('drag-over');});
+}
+
+// touchcancel: fired by iOS when scroll gesture takes over, system interrupts, etc.
+// Without this handler, the card stays grey and touchDragEid stays set — causing
+// accidental staff deployment on the next touch.
+document.addEventListener('touchcancel', function(ev) {
+  _cleanupStaffDrag();
+}, {passive: true});
+
 document.addEventListener('touchend', function(ev) {
   if(!touchDragEid) return;
-  // Remove ghost
-  if(touchGhost) { try{document.body.removeChild(touchGhost);}catch(x){} touchGhost = null; }
+  var eid = touchDragEid; // capture before cleanup
+  // Remove ghost first
+  if(touchGhost){try{document.body.removeChild(touchGhost);}catch(x){}touchGhost=null;}
   // Restore card opacity
-  var card = document.querySelector('.scard[data-eid="'+touchDragEid+'"]');
-  if(card) card.style.opacity = '';
+  document.querySelectorAll('.scard[data-eid="'+eid+'"]').forEach(function(c){c.style.opacity='';});
   // Find where finger landed
   var touch = ev.changedTouches[0];
   document.querySelectorAll('.vbox').forEach(function(b){b.classList.remove('drag-over');});
   var el = document.elementFromPoint(touch.clientX, touch.clientY);
+  touchDragEid = null; // clear BEFORE any action that redraws
   if(el) {
     // Check leave drop zone
     var lvZone = el.closest('#drop-leave');
-    if(lvZone){ markLeave(touchDragEid); if(navigator.vibrate)navigator.vibrate([20,10,20]); touchDragEid=null; return; }
+    if(lvZone){ markLeave(eid); if(navigator.vibrate)navigator.vibrate([20,10,20]); return; }
     // Check office drop zone
     var offZone = el.closest('#drop-office');
-    if(offZone){ markGodown(touchDragEid); if(navigator.vibrate)navigator.vibrate([20,10,20]); touchDragEid=null; return; }
+    if(offZone){ markGodown(eid); if(navigator.vibrate)navigator.vibrate([20,10,20]); return; }
     // Check venue box
     var vbox = el.closest('.vbox');
     if(vbox) {
       var vid = vbox.id.replace('vb-','');
       if(vid) {
-        dropStaff(touchDragEid, vid);
+        dropStaff(eid, vid);
         if(navigator.vibrate) navigator.vibrate([20,10,20]);
       }
     }
   }
-  touchDragEid = null;
 }, {passive: true});
 
 // ── FIREBASE SAVE / LOAD ──────────────────────────────────────

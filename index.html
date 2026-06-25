@@ -842,6 +842,7 @@ g('modal').addEventListener('click',function(ev){
 function showLoad(v){g('loadingOv').style.display=v?'flex':'none';}
 
 // ── LOGIN ─────────────────────────────────────────────────────
+var _SESSION_KEY='gavs_session_v1';
 function doLogin(){
   var u=(g('LU').value||'').trim().toLowerCase();
   var p=(g('LP').value||'').trim();
@@ -849,6 +850,7 @@ function doLogin(){
   for(var i=0;i<CREDS.length;i++){if(CREDS[i].u===u&&CREDS[i].p===p){ok=CREDS[i];break;}}
   if(ok){
     curUser=u;
+    try{localStorage.setItem(_SESSION_KEY,JSON.stringify({u:u,p:p,t:Date.now()}));}catch(e){}
     g('LS').style.display='none';
     g('AH').style.display='block';
     g('AB').style.display='block';
@@ -862,12 +864,31 @@ function doLogin(){
 }
 function doLogout(){
   curUser='';
+  try{localStorage.removeItem(_SESSION_KEY);}catch(e){}
   g('LS').style.display='flex';
   g('AH').style.display='none';
   g('AB').style.display='none';
   g('LP').value='';g('LU').value='';
   toast('Logged out','w');
 }
+// Auto-login on page load if session exists and credentials still valid
+(function(){
+  try{
+    var s=localStorage.getItem(_SESSION_KEY);
+    if(!s)return;
+    var sess=JSON.parse(s);
+    if(!sess||!sess.u||!sess.p)return;
+    // Verify credentials still match (in case password changed)
+    var ok=null;
+    for(var i=0;i<CREDS.length;i++){if(CREDS[i].u===sess.u&&CREDS[i].p===sess.p){ok=CREDS[i];break;}}
+    if(!ok)return;
+    curUser=sess.u;
+    g('LS').style.display='none';
+    g('AH').style.display='block';
+    g('AB').style.display='block';
+    initApp();
+  }catch(e){}
+})();
 
 g('LB').addEventListener('click',doLogin);
 g('LP').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
@@ -5187,25 +5208,34 @@ function actuallySaveCloud(){
   }catch(err){console.error('Save prep error:',err);}
 }
 
+var _firstFailTime=null; // timestamp of first failed save attempt in current streak
 function doSaveWithRetry(payload,attempt){
   SAVE_PENDING++;
   showSaveIndicator('saving');
-  // Backup to localStorage immediately so data is never lost even if cloud fails
   _backupLocal(payload);
   db.collection('gavs_data').doc('main').set(payload).then(function(){
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
     LAST_SAVE_FAILED=false;
     _offlineQueue=null;
-    _clearBackupLocal(); // cloud has it — local backup no longer needed
+    _firstFailTime=null; // reset on success
+    _clearBackupLocal();
     showSaveIndicator('saved');
   }).catch(function(e){
     console.warn('Save error (attempt '+attempt+'):',e.message||e);
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
     LAST_SAVE_FAILED=true;
-    _offlineQueue=payload; // remember for retry on reconnect
-    // Show offline indicator (not a scary error toast)
-    showSaveIndicator('offline');
-    // Retry with exponential backoff, indefinitely — no attempt limit
+    _offlineQueue=payload;
+    // Track when the first failure in this streak happened
+    if(!_firstFailTime)_firstFailTime=Date.now();
+    var elapsed=(Date.now()-_firstFailTime)/1000;
+    if(elapsed>=20){
+      // 20 seconds without a successful save — show clear warning
+      showSaveIndicator('offline');
+      var el=document.getElementById('saveInd')||document.getElementById('saveInd2');
+      if(el){el.textContent='⚠️ Internet not working — your data is saved on this device. Retrying...';}
+    } else {
+      showSaveIndicator('offline');
+    }
     var delay=Math.min(1500*Math.pow(2,Math.min(attempt,6)),60000);
     clearTimeout(SAVE_RETRY_TIMER);
     SAVE_RETRY_TIMER=setTimeout(function(){doSaveWithRetry(payload,attempt+1);},delay);

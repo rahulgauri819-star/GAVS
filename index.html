@@ -1068,6 +1068,12 @@ function switchToDate(newDate){
   // 1. Save the date we're LEAVING into its OWN dlog entry, then persist.
   //    Use _lastLoadedDate (old date) — getD() already shows newDate.
   if(_lastLoadedDate){
+    // Cancel any pending debounced save — it would fire AFTER _lastLoadedDate
+    // and asgn have already been updated to the new date, causing it to call
+    // saveLog(newDate) with the new date's (possibly empty) live set and
+    // overwrite dlog[newDate], destroying any existing data for that date.
+    clearTimeout(SAVE_DEBOUNCE_TIMER);
+    SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
     saveLog(_lastLoadedDate);
     saveVendorLog(_lastLoadedDate);
     actuallySaveCloud();

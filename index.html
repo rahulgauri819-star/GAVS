@@ -210,7 +210,7 @@ input,select,button{font-family:inherit;}
 .vbox.vip{border-color:#f9a825;}
 .vbox.drag-over{border-color:#1565c0!important;background:#f0f4ff;box-shadow:0 0 0 3px rgba(21,101,192,0.2);}
 .vbox-hdr{background:#1565c0;color:#fff;padding:8px 10px;display:flex;align-items:center;gap:4px;border-radius:12px 12px 0 0;overflow:hidden;}
-.vbox.vip .vbox-hdr{background:linear-gradient(135deg,#1565c0 50%,#e65100);border-radius:12px 12px 0 0;}
+.vbox.vip .vbox-hdr{background:linear-gradient(135deg,#c07c00,#f9a825);border-radius:12px 12px 0 0;}
 .vbox-name{font-size:12px;font-weight:700;flex:1;line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .vbox-cnt{background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;}
 .vbox-close{background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -759,7 +759,9 @@ var MONS=['January','February','March','April','May','June','July','August','Sep
 var DEFAULT_VENUES=['The Leela Palace New Delhi','The Oberoi New Delhi','ITC Maurya New Delhi','Taj Mahal Hotel New Delhi','The Imperial New Delhi','Hyatt Regency Delhi','Radisson Blu Plaza Delhi Airport','Le Meridien New Delhi','The Ashok New Delhi','Sheraton New Delhi Hotel','Eros Hotel New Delhi','The Suryaa New Delhi','Crowne Plaza Today Okhla','JW Marriott New Delhi Aerocity','Pullman New Delhi Aerocity','Novotel New Delhi Aerocity','Andaz Delhi','Aloft New Delhi Aerocity','Ibis New Delhi Aerocity','Pride Plaza Hotel Aerocity','Holiday Inn New Delhi Aerocity','Roseate House New Delhi','The Grand New Delhi','Shangri-La Eros New Delhi','Lalit New Delhi','Hans Hotel New Delhi','The Manor New Delhi','Hotel Bristol New Delhi','Jaypee Siddharth New Delhi','Vivanta New Delhi Dwarka','Lemon Tree Premier New Delhi','The Westin Gurgaon','Trident Gurgaon','Hyatt Place Gurgaon','Courtyard by Marriott Gurgaon','ITC Grand Bharat Gurgaon','Hilton Garden Inn Gurgaon','Four Points by Sheraton Gurgaon','DoubleTree Hilton Gurgaon','Le Meridien Gurgaon','Park Hyatt Gurgaon','Radisson Blu MBD Noida','Crowne Plaza Greater Noida','Jaypee Greens Golf Resort Noida','The Westin Sohna Resort','Vivanta Surajkund','Sheraton Saket New Delhi','Fortune Select Excalibur Gurgaon','Country Inn Sahibabad','Maidens Hotel Delhi'];
 var ROLES=['Manager','Sound Engineer','Lighting Tech','AV Tech','Stage Manager','Camera Operator','Video Tech','Crew Lead','Setup Specialist','Live Stream Tech','Projection Tech','DJ Operator','Truss Rigger'];
 var staff=[],venues=[],asgn={},lvMap={},offMap={},dlog={};
-var vHalls={}; // venueId -> number of halls (per current date, reset on date change like asgn)
+var vHalls={}; // venueId -> number of halls (legacy - now use _dateHalls for date-specific)
+var _dateVip={}; // date-specific VIP override: vid -> true/false
+var _dateHalls={}; // date-specific halls: vid -> count
 // ── VENDOR SYSTEM ──────────────────────────────────────────
 // 9 fixed vendor type categories
 var VENDOR_TYPES=[
@@ -997,7 +999,10 @@ function loadLiveFromDlog(date){
       asgn[vid]={};
       Object.keys(log.venues[vid]||{}).forEach(function(eid){
         var emp=getS(eid);
-        if(emp)asgn[vid][eid]={emp:emp,duty:log.venues[vid][eid],pinned:emp.pv===vid,isFixed:emp.pv===vid};
+        if(emp){
+          var _ct=log.camTypes&&log.camTypes[vid]&&log.camTypes[vid][eid];
+          asgn[vid][eid]={emp:emp,duty:log.venues[vid][eid],camType:_ct||undefined,pinned:emp.pv===vid,isFixed:emp.pv===vid};
+        }
       });
     });
     (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});
@@ -1022,6 +1027,18 @@ function loadLiveFromDlog(date){
       }
     });
   }
+  // Restore manually-added empty venues (persists across refresh)
+  if(log&&Array.isArray(log.manualVids)){
+    log.manualVids.forEach(function(vid){
+      if(activeVids.indexOf(vid)<0){
+        var isContracted=staff.some(function(e){return e.pv===vid;});
+        if(!isContracted)activeVids.push(vid);
+      }
+    });
+  }
+  // Restore date-specific VIP and halls
+  _dateVip=log&&log.dateVip?JSON.parse(JSON.stringify(log.dateVip)):{};
+  _dateHalls=log&&log.dateHalls?JSON.parse(JSON.stringify(log.dateHalls)):{};
 }
 
 function switchToDate(newDate){
@@ -1160,7 +1177,7 @@ function drawStaffPanel(){
       var isO=oids.indexOf(e.id)>=0;
       var grey=isD||isL||isO;
       var where='';
-      if(isD){Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][e.id]){var v=getV(vid);if(v)where='('+v.name.split(' ').slice(0,2).join(' ')+')';}} );}
+      if(isD){Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][e.id]){var v=getV(vid);if(v)where='('+v.name+')';}} );}
       else if(isL)where='(On Leave)';
       else if(isO)where='(GAVS Godown Duty)';
 
@@ -1277,7 +1294,7 @@ g('V_SRCH').addEventListener('input',function(){
       d.addEventListener('click',(function(vid){return function(){
         if(activeVids.indexOf(vid)<0)activeVids.push(vid);
         g('V_SRCH').value='';dd.classList.remove('show');dd.innerHTML='';
-        drawVenueGrid();
+        drawVenueGrid();saveCloud(); // save immediately so venue persists on refresh
       };})(v.id));
       dd.appendChild(d);
     });
@@ -1388,6 +1405,11 @@ function drawVenueGrid(){
         var nm=document.createElement('div');
         nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;';
         nm.textContent=a.emp.name;
+        // Time dropdown for godown duty
+        var goSel=document.createElement('select');
+        goSel.style.cssText='flex-shrink:0;background:#fff8f0;border:1px solid #ffcc80;border-radius:4px;color:#e65100;padding:1px 1px;font-size:8px;cursor:pointer;width:38px;max-width:38px;';
+        TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;goSel.appendChild(o);});
+        (function(eid){goSel.addEventListener('change',function(){if(offMap[eid]){offMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
         var rm=document.createElement('button');
         rm.className='v3rm';rm.textContent='✕';
         rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
@@ -1401,7 +1423,7 @@ function drawVenueGrid(){
           g('m-yes').onclick=function(){unGodown(eid);closeModal();};
           g('m-no').onclick=closeModal;
         };})(a.emp.id,a.emp.name));
-        row.appendChild(nm);row.appendChild(rm);
+        row.appendChild(nm);row.appendChild(goSel);row.appendChild(rm);
         offBody.appendChild(row);
       });
     }
@@ -1576,38 +1598,39 @@ function makeVenueBox(v,hasPinned,viewData){
   }
 
   hdr.appendChild(icon);hdr.appendChild(nm);
-  if(v.vip){var vipBdg=document.createElement('span');vipBdg.style.cssText='background:rgba(255,60,60,0.25);color:#ff6060;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:800;flex-shrink:0;';vipBdg.textContent='VIP';hdr.appendChild(vipBdg);}
+  if(v.vip){var vipBdg=document.createElement('span');vipBdg.style.cssText='background:rgba(0,0,0,0.15);color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:800;flex-shrink:0;';vipBdg.textContent='VIP';hdr.appendChild(vipBdg);}
   hdr.appendChild(cnt);
 
-  // Collapse/expand toggle — available on ALL dates
+  // Collapse/expand toggle — will be appended LAST (extreme right)
   var isCollapsedEarly=collapsedVids.has(v.id);
   var colBtnEarly=document.createElement('button');
   colBtnEarly.className='vbox-close';
   colBtnEarly.textContent=isCollapsedEarly?'▶':'▼';
   colBtnEarly.title=isCollapsedEarly?'Expand':'Collapse';
-  colBtnEarly.style.background='rgba(255,255,255,0.15)';
+  colBtnEarly.style.cssText='background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;';
   colBtnEarly.addEventListener('click',(function(vid2){return function(ev){
     ev.stopPropagation();
     if(collapsedVids.has(vid2))collapsedVids.delete(vid2);else collapsedVids.add(vid2);
     drawVenueGrid();
   };})(v.id));
-  hdr.appendChild(colBtnEarly);
+  // colBtnEarly appended LAST below (after all interactive buttons)
 
   // Interactive buttons — always shown on all dates
   {
   // VIP button
   var vipBtn=document.createElement('button');
-  vipBtn.style.cssText='background:'+(v.vip?'#f9a825':'rgba(255,255,255,0.15)')+';border:1px solid '+(v.vip?'#f9a825':'rgba(255,255,255,0.4)')+';color:#fff;border-radius:6px;padding:2px 6px;font-size:9px;font-weight:700;cursor:pointer;flex-shrink:0;';
-  vipBtn.textContent='⭐ VIP';
-  vipBtn.title='Toggle VIP';
-  vipBtn.addEventListener('click',function(){v.vip=!v.vip;saveCloud();drawVenueGrid();});
+  var _vipOn=(_dateVip[v.id]!==undefined)?_dateVip[v.id]:v.vip;
+  vipBtn.style.cssText='background:'+(_vipOn?'#f9a825':'rgba(255,255,255,0.15)')+';border:1px solid '+(_vipOn?'#f9a825':'rgba(255,255,255,0.4)')+';color:#fff;border-radius:6px;padding:2px 6px;font-size:9px;font-weight:700;cursor:pointer;flex-shrink:0;';
+  vipBtn.textContent='VIP';
+  vipBtn.title='Toggle VIP for today only';
+  vipBtn.addEventListener('click',(function(vid2){return function(){_dateVip[vid2]=!_dateVip[vid2];if(_dateVip[vid2]===undefined)delete _dateVip[vid2];saveCloud();drawVenueGrid();};})(v.id));
   hdr.appendChild(vipBtn);
   // Halls badge/button
-  var hallsCount=vHalls[v.id]||0;
+  var hallsCount=(_dateHalls[v.id]!==undefined?_dateHalls[v.id]:(vHalls[v.id]||0));
   var hallsBtn=document.createElement('button');
   hallsBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 6px;font-size:9px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;';
-  hallsBtn.textContent=hallsCount>0?('🏛️ '+hallsCount+' Hall'+(hallsCount>1?'s':'')):'🏛️ Halls';
-  hallsBtn.title='Set number of halls for today';
+  hallsBtn.textContent=hallsCount>0?('Halls: '+hallsCount):'Halls';
+  hallsBtn.title='Set number of halls for today only';
   hallsBtn.addEventListener('click',(function(vid){return function(){showHallsPrompt(vid);};})(v.id));
   hdr.appendChild(hallsBtn);
   // All Same Time button
@@ -1634,24 +1657,31 @@ function makeVenueBox(v,hasPinned,viewData){
     };})(v.id));
     hdr.appendChild(eyeBtn);
   }
-  // ✕ only on venues with 0 staff
+  // ✕ on all venues with 0 visible staff (including VIP/contracted)
   var currentStaffCount=getTeam(v.id).length;
-  if(!hasPinned&&currentStaffCount===0){
+  if(currentStaffCount===0){
     var cls=document.createElement('button');cls.className='vbox-close';cls.textContent='✕';cls.title='Remove from view';
-    cls.addEventListener('click',(function(vid2,vname,vt){return function(){
-    var msg=vt?vt+' staff assigned. They will stay assigned but venue will be removed from view.':'Venue can be re-added anytime by searching.';
-    showModal(
-      '<div class="mt">Remove Venue from View?</div>'+
-      '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:8px;"><strong>'+esc(vname)+'</strong></div>'+
-      '<div style="text-align:center;font-size:13px;color:#888;margin-bottom:18px;">'+msg+'</div>'+
-      '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
-      '<button class="mcancel" id="m-no">Cancel</button>'
-    );
-    g('m-yes').onclick=function(){activeVids=activeVids.filter(function(id){return id!==vid2;});closeModal();drawVenueGrid();};
-    g('m-no').onclick=closeModal;
-  };})(v.id,v.name,currentStaffCount));
+    cls.addEventListener('click',(function(vid2,vname,isContr){return function(){
+    if(isContr){
+      // For contracted: just hide (add back to contractedHiddenVids)
+      contractedHiddenVids.add(vid2);
+      activeVids=activeVids.filter(function(id){return id!==vid2;});
+      drawVenueGrid();saveCloud();
+    } else {
+      showModal(
+        '<div class="mt">Remove Venue from View?</div>'+
+        '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:8px;"><strong>'+esc(vname)+'</strong></div>'+
+        '<div style="text-align:center;font-size:13px;color:#888;margin-bottom:18px;">Venue can be re-added anytime by searching.</div>'+
+        '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
+        '<button class="mcancel" id="m-no">Cancel</button>'
+      );
+      g('m-yes').onclick=function(){activeVids=activeVids.filter(function(id){return id!==vid2;});closeModal();drawVenueGrid();saveCloud();};
+      g('m-no').onclick=closeModal;
+    }
+  };})(v.id,v.name,hasPinned));
     hdr.appendChild(cls);
   }
+    hdr.appendChild(colBtnEarly); // collapse button at extreme right
   } // end interactive buttons block
   box.appendChild(hdr);
 
@@ -1659,7 +1689,7 @@ function makeVenueBox(v,hasPinned,viewData){
   if(collapsedVids.has(v.id)){return box;}
 
   // Halls warning - shown when 2+ halls set, regardless of mode
-  var hallsN=vHalls[v.id]||0;
+  var hallsN=(_dateHalls[v.id]!==undefined?_dateHalls[v.id]:(vHalls[v.id]||0));
   if(hallsN>=2){
     var hallsWarn=document.createElement('div');
     hallsWarn.style.cssText='background:#fff0f0;color:#c62828;font-size:15px;font-weight:900;text-align:center;padding:7px 10px;border-bottom:2px solid #ffcdd2;letter-spacing:0.02em;';
@@ -1872,10 +1902,17 @@ function makeV3Card(a,vid,c){
   nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;';
   nm.textContent=a.emp.name;nm.title=a.emp.name;
   d.appendChild(nm);
+  // Cameraman: Still/Video dropdown before time
+  if(a.emp.role==='Cameraman'){
+    var camSel=document.createElement('select');
+    camSel.style.cssText='flex-shrink:0;background:#fff8e1;border:1px solid #ffe082;border-radius:4px;color:#e65100;padding:1px 1px;font-size:8px;cursor:pointer;width:34px;max-width:34px;';
+    ['Video','Still'].forEach(function(ct){var o=document.createElement('option');o.value=ct;o.textContent=ct;if(ct===(a.camType||'Video'))o.selected=true;camSel.appendChild(o);});
+    (function(cEid,cVid){camSel.addEventListener('change',function(){if(asgn[cVid]&&asgn[cVid][cEid]){asgn[cVid][cEid].camType=this.value;saveCloud();}});})(a.emp.id,vid);
+    d.appendChild(camSel);
+  }
   // Lock icon (fixed duty) - inline, right before time
   if(a.isFixed){var lk=document.createElement('span');lk.style.cssText='font-size:7px;flex-shrink:0;';lk.textContent='🔒';d.appendChild(lk);}
-  // Time dropdown - compact, fits content width only. Shows short label (e.g. "6 AM")
-  // but option value/stored data stays the full TIMES format so PDFs/reports are unaffected.
+  // Time dropdown
   var sel=document.createElement('select');
   sel.style.cssText='flex-shrink:0;background:#f0f4ff;border:1px solid #bbdefb;border-radius:4px;color:#0d47a1;padding:1px 1px;font-size:8px;cursor:pointer;width:38px;max-width:38px;';
   TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===a.duty)o.selected=true;sel.appendChild(o);});
@@ -2006,10 +2043,10 @@ function showBulkVendorTime(vid){
 
 function showHallsPrompt(vid){
   var v=getV(vid);if(!v)return;
-  var cur=vHalls[vid]||0;
+  var cur=_dateHalls[vid]!==undefined?_dateHalls[vid]:(vHalls[vid]||0);
   showModal(
-    '<div class="mt">🏛️ Number of Halls</div>'+
-    '<div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">How many halls/function rooms at <strong>'+esc(v.name)+'</strong> today?</div>'+
+    '<div class="mt">Halls for Today</div>'+
+    '<div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">How many halls at <strong>'+esc(v.name)+'</strong> <span style="color:#888;">(today only)</span>?</div>'+
     '<input id="HALLS_N" type="number" min="0" max="50" class="inp" value="'+cur+'" placeholder="e.g. 3"/>'+
     '<button class="mbtn blue" id="m-yes">Save</button>'+
     '<button class="mcancel" id="m-no">Cancel</button>'
@@ -2017,8 +2054,8 @@ function showHallsPrompt(vid){
   g('HALLS_N').focus();g('HALLS_N').select();
   g('m-yes').onclick=function(){
     var n=parseInt(g('HALLS_N').value)||0;
-    if(n>0)vHalls[vid]=n;else delete vHalls[vid];
-    closeModal();toast(n>0?(v.name+' set to '+n+' hall'+(n>1?'s':'')):'Halls cleared');
+    if(n>0)_dateHalls[vid]=n;else delete _dateHalls[vid];
+    closeModal();toast(n>0?(v.name+': '+n+' hall'+(n>1?'s':'')+' for today'):'Halls cleared for today');
     drawVenueGrid();saveCloud();
   };
   g('HALLS_N').addEventListener('keydown',function(e){if(e.key==='Enter')g('m-yes').click();});
@@ -2492,18 +2529,85 @@ function drawMVenues(){
   }
   var f=venues.filter(function(v){return v.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
   f.forEach(function(v,i){
-    var row=document.createElement('div');row.className='srow';
+    var wrap=document.createElement('div');
+    wrap.style.cssText='border:1.5px solid #e3eaff;border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff;';
 
-    var info=document.createElement('div');info.className='sr-info';
-    info.innerHTML='<div class="sr-name">'+esc(v.name)+'</div>'+(v.vip?'<span class="badge" style="background:#f9a825;color:#fff;">VIP EVENT</span>':'');
-    var btns=document.createElement('div');btns.style.display='flex';btns.style.gap='6px';
+    // Venue name row
+    var topRow=document.createElement('div');topRow.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px;';
+    var vname=document.createElement('div');vname.style.cssText='font-size:14px;font-weight:800;color:#0d47a1;flex:1;';
+    vname.textContent=v.name;
+    if(v.vip){var vbadge=document.createElement('span');vbadge.style.cssText='background:#f9a825;color:#fff;border-radius:5px;padding:1px 8px;font-size:10px;font-weight:800;';vbadge.textContent='VIP';topRow.appendChild(vbadge);}
+    var btns=document.createElement('div');btns.style.cssText='display:flex;gap:6px;flex-shrink:0;';
     var eb=document.createElement('button');eb.className='ibtn eb';eb.textContent='✏️';
     eb.addEventListener('click',(function(vid){return function(){editVenue(vid);};})(v.id));
     var db=document.createElement('button');db.className='ibtn db';db.textContent='🗑️';
     db.addEventListener('click',(function(vid){return function(){confirmDelVenue(vid);};})(v.id));
     btns.appendChild(eb);btns.appendChild(db);
-    row.appendChild(info);row.appendChild(btns);
-    el.appendChild(row);
+    topRow.appendChild(vname);topRow.appendChild(btns);
+    wrap.appendChild(topRow);
+
+    // Pinned staff list
+    var pinnedList=staff.filter(function(e){return e.pv===v.id;});
+    if(pinnedList.length){
+      var pl=document.createElement('div');pl.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;';
+      pinnedList.forEach(function(e){
+        var pc=document.createElement('div');
+        pc.style.cssText='background:#e8f5e9;border:1px solid #a5d6a7;border-radius:14px;padding:2px 8px 2px 6px;font-size:11px;display:flex;align-items:center;gap:4px;';
+        pc.innerHTML='<span style="color:#1b5e20;font-weight:700;">'+esc(e.name)+'</span><span style="color:#555;font-size:10px;">('+esc(e.role)+')</span>'+(e.fixedDuty?'<span style="color:#888;font-size:10px;">@ '+esc(e.fixedDuty)+'</span>':'');
+        var unpin=document.createElement('button');
+        unpin.style.cssText='background:none;border:none;color:#c62828;cursor:pointer;font-size:11px;padding:0 0 0 3px;line-height:1;';
+        unpin.textContent='✕';unpin.title='Unpin';
+        (function(eid,vid2){unpin.addEventListener('click',function(){
+          var emp=getS(eid);if(!emp)return;
+          var oldPv=emp.pv;emp.pv='';emp.fixedDuty='';
+          updatePinnedInFutureDlogs(eid,'',oldPv,'');
+          toast(emp.name+' unpinned');saveCloud();drawMVenues();applyPinned();drawVenueGrid();
+        });})(e.id,v.id);
+        pc.appendChild(unpin);pl.appendChild(pc);
+      });
+      wrap.appendChild(pl);
+    }
+
+    // Pin new staff — search bar + dropdown
+    var pinWrap=document.createElement('div');pinWrap.style.cssText='position:relative;';
+    var pinInput=document.createElement('input');
+    pinInput.placeholder='+ Pin a staff member here...';
+    pinInput.style.cssText='width:100%;border:1.5px solid #e0e7ff;border-radius:8px;padding:5px 10px;font-size:12px;box-sizing:border-box;';
+    var pinDD=document.createElement('div');
+    pinDD.style.cssText='position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #bbdefb;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:200;max-height:180px;overflow-y:auto;display:none;';
+    (function(vid2){
+      pinInput.addEventListener('input',function(){
+        var q2=this.value.trim().toLowerCase();
+        pinDD.innerHTML='';
+        if(!q2){pinDD.style.display='none';return;}
+        var matches=staff.filter(function(e){return e.name.toLowerCase().indexOf(q2)>=0;}).slice(0,8);
+        if(!matches.length){pinDD.style.display='none';return;}
+        matches.forEach(function(e){
+          var item=document.createElement('div');
+          item.style.cssText='padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f4ff;';
+          item.innerHTML='<span style="font-weight:700;">'+esc(e.name)+'</span> <span style="color:#888;font-size:11px;">'+esc(e.role)+'</span>'+(e.pv&&e.pv!==vid2?'<span style="color:#e65100;font-size:10px;"> (currently at '+esc((getV(e.pv)||{name:'?'}).name)+')</span>':'');
+          item.addEventListener('mouseenter',function(){this.style.background='#e8f5e9';});
+          item.addEventListener('mouseleave',function(){this.style.background='';});
+          item.addEventListener('click',(function(eid){return function(){
+            var emp2=getS(eid);if(!emp2)return;
+            var oldPv=emp2.pv;
+            emp2.pv=vid2;
+            emp2.fixedDuty=emp2.fixedDuty||'6:00 AM';
+            updatePinnedInFutureDlogs(eid,vid2,oldPv,emp2.fixedDuty);
+            toast(emp2.name+' pinned to '+(getV(vid2)||{name:'venue'}).name);
+            pinInput.value='';pinDD.style.display='none';
+            saveCloud();drawMVenues();applyPinned();drawVenueGrid();
+          };})(e.id));
+          pinDD.appendChild(item);
+        });
+        pinDD.style.display='block';
+      });
+    })(v.id);
+    document.addEventListener('click',function(ev){if(!pinWrap.contains(ev.target))pinDD.style.display='none';},{capture:false});
+    pinWrap.appendChild(pinInput);pinWrap.appendChild(pinDD);
+    wrap.appendChild(pinWrap);
+
+    el.appendChild(wrap);
   });
 }
 if(g('MVS'))g('MVS').addEventListener('input',function(){drawMVenues();});
@@ -2863,10 +2967,26 @@ function saveLog(forDate){
   Object.keys(asgn).forEach(function(vid){
     if(!asgn[vid])return;
     log.venues[vid]={};
-    Object.keys(asgn[vid]).forEach(function(eid){log.venues[vid][eid]=asgn[vid][eid].duty;});
+    Object.keys(asgn[vid]).forEach(function(eid){
+      log.venues[vid][eid]=asgn[vid][eid].duty;
+      if(asgn[vid][eid].camType){
+        if(!log.camTypes)log.camTypes={};
+        if(!log.camTypes[vid])log.camTypes[vid]={};
+        log.camTypes[vid][eid]=asgn[vid][eid].camType;
+      }
+    });
   });
   Object.keys(lvMap).forEach(function(eid){log.leave.push({id:eid,duty:lvMap[eid].duty});});
   Object.keys(offMap).forEach(function(eid){log.office.push({id:eid,duty:offMap[eid].duty});});
+  // Save date-specific VIP and halls
+  if(Object.keys(_dateVip).length)log.dateVip=JSON.parse(JSON.stringify(_dateVip));
+  if(Object.keys(_dateHalls).length)log.dateHalls=JSON.parse(JSON.stringify(_dateHalls));
+  // Save manually-added empty venues so they persist on refresh
+  log.manualVids=activeVids.filter(function(vid){
+    var hasStaff=asgn[vid]&&Object.keys(asgn[vid]).length>0;
+    var isContracted=staff.some(function(e){return e.pv===vid;});
+    return !hasStaff&&!isContracted;
+  });
   dlog[d]=log;
 }
 

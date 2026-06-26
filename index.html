@@ -934,7 +934,8 @@ document.querySelectorAll('.nb').forEach(function(btn){
 
 // ── INIT ──────────────────────────────────────────────────────
 function initApp(){
-  g('DP').value=nd(todayIST()); // default to tomorrow
+  // Always start on today — the correct date will be set AFTER Firebase loads
+  g('DP').value=todayIST();
   var dp2init=document.getElementById('DP2');
   if(dp2init)dp2init.value=g('DP').value;
   document.body.classList.add('in-assign');
@@ -948,6 +949,26 @@ function initApp(){
   loadFromCloud(function(){
     populateRoleDD();populateVenueDD();populateTimeDD();
     populateSRDrops();
+    // Smart date default: NOW that Firebase data is loaded, check if today has data.
+    // If today has data -> stay on today. If today is empty -> advance to tomorrow.
+    var _todayStr=todayIST();
+    var _todayLog=dlog[_todayStr];
+    var _todayHasData=_todayLog&&(
+      (_todayLog.leave&&_todayLog.leave.length>0)||
+      (_todayLog.office&&_todayLog.office.length>0)||
+      Object.keys(_todayLog.venues||{}).some(function(vid){return Object.keys(_todayLog.venues[vid]||{}).length>0;})||
+      (_todayLog.manualVids&&_todayLog.manualVids.length>0)
+    );
+    if(!_todayHasData){
+      // Today is empty — switch to tomorrow for planning
+      var _tomorrowStr=nd(_todayStr);
+      if(g('DP').value!==_tomorrowStr){
+        g('DP').value=_tomorrowStr;
+        if(dp2init)dp2init.value=_tomorrowStr;
+        switchToDate(_tomorrowStr);
+        return; // switchToDate will trigger redraw
+      }
+    }
     // Live working set already hydrated by loadLiveFromDlog in the snapshot handler.
     initActiveVids(); // run AFTER Firebase data loaded so contractedHiddenVids is correct
     drawStats();

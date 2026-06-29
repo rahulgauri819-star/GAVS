@@ -5652,8 +5652,10 @@ function loadFromCloud(callback){
         // One-time migration: if this date has no dlog entry yet but Firebase
         // still has a legacy top-level asgn/lvMap/offMap, seed dlog[_curDate]
         // from it so existing data isn't lost on first load after this update.
+        // GUARD: only migrate into today's actual date — never seed future/past
+        // dates, or the legacy asgn bleeds into every empty date the user opens.
         var _hasDlogForDate=!!(dlog[_curDate]&&Object.keys(dlog[_curDate].venues||{}).length);
-        if(!_hasDlogForDate&&d.asgn&&Object.keys(d.asgn).length){
+        if(!_hasDlogForDate&&d.asgn&&Object.keys(d.asgn).length&&_curDate===todayIST()){
           var migV={};
           Object.keys(d.asgn).forEach(function(vid){
             migV[vid]={};

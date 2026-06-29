@@ -1670,6 +1670,13 @@ function makeVenueBox(v,hasPinned,viewData){
   allTimeBtn.title='Set same time for all staff';
   allTimeBtn.addEventListener('click',(function(vid){return function(){showBulkTime(vid);};})(v.id));
   hdr.appendChild(allTimeBtn);
+  // 📅 Copy from previous day button
+  var cpyDayBtn=document.createElement('button');
+  cpyDayBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 5px;font-size:10px;cursor:pointer;flex-shrink:0;';
+  cpyDayBtn.textContent='📅';
+  cpyDayBtn.title='Copy staff from previous day';
+  cpyDayBtn.addEventListener('click',(function(vid){return function(ev){ev.stopPropagation();showCopyPrevDay(vid);};})(v.id));
+  hdr.appendChild(cpyDayBtn);
   // Eye button for contracted venues — toggle pinned staff visibility
   if(hasPinned){
     var eyeOn=pinnedVisibleVids.has(v.id);
@@ -2069,6 +2076,112 @@ function showBulkVendorTime(vid){
     closeModal();toast('All vendors set to '+shortTime(val));drawVenueGrid();saveCloud();
   };
   g('m-no').onclick=closeModal;
+}
+
+
+
+function showCopyPrevDay(vid){
+  var v=getV(vid);if(!v)return;
+  var curDate=getD();
+  var cur=new Date(curDate);cur.setDate(cur.getDate()-1);
+  var prevDate=cur.toISOString().slice(0,10);
+  var prevLog=dlog[prevDate];
+  var prevVenue=prevLog&&prevLog.venues?prevLog.venues[vid]:null;
+  var prevCamTypes=(prevLog&&prevLog.camTypes&&prevLog.camTypes[vid])||{};
+  var entries=[];
+  if(prevVenue){
+    Object.keys(prevVenue).forEach(function(eid){
+      var emp=getS(eid);if(!emp)return;
+      entries.push({eid:eid,emp:emp,duty:prevVenue[eid],camType:prevCamTypes[eid]||null});
+    });
+  }
+  if(!entries.length){
+    showModal(
+      '<div class="mt">Copy from Previous Day</div>'+
+      '<div style="text-align:center;font-size:13px;color:#888;padding:10px 0 20px 0;">No staff were assigned to <strong>'+esc(v.name)+'</strong> on '+fd(prevDate)+'.</div>'+
+      '<button class="mcancel" id="m-no">Close</button>'
+    );g('m-no').onclick=closeModal;return;
+  }
+  var _sel={};
+  entries.forEach(function(e){_sel[e.eid]=true;});
+  function renderCPDModal(){
+    var rows=entries.map(function(e){
+      var checked=_sel[e.eid];
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid #f0f0f0;">'+
+        '<input type="checkbox" id="cpd-chk-'+e.eid+'" '+(checked?'checked':'')+' style="width:16px;height:16px;cursor:pointer;accent-color:#1565c0;">'+
+        '<span style="flex:1;font-size:13px;font-weight:600;color:#1a237e;">'+esc(e.emp.name)+'</span>'+
+        '<span style="font-size:11px;color:#888;margin-right:4px;">'+esc(e.emp.role)+'</span>'+
+        '<span style="font-size:11px;color:#555;font-weight:700;min-width:44px;text-align:right;">'+shortTime(e.duty)+'</span>'+
+      '</div>';
+    }).join('');
+    showModal(
+      '<div class="mt">📅 Copy from '+fd(prevDate)+'</div>'+
+      '<div style="font-size:12px;color:#555;text-align:center;margin-bottom:10px;">Venue: <strong>'+esc(v.name)+'</strong> &rarr; <strong>'+fd(curDate)+'</strong></div>'+
+      '<div style="font-size:11px;color:#888;margin-bottom:8px;">Uncheck staff you don\'t want to copy:</div>'+
+      '<div style="max-height:280px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:14px;">'+rows+'</div>'+
+      '<button class="mbtn blue" id="m-cpd-confirm">&#10003; Assign to '+fd(curDate)+'</button>'+
+      '<button class="mcancel" id="m-no">Cancel</button>'
+    );
+    entries.forEach(function(e){
+      var chk=document.getElementById('cpd-chk-'+e.eid);
+      if(chk)chk.addEventListener('change',function(){_sel[e.eid]=chk.checked;});
+    });
+    g('m-cpd-confirm').onclick=function(){_doCopyPrevDay(vid,entries,_sel,curDate,prevDate);};
+    g('m-no').onclick=closeModal;
+  }
+  renderCPDModal();
+}
+
+function _doCopyPrevDay(vid,entries,sel,curDate,prevDate){
+  var v=getV(vid);if(!v)return;
+  var toAssign=entries.filter(function(e){return sel[e.eid];});
+  if(!toAssign.length){closeModal();toast('Nothing selected.');return;}
+  var conflicts=[];
+  toAssign.forEach(function(e){
+    var foundVid=null;
+    Object.keys(asgn).forEach(function(avid){
+      if(avid===vid)return;
+      if(asgn[avid]&&asgn[avid][e.eid])foundVid=avid;
+    });
+    if(foundVid)conflicts.push({e:e,atVid:foundVid});
+  });
+  if(conflicts.length){
+    var conflictRows=conflicts.map(function(c){
+      var atV=getV(c.atVid);
+      return '<div style="padding:6px 4px;border-bottom:1px solid #fce4ec;font-size:12px;color:#c62828;">&#9888; <strong>'+esc(c.e.emp.name)+'</strong> is already at <strong>'+(atV?esc(atV.name):'another venue')+'</strong></div>';
+    }).join('');
+    showModal(
+      '<div class="mt" style="color:#c62828;">&#9888; Conflicts Found</div>'+
+      '<div style="font-size:12px;color:#555;margin-bottom:10px;">'+conflicts.length+' staff already assigned today to another venue:</div>'+
+      '<div style="max-height:180px;overflow-y:auto;border:1px solid #ffcdd2;border-radius:8px;background:#fff8f8;margin-bottom:14px;">'+conflictRows+'</div>'+
+      '<div style="font-size:12px;color:#555;margin-bottom:14px;">Add them to <strong>'+esc(v.name)+'</strong> anyway?</div>'+
+      '<button class="mbtn blue" id="m-cpd-all" style="margin-bottom:6px;">&#10003; Add All (including conflicts)</button>'+
+      '<button class="mbtn" id="m-cpd-skip" style="background:#f57c00;margin-bottom:6px;">&#9197; Skip Conflicts, Add Rest</button>'+
+      '<button class="mcancel" id="m-no">Cancel</button>'
+    );
+    g('m-cpd-all').onclick=function(){_applyCopyPrevDay(vid,toAssign,curDate);};
+    g('m-cpd-skip').onclick=function(){
+      var conflictEids=conflicts.map(function(c){return c.e.eid;});
+      var filtered=toAssign.filter(function(e){return conflictEids.indexOf(e.eid)===-1;});
+      _applyCopyPrevDay(vid,filtered,curDate);
+    };
+    g('m-no').onclick=closeModal;
+  } else {
+    _applyCopyPrevDay(vid,toAssign,curDate);
+  }
+}
+
+function _applyCopyPrevDay(vid,toAssign,curDate){
+  if(!asgn[vid])asgn[vid]={};
+  toAssign.forEach(function(e){
+    var emp=getS(e.eid);if(!emp)return;
+    asgn[vid][e.eid]={emp:emp,duty:e.duty,pinned:(emp.pv===vid),isFixed:(emp.pv===vid)};
+    if(e.camType)asgn[vid][e.eid].camType=e.camType;
+  });
+  closeModal();
+  var vname=getV(vid)?getV(vid).name:'venue';
+  toast('Copied '+toAssign.length+' staff to '+vname);
+  drawVenueGrid();drawStaffPanel();drawStats();saveCloud();
 }
 
 function showVenueInfoPopup(vid){
@@ -5413,6 +5526,9 @@ function saveCloud(){
   SAVE_PENDING++;
   showSaveIndicator('saving');
   clearTimeout(SAVE_DEBOUNCE_TIMER);
+  // Cancel any stale retry so its old payload doesn't overwrite fresh data
+  clearTimeout(SAVE_RETRY_TIMER);
+  _offlineQueue=null;
   // 50ms debounce — practically immediate but batches rapid consecutive actions
   SAVE_DEBOUNCE_TIMER=setTimeout(function(){
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);

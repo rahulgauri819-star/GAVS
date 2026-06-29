@@ -362,7 +362,7 @@ input,select,button{font-family:inherit;}
     <div class="avp">
       <div class="vs-wrap" style="margin-bottom:8px;">
         <input class="vsi" id="V_SRCH" type="text" placeholder="🔍 Type venue name to add..." style="flex:1;"/>
-        <button id="btnResetOrder" title="Reset to original add order" style="flex-shrink:0;background:#f0f4ff;border:1.5px solid #e3eaff;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;color:#1565c0;cursor:pointer;white-space:nowrap;">↺ Reset Order</button>
+
         <div class="vdd" id="V_DD"></div>
       </div>
       <div class="vgrid" id="V_GRID" style="overflow-y:visible;"></div>
@@ -1656,7 +1656,7 @@ function makeVenueBox(v,hasPinned,viewData){
   vipBtn.addEventListener('click',(function(vid2){return function(){_dateVip[vid2]=!_dateVip[vid2];if(_dateVip[vid2]===undefined)delete _dateVip[vid2];saveCloud();drawVenueGrid();};})(v.id));
   hdr.appendChild(vipBtn);
   // Halls badge/button
-  var hallsCount=(_dateHalls[v.id]!==undefined?_dateHalls[v.id]:(vHalls[v.id]||0));
+  var hallsCount=(_dateHalls[v.id]||0);
   var hallsBtn=document.createElement('button');
   hallsBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 6px;font-size:9px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;';
   hallsBtn.textContent=hallsCount>0?('Halls: '+hallsCount):'Halls';
@@ -1726,7 +1726,7 @@ function makeVenueBox(v,hasPinned,viewData){
   if(collapsedVids.has(v.id)){return box;}
 
   // Halls warning - shown when 2+ halls set, regardless of mode
-  var hallsN=(_dateHalls[v.id]!==undefined?_dateHalls[v.id]:(vHalls[v.id]||0));
+  var hallsN=(_dateHalls[v.id]||0);
   if(hallsN>=2){
     var hallsWarn=document.createElement('div');
     hallsWarn.style.cssText='background:#fff0f0;color:#c62828;font-size:15px;font-weight:900;text-align:center;padding:7px 10px;border-bottom:2px solid #ffcdd2;letter-spacing:0.02em;';
@@ -2215,7 +2215,7 @@ function showVenueInfoPopup(vid){
 
 function showHallsPrompt(vid){
   var v=getV(vid);if(!v)return;
-  var cur=_dateHalls[vid]!==undefined?_dateHalls[vid]:(vHalls[vid]||0);
+  var cur=_dateHalls[vid]||0;
   showModal(
     '<div class="mt">Halls for Today</div>'+
     '<div style="font-size:13px;color:#555;text-align:center;margin-bottom:16px;">How many halls at <strong>'+esc(v.name)+'</strong> <span style="color:#888;">(today only)</span>?</div>'+
@@ -3985,6 +3985,7 @@ function updateATBStats(){
     '<div class="atb-stat"><div class="atb-stat-v">'+staff.length+'</div><div class="atb-stat-l">Staff</div></div>'+
     '<div class="atb-stat"><div class="atb-stat-v" style="color:#90ef90;">'+a+'</div><div class="atb-stat-l">Out</div></div>'+
     '<div class="atb-stat"><div class="atb-stat-v" style="color:#ff8a80;">'+l+'</div><div class="atb-stat-l">Leave</div></div>'+
+    (o>0?'<div class="atb-stat"><div class="atb-stat-v" style="color:#ffcc80;">'+o+'</div><div class="atb-stat-l">Godown</div></div>':'')+
     '<div class="atb-stat"><div class="atb-stat-v" style="color:#ce93d8;">'+f+'</div><div class="atb-stat-l">Free</div></div>';
 }
 
@@ -5831,12 +5832,15 @@ function makeEventSheetPDF(){
     if(hasAddr){
       doc.setTextColor(200,230,255);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
       var atr=Math.floor((colW-6)/1.8);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
-      doc.text('📍 '+at,x+3,infoY+3.5);infoY+=4.5;
+      doc.text('Addr: '+at,x+3,infoY+3.5);infoY+=4.5;
     }
     if(hasUrl){
-      doc.setTextColor(180,220,255);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
-      var urlDisp='🔗 View Map';
-      doc.textWithLink(urlDisp,x+3,infoY+3.5,{url:v.locUrl});infoY+=4.5;
+      // Yellow highlighted box for map link
+      var mapLabel='View Map';
+      var mapBoxW=colW-6;var mapBoxH=4.5;
+      doc.setFillColor(255,235,59);doc.roundedRect(x+3,infoY+0.5,mapBoxW,mapBoxH-0.5,1,1,'F');
+      doc.setTextColor(0,0,180);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+      doc.textWithLink(mapLabel,x+5,infoY+3.5,{url:v.locUrl});infoY+=4.5;
     }
     colY[ci]+=thisHdrH+1;yy=colY[ci];
     var rendered=0;
@@ -5887,9 +5891,8 @@ function makeEventSheetPDF(){
   vList.forEach(function(v){
     var entries=pdfData[v.id];var idx=0;var isCont=false;
     if(entries.length>30){
-      // Fresh page for large venues
-      if(colY[0]>startY||colY[1]>startY){doc.addPage();colY=[startY,startY];}
-      curCol=0;
+      // Fresh page for large venues — always start on new page, always left col
+      doc.addPage();colY=[startY,startY];curCol=0;
     }
     while(idx<entries.length){
       var done=renderBlock(v,entries,idx,isCont);
@@ -6160,11 +6163,14 @@ function makeDailySummaryPDF(){
     if(hasAddr){
       doc.setTextColor(200,230,255);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
       var atr=Math.floor((colW-6)/1.8);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
-      doc.text('📍 '+at,x+3,infoY+3.5);infoY+=4.5;
+      doc.text('Addr: '+at,x+3,infoY+3.5);infoY+=4.5;
     }
     if(hasUrl){
-      doc.setTextColor(180,220,255);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
-      doc.textWithLink('🔗 View Map',x+3,infoY+3.5,{url:v.locUrl});infoY+=4.5;
+      var mapLabel2='View Map';
+      var mapBoxW2=colW-6;var mapBoxH2=4.5;
+      doc.setFillColor(255,235,59);doc.roundedRect(x+3,infoY+0.5,mapBoxW2,mapBoxH2-0.5,1,1,'F');
+      doc.setTextColor(0,0,180);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+      doc.textWithLink(mapLabel2,x+5,infoY+3.5,{url:v.locUrl});infoY+=4.5;
     }
     colY[curCol]+=thisHdrH+1;
     var rendered=0;

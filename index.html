@@ -1152,7 +1152,7 @@ function applyPinned(){
 // ── STAFF PANEL ───────────────────────────────────────────────
 function drawStaffPanel(){
   var q=(g('SP_SRCH')||{}).value||'';
-  var aids=getAids(),lids=Object.keys(lvMap),oids=Object.keys(offMap);
+  var aids=getAids(),lids=Object.keys(lvMap),oids=Object.keys(offMap),gids=Object.keys(gdnMap);
 
   // Role filter pills
   var rpEl=g('SP_ROLES');
@@ -1295,7 +1295,7 @@ function drawStaffPanel(){
 
 function onGreyStaffClick(eid){
   var e=getS(eid);if(!e)return;
-  var aids=getAids(),lids=Object.keys(lvMap),oids=Object.keys(offMap);
+  var aids=getAids(),lids=Object.keys(lvMap),oids=Object.keys(offMap),gids=Object.keys(gdnMap);
   var mbox='';
   if(lids.indexOf(eid)>=0){
     showModal(
@@ -3153,7 +3153,7 @@ function unLeave(eid){
 function drawLeave(){
   var q=(g('LSR')||{}).value||'';
   g('LC').textContent=Object.keys(lvMap).length+' staff';
-  var aids=getAids(),oids=Object.keys(offMap);
+  var aids=getAids(),oids=Object.keys(offMap),gids=Object.keys(gdnMap);
   var av=staff.filter(function(e){
     return !lvMap[e.id]&&aids.indexOf(e.id)<0&&oids.indexOf(e.id)<0&&
       e.name.toLowerCase().indexOf(q.toLowerCase())>=0;

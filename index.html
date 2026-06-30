@@ -2630,7 +2630,7 @@ function showCopyFrom(){
     var dt=g('CFDATE').value;
     if(!dt){toast('Select a date','w');return;}
     var log=dlog[dt];
-    if(!log||((!Object.keys(log.venues||{}).length)&&(!log.leave||!log.leave.length)&&(!log.office||!log.office.length))){
+    if(!log||((!Object.keys(log.venues||{}).length)&&(!log.leave||!log.leave.length)&&(!log.office||!log.office.length)&&(!log.godown||!log.godown.length))){
       toast('No duties saved for '+fd(dt),'w');closeModal();return;
     }
     // Copy venue assignments
@@ -2659,6 +2659,13 @@ function showCopyFrom(){
         delete lvMap[o.id];
         offMap[o.id]={emp:emp,duty:o.duty||'6:00 AM'};
       }
+    });
+    // Copy godown team
+    (log.godown||[]).forEach(function(gd){
+      var emp=getS(gd.id);if(!emp)return;
+      Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][gd.id];});
+      delete lvMap[gd.id];delete offMap[gd.id];
+      gdnMap[gd.id]={emp:emp,duty:gd.duty||'6:00 AM'};
     });
     closeModal();
     var copied=[];
@@ -3203,9 +3210,9 @@ function unGdn(eid){
 function drawOffice(){
   var q=(g('OSR')||{}).value||'';
   g('OC').textContent=Object.keys(offMap).length+' staff';
-  var aids=getAids(),lids=Object.keys(lvMap);
+  var aids=getAids(),lids=Object.keys(lvMap),gids=Object.keys(gdnMap);
   var av=staff.filter(function(e){
-    return !offMap[e.id]&&aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&
+    return !offMap[e.id]&&aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&gids.indexOf(e.id)<0&&
       e.name.toLowerCase().indexOf(q.toLowerCase())>=0;
   });
   var mk=Object.values(offMap);
@@ -3246,6 +3253,10 @@ function buildLoPanel(el,list,type){
       btn.style.cssText='background:#c62828;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;';
       btn.textContent='Mark Leave';
       btn.addEventListener('click',(function(eid){return function(){markLeave(eid);};})(e.id));
+    } else if(type==='godown'){
+      btn.style.cssText='background:#f57f17;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;';
+      btn.textContent='Mark Godown';
+      btn.addEventListener('click',(function(eid){return function(){markGdn(eid);};})(e.id));
     } else {
       btn.style.cssText='background:#e65100;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;';
       btn.textContent='Mark Office';
@@ -3293,17 +3304,23 @@ function buildLoMarkPanel(el,list,type){
       var capturedEid=a.emp.id;
       if(type==='leave'){
         sel.addEventListener('change',function(){if(lvMap[capturedEid])lvMap[capturedEid].duty=this.value;});
+      } else if(type==='godown'){
+        sel.addEventListener('change',function(){if(gdnMap[capturedEid]){gdnMap[capturedEid].duty=this.value;saveCloud();}});
       } else {
-        sel.addEventListener('change',function(){if(offMap[capturedEid])offMap[capturedEid].duty=this.value;});
+        sel.addEventListener('change',function(){if(offMap[capturedEid]){offMap[capturedEid].duty=this.value;saveCloud();}});
       }
       info.innerHTML='<div style="font-weight:700;font-size:14px;">'+esc(a.emp.name)+'</div>';
       var dtRow=document.createElement('div');dtRow.style.cssText='display:flex;align-items:center;gap:5px;margin-top:4px;';
       dtRow.innerHTML='<span style="font-size:10px;color:#888;">⏰</span>';
       dtRow.appendChild(sel);info.appendChild(dtRow);
       var btn=document.createElement('button');
-      btn.style.cssText='background:'+(type==='leave'?'#ffebee':'#fff3e0')+';color:'+(type==='leave'?'#c62828':'#e65100')+';border:1px solid '+(type==='leave'?'#ffcdd2':'#ffe0b2')+';border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;';
+      var _btnBg=type==='leave'?'#ffebee':type==='godown'?'#fffde7':'#fff3e0';
+      var _btnCl=type==='leave'?'#c62828':type==='godown'?'#f57f17':'#e65100';
+      var _btnBd=type==='leave'?'#ffcdd2':type==='godown'?'#ffd54f':'#ffe0b2';
+      btn.style.cssText='background:'+_btnBg+';color:'+_btnCl+';border:1px solid '+_btnBd+';border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;';
       btn.textContent='Remove';
       if(type==='leave'){btn.addEventListener('click',(function(eid){return function(){unLeave(eid);};})(a.emp.id));}
+      else if(type==='godown'){btn.addEventListener('click',(function(eid){return function(){unGdn(eid);};})(a.emp.id));}
       else{btn.addEventListener('click',(function(eid){return function(){unGodown(eid);};})(a.emp.id));}
       row.appendChild(info);row.appendChild(btn);
       el.appendChild(row);

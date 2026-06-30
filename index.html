@@ -6107,7 +6107,7 @@ function makeEventSheetPDF(){
       var rb2=Math.floor(i/2)%2===0?[250,245,255]:[255,255,255];
       doc.setFillColor(rb2[0],rb2[1],rb2[2]);doc.rect(x3,yy3,colW,srH2,'F');
       doc.setFillColor(acR,acG,acB);doc.rect(x3,yy3,2,srH2,'F');
-      var nmw=Math.floor((colW-(showTime?14:4))/2.1);
+      var nmw=Math.floor((colW-(showTime?14:4))/1.65);
       var sn3=a.emp.name.length>nmw?a.emp.name.slice(0,nmw-1)+'...':a.emp.name;
       doc.setTextColor(tcR,tcG,tcB);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
       doc.text(sn3,x3+4,yy3+srH2-2);
@@ -6465,7 +6465,7 @@ function makeDailySummaryPDF(){
       var rbD=Math.floor(i/2)%2===0?[250,245,255]:[255,255,255];
       doc.setFillColor(rbD[0],rbD[1],rbD[2]);doc.rect(xD,yyD,colW,srHD,'F');
       doc.setFillColor(acR,acG,acB);doc.rect(xD,yyD,2,srHD,'F');
-      var nmwD=Math.floor((colW-(showTime?14:4))/2.1);
+      var nmwD=Math.floor((colW-(showTime?14:4))/1.65);
       var snD=a.emp.name.length>nmwD?a.emp.name.slice(0,nmwD-1)+'...':a.emp.name;
       doc.setTextColor(tcR,tcG,tcB);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
       doc.text(snD,xD+4,yyD+srHD-2);

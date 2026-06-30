@@ -511,21 +511,44 @@ input,select,button{font-family:inherit;}
 <div class="screen" id="screen-office">
   <div style="background:#fff8f0;border:1.5px solid #ffe0b2;border-radius:11px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:13px;">
     <span style="font-size:28px;">🏢</span>
-    <div><div style="font-size:18px;font-weight:800;color:#e65100;">GAVS Godown Duty</div><div style="font-size:13px;color:#666;" id="OC">0 staff</div></div>
+    <div><div style="font-size:18px;font-weight:800;color:#e65100;">Office Duty</div><div style="font-size:13px;color:#666;" id="OC">0 staff</div></div>
   </div>
   <div class="lo-grid">
     <div class="lo-panel">
       <div class="lo-ph" style="background:#fff8f0;">
-        <span>✅</span><div class="lo-title" style="color:#e65100;">Mark GAVS Godown Duty</div>
+        <span>✅</span><div class="lo-title" style="color:#e65100;">Mark Office Duty</div>
       </div>
       <div style="padding:10px;"><input class="inp" id="OSR" placeholder="Search..." style="margin-bottom:0;"/></div>
       <div class="lo-body" id="OL_AVAIL"></div>
     </div>
     <div class="lo-panel">
       <div class="lo-ph" style="background:#fff3e0;">
-        <span>🏢</span><div class="lo-title" style="color:#e65100;">Currently on GAVS Godown Duty</div>
+        <span>🏢</span><div class="lo-title" style="color:#e65100;">Currently on Office Duty</div>
       </div>
       <div class="lo-body" id="OL_MARK"></div>
+    </div>
+  </div>
+</div>
+
+<!-- GODOWN TEAM -->
+<div class="screen" id="screen-godown">
+  <div style="background:#fffde7;border:1.5px solid #fff176;border-radius:11px;padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:13px;">
+    <span style="font-size:28px;">🏗️</span>
+    <div><div style="font-size:18px;font-weight:800;color:#f57f17;">Godown Team</div><div style="font-size:13px;color:#666;" id="GC">0 staff</div></div>
+  </div>
+  <div class="lo-grid">
+    <div class="lo-panel">
+      <div class="lo-ph" style="background:#fffde7;">
+        <span>✅</span><div class="lo-title" style="color:#f57f17;">Mark Godown Team</div>
+      </div>
+      <div style="padding:10px;"><input class="inp" id="GSR" placeholder="Search..." style="margin-bottom:0;"/></div>
+      <div class="lo-body" id="GL_AVAIL"></div>
+    </div>
+    <div class="lo-panel">
+      <div class="lo-ph" style="background:#fff9c4;">
+        <span>🏗️</span><div class="lo-title" style="color:#f57f17;">Currently in Godown Team</div>
+      </div>
+      <div class="lo-body" id="GL_MARK"></div>
     </div>
   </div>
 </div>
@@ -758,7 +781,7 @@ function shortTime(t){return (t||'').replace(':00 ',' ');}
 var MONS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var DEFAULT_VENUES=['The Leela Palace New Delhi','The Oberoi New Delhi','ITC Maurya New Delhi','Taj Mahal Hotel New Delhi','The Imperial New Delhi','Hyatt Regency Delhi','Radisson Blu Plaza Delhi Airport','Le Meridien New Delhi','The Ashok New Delhi','Sheraton New Delhi Hotel','Eros Hotel New Delhi','The Suryaa New Delhi','Crowne Plaza Today Okhla','JW Marriott New Delhi Aerocity','Pullman New Delhi Aerocity','Novotel New Delhi Aerocity','Andaz Delhi','Aloft New Delhi Aerocity','Ibis New Delhi Aerocity','Pride Plaza Hotel Aerocity','Holiday Inn New Delhi Aerocity','Roseate House New Delhi','The Grand New Delhi','Shangri-La Eros New Delhi','Lalit New Delhi','Hans Hotel New Delhi','The Manor New Delhi','Hotel Bristol New Delhi','Jaypee Siddharth New Delhi','Vivanta New Delhi Dwarka','Lemon Tree Premier New Delhi','The Westin Gurgaon','Trident Gurgaon','Hyatt Place Gurgaon','Courtyard by Marriott Gurgaon','ITC Grand Bharat Gurgaon','Hilton Garden Inn Gurgaon','Four Points by Sheraton Gurgaon','DoubleTree Hilton Gurgaon','Le Meridien Gurgaon','Park Hyatt Gurgaon','Radisson Blu MBD Noida','Crowne Plaza Greater Noida','Jaypee Greens Golf Resort Noida','The Westin Sohna Resort','Vivanta Surajkund','Sheraton Saket New Delhi','Fortune Select Excalibur Gurgaon','Country Inn Sahibabad','Maidens Hotel Delhi'];
 var ROLES=['Manager','Sound Engineer','Lighting Tech','AV Tech','Stage Manager','Camera Operator','Video Tech','Crew Lead','Setup Specialist','Live Stream Tech','Projection Tech','DJ Operator','Truss Rigger'];
-var staff=[],venues=[],asgn={},lvMap={},offMap={},dlog={};
+var staff=[],venues=[],asgn={},lvMap={},offMap={},gdnMap={},dlog={};
 var vHalls={}; // venueId -> number of halls (legacy - now use _dateHalls for date-specific)
 var _dateVip={}; // date-specific VIP override: vid -> true/false
 var _dateHalls={}; // date-specific halls: vid -> count
@@ -788,7 +811,8 @@ var collapsedVids=new Set(); // venues that are collapsed (session only, not sav
 var contractedHiddenVids=new Set(); // contracted (pinned-staff) venues hidden from grid (session only, hidden by default)
 var pinnedVisibleVids=new Set(); // contracted venues where pinned staff are visible (eye toggled on)
 var lvCollapsed=false; // On Leave box collapsed state
-var offCollapsed=false; // GAVS Godown Duty box collapsed state
+var offCollapsed=false;
+var gdnCollapsed=false; // Office Duty box collapsed state
 var venueOrder=[]; // custom drag order for activeVids (saved to Firebase)
 var multiViewMode=false; // when true, venue boxes show BOTH staff and vendors together regardless of assignMode
 var drafts=[],curDraftId=null,curDraftVer=0;
@@ -922,6 +946,7 @@ function go(s){
     if(s==='manage')drawManage();
     else if(s==='leave')drawLeave();
     else if(s==='office')drawOffice();
+    else if(s==='godown')drawGodownTeam();
     else if(s==='report'){drawReport();populateVHVenue();refreshSREmp();}
     else if(s==='vendorreport'){initVendorReportDates();populateVRVVenue();populateVRCCompany();}
     else if(s==='drafts')showDraftList();
@@ -1012,7 +1037,7 @@ var _lastLoadedDate=''; // tracks the date whose data is currently in asgn/lvMap
 // Hydrate the live working set (asgn/lvMap/offMap/vendorAsgn) from a date's dlog entry.
 // This is the SINGLE source of truth for loading a date. Always clears first.
 function loadLiveFromDlog(date){
-  asgn={};lvMap={};offMap={};vendorAsgn={};
+  asgn={};lvMap={};offMap={};gdnMap={};vendorAsgn={};
   activeVids=[];
   var log=dlog[date];
   var vlog=vdlog[date];
@@ -1029,6 +1054,7 @@ function loadLiveFromDlog(date){
     });
     (log.leave||[]).forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});
     (log.office||[]).forEach(function(o){var emp=getS(o.id);if(emp)offMap[o.id]={emp:emp,duty:o.duty||'6:00 AM'};});
+    (log.godown||[]).forEach(function(g){var emp=getS(g.id);if(emp)gdnMap[g.id]={emp:emp,duty:g.duty||'6:00 AM'};});
   }
   if(vlog){
     Object.keys(vlog.venues||{}).forEach(function(vid){
@@ -1093,23 +1119,24 @@ function switchToDate(newDate){
 
 // ── STATS ─────────────────────────────────────────────────────
 function drawStats(){
-  var a=getAids().length,l=Object.keys(lvMap).length,o=Object.keys(offMap).length;
-  var f=Math.max(0,staff.length-a-l-o);
+  var a=getAids().length,l=Object.keys(lvMap).length,o=Object.keys(offMap).length,gd=Object.keys(gdnMap).length;
+  var f=Math.max(0,staff.length-a-l-o-gd);
   g('SB').innerHTML=
     chip(staff.length,'Staff','#fff')+
     chip(a,'Out','#90ef90')+
     chip(l,'Leave','#ff8a80')+
-    (o>0?chip(o,'Godown','#ffcc80'):'')+
+    (o>0?chip(o,'Office','#ffcc80'):'')+
+    (gd>0?chip(gd,'Godown','#ffd54f'):'')+
     chip(f,'Free','#ce93d8');
 }
 function chip(v,l,c){return '<div class="sc"><div class="sc-v" style="color:'+c+';">'+v+'</div><div class="sc-l">'+l+'</div></div>';}
 
 // ── APPLY PINNED ──────────────────────────────────────────────
 function applyPinned(){
-  var lids=Object.keys(lvMap),oids=Object.keys(offMap);
+  var lids=Object.keys(lvMap),oids=Object.keys(offMap),gids2=Object.keys(gdnMap);
   staff.forEach(function(e){
     if(!e.pv)return;
-    if(lids.indexOf(e.id)>=0||oids.indexOf(e.id)>=0)return;
+    if(lids.indexOf(e.id)>=0||oids.indexOf(e.id)>=0||gids2.indexOf(e.id)>=0)return;
     var v=getV(e.pv);if(!v)return;
     // Remove from other venues
     Object.keys(asgn).forEach(function(vid){if(vid!==e.pv&&asgn[vid]&&asgn[vid][e.id])delete asgn[vid][e.id];});
@@ -1164,7 +1191,7 @@ function drawStaffPanel(){
     if(q&&e.name.toLowerCase().indexOf(q.toLowerCase())<0)return false;
     if(deskRole==='__available__'){
       // Available: not assigned, not on leave, not on godown
-      return aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&oids.indexOf(e.id)<0;
+      return aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&oids.indexOf(e.id)<0&&gids.indexOf(e.id)<0;
     }
     if(deskRole!=='All'&&e.role!==deskRole)return false;
     return true;
@@ -1189,8 +1216,8 @@ function drawStaffPanel(){
     var grp=groups[r];if(!grp||!grp.length)return;
     var c=cc(r);
     // Split into available and deployed
-    var availGrp=grp.filter(function(e){return aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&oids.indexOf(e.id)<0;});
-    var depGrp=grp.filter(function(e){return aids.indexOf(e.id)>=0||lids.indexOf(e.id)>=0||oids.indexOf(e.id)>=0;});
+    var availGrp=grp.filter(function(e){return aids.indexOf(e.id)<0&&lids.indexOf(e.id)<0&&oids.indexOf(e.id)<0&&gids.indexOf(e.id)<0;});
+    var depGrp=grp.filter(function(e){return aids.indexOf(e.id)>=0||lids.indexOf(e.id)>=0||oids.indexOf(e.id)>=0||gids.indexOf(e.id)>=0;});
     var sortedGrp=availGrp.concat(depGrp);
 
     // Role heading
@@ -1208,7 +1235,8 @@ function drawStaffPanel(){
       var where='';
       if(isD){Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][e.id]){var v=getV(vid);if(v)where='('+v.name+')';}} );}
       else if(isL)where='(On Leave)';
-      else if(isO)where='(GAVS Godown Duty)';
+      else if(isO)where='(Office Duty)';
+      else if(gdnMap[e.id])where='(Godown Team)';
 
       var card=document.createElement('div');
       card.className='scard '+(grey?'dep':'avail');
@@ -1280,9 +1308,9 @@ function onGreyStaffClick(eid){
     g('m-no').onclick=closeModal;
   } else if(oids.indexOf(eid)>=0){
     showModal(
-      '<div class="mt" style="color:#e65100;">GAVS Godown Duty</div>'+
-      '<div style="text-align:center;font-size:15px;color:#333;margin-bottom:18px;"><strong>'+esc(e.name)+'</strong> is currently on GAVS Godown Duty.<br>Remove from GAVS Godown Duty?</div>'+
-      '<button class="mbtn grn" id="m-yes">Yes, Remove GAVS Godown Duty</button>'+
+      '<div class="mt" style="color:#e65100;">Office Duty</div>'+
+      '<div style="text-align:center;font-size:15px;color:#333;margin-bottom:18px;"><strong>'+esc(e.name)+'</strong> is currently on Office Duty.<br>Remove from Office Duty?</div>'+
+      '<button class="mbtn grn" id="m-yes">Yes, Remove Office Duty</button>'+
       '<button class="mcancel" id="m-no">Cancel</button>'
     );
     g('m-yes').onclick=function(){unGodown(eid);closeModal();};
@@ -1405,14 +1433,14 @@ function drawVenueGrid(){
   });
   el.appendChild(lvBox);
 
-  // ── GAVS Godown Duty drop zone ───────────────────────────────────
+  // ── Office Duty drop zone ───────────────────────────────────
   var offBox=document.createElement('div');
   var offCount=Object.keys(offMap).length;
   offBox.style.cssText='background:#fff8f0;border:2px dashed #ffcc80;border-radius:14px;overflow:hidden;min-height:100px;';
   offBox.id='drop-office';
   var offHdr=document.createElement('div');
   offHdr.style.cssText='background:#e65100;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
-  offHdr.innerHTML='<span style="font-size:16px;">🏢</span><span style="font-size:13px;font-weight:700;flex:1;">GAVS Godown Duty</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+offCount+' staff</span>';
+  offHdr.innerHTML='<span style="font-size:16px;">🏢</span><span style="font-size:13px;font-weight:700;flex:1;">Office Duty</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+offCount+' staff</span>';
   // Collapse toggle
   var offColBtn=document.createElement('button');
   offColBtn.style.cssText='background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:5px;cursor:pointer;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;';
@@ -1425,7 +1453,7 @@ function drawVenueGrid(){
     var offBody=document.createElement('div');offBody.style.cssText='padding:10px;min-height:60px;';
     var offList=Object.values(offMap);
     if(!offList.length){
-      offBody.innerHTML='<div style="text-align:center;color:#ffcc80;font-size:12px;padding:12px;">Drag staff here for GAVS Godown Duty</div>';
+      offBody.innerHTML='<div style="text-align:center;color:#ffcc80;font-size:12px;padding:12px;">Drag staff here for Office Duty</div>';
     } else {
       offList.forEach(function(a){
         var row=document.createElement('div');
@@ -1444,8 +1472,8 @@ function drawVenueGrid(){
         rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
         rm.addEventListener('click',(function(eid,ename){return function(){
           showModal(
-            '<div class="mt" style="color:#e65100;">Remove from GAVS Godown Duty?</div>'+
-            '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong> from GAVS Godown Duty?</div>'+
+            '<div class="mt" style="color:#e65100;">Remove from Office Duty?</div>'+
+            '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong> from Office Duty?</div>'+
             '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
             '<button class="mcancel" id="m-no">Cancel</button>'
           );
@@ -1466,6 +1494,66 @@ function drawVenueGrid(){
     if(eid)markGodown(eid);
   });
   el.appendChild(offBox);
+
+  // ── Godown Team drop zone ─────────────────────────────────────────
+  var gdnBox=document.createElement('div');
+  var gdnCount=Object.keys(gdnMap).length;
+  gdnBox.style.cssText='background:#fffde7;border:2px dashed #ffd54f;border-radius:14px;overflow:hidden;min-height:100px;margin-top:10px;';
+  gdnBox.id='drop-godown';
+  var gdnHdr=document.createElement('div');
+  gdnHdr.style.cssText='background:#f57f17;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
+  gdnHdr.innerHTML='<span style="font-size:16px;">🏗️</span><span style="font-size:13px;font-weight:700;flex:1;">Godown Team</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+gdnCount+' staff</span>';
+  var gdnColBtn=document.createElement('button');
+  gdnColBtn.style.cssText='background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:5px;cursor:pointer;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;';
+  gdnColBtn.textContent=gdnCollapsed?'▶':'▼';
+  gdnColBtn.title=gdnCollapsed?'Expand':'Collapse';
+  gdnColBtn.addEventListener('click',function(){gdnCollapsed=!gdnCollapsed;drawVenueGrid();});
+  gdnHdr.appendChild(gdnColBtn);
+  gdnBox.appendChild(gdnHdr);
+  if(!gdnCollapsed){
+    var gdnBody=document.createElement('div');gdnBody.style.cssText='padding:10px;min-height:60px;';
+    var gdnList=Object.values(gdnMap);
+    if(!gdnList.length){
+      gdnBody.innerHTML='<div style="text-align:center;color:#ffd54f;font-size:12px;padding:12px;">Drag staff here for Godown Team</div>';
+    } else {
+      gdnList.forEach(function(a){
+        var row=document.createElement('div');
+        var c=cc(a.emp.role);
+        row.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;';
+        var nm=document.createElement('div');
+        nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;';
+        nm.textContent=a.emp.name;
+        var gdSel=document.createElement('select');
+        gdSel.style.cssText='flex-shrink:0;background:#fffde7;border:1px solid #ffd54f;border-radius:4px;color:#f57f17;padding:1px 1px;font-size:8px;cursor:pointer;width:38px;max-width:38px;';
+        TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;gdSel.appendChild(o);});
+        (function(eid){gdSel.addEventListener('change',function(){if(gdnMap[eid]){gdnMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
+        var rm=document.createElement('button');
+        rm.className='v3rm';rm.textContent='✕';
+        rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
+        rm.addEventListener('click',(function(eid,ename){return function(){
+          showModal(
+            '<div class="mt" style="color:#f57f17;">Remove from Godown Team?</div>'+
+            '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong> from Godown Team?</div>'+
+            '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
+            '<button class="mcancel" id="m-no">Cancel</button>'
+          );
+          g('m-yes').onclick=function(){unGdn(eid);closeModal();};
+          g('m-no').onclick=closeModal;
+        };})(a.emp.id,a.emp.name));
+        row.appendChild(nm);row.appendChild(gdSel);row.appendChild(rm);
+        gdnBody.appendChild(row);
+      });
+    }
+    gdnBox.appendChild(gdnBody);
+  }
+  gdnBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#f57f17';this.style.background='#fff9c4';});
+  gdnBox.addEventListener('dragleave',function(){this.style.borderColor='#ffd54f';this.style.background='#fffde7';});
+  gdnBox.addEventListener('drop',function(ev){
+    ev.preventDefault();this.style.borderColor='#ffd54f';this.style.background='#fffde7';
+    var eid=ev.dataTransfer.getData('text/plain')||touchDragEid;
+    if(eid)markGdn(eid);
+  });
+  el.appendChild(gdnBox);
   } // end if assignMode==='staff'
 
   // ── Venue boxes — sorted by staff count (most first) unless custom order set ─
@@ -2005,7 +2093,7 @@ function dropStaff(eid,vid){
   var e=getS(eid);if(!e||!vid)return;
   // Remove from other venues
   Object.keys(asgn).forEach(function(v){if(asgn[v]&&asgn[v][eid])delete asgn[v][eid];});
-  delete lvMap[eid];delete offMap[eid];
+  delete lvMap[eid];delete offMap[eid];delete gdnMap[eid];
   if(!asgn[vid])asgn[vid]={};
   var duty=e.pv===vid?(e.fixedDuty||'6:00 AM'):'6:00 AM';
   asgn[vid][eid]={emp:e,duty:duty,pinned:e.pv===vid,isFixed:e.pv===vid};
@@ -2509,7 +2597,7 @@ function showResetDuties(){
     }
     // Clear only current date's data
     var currentDate=getD();
-    asgn={};lvMap={};offMap={};vendorAsgn={};
+    asgn={};lvMap={};offMap={};gdnMap={};vendorAsgn={};
     applyPinned(); // restore pinned staff base layer
     // Save cleared state to this date's log only
     saveLog(currentDate);saveVendorLog(currentDate);
@@ -2576,7 +2664,8 @@ function showCopyFrom(){
     var copied=[];
     if(Object.keys(log.venues||{}).length)copied.push('duties');
     if(log.leave&&log.leave.length)copied.push(log.leave.length+' on leave');
-    if(log.office&&log.office.length)copied.push(log.office.length+' godown duty');
+    if(log.office&&log.office.length)copied.push(log.office.length+' office duty');
+    if(log.godown&&log.godown.length)copied.push(log.godown.length+' godown team');
     toast('Copied from '+fd(dt)+': '+copied.join(', '));
     drawStaffPanel();drawVenueGrid();drawStats();saveCloud();
   };
@@ -2957,7 +3046,7 @@ function confirmDelStaff(eid){
     var ok=CREDS.some(function(c){return c.u===u&&c.p===p;});
     if(!ok){g('DEL_S_ERR').style.display='block';g('DEL_S_P').value='';return;}
     staff=staff.filter(function(x){return x.id!==eid;});
-    delete lvMap[eid];delete offMap[eid];
+    delete lvMap[eid];delete offMap[eid];delete gdnMap[eid];
     Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][eid];});
     closeModal();toast(e.name+' deleted','w');
     drawMStaff();drawStats();populateSRDrops();
@@ -3079,9 +3168,9 @@ if(g('LSR'))g('LSR').addEventListener('input',drawLeave);
 function markGodown(eid){
   var e=getS(eid);if(!e)return;
   Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][eid];});
-  delete lvMap[eid];
+  delete lvMap[eid];delete gdnMap[eid];
   offMap[eid]={emp:e,duty:'6:00 AM'};
-  toast(e.name+' on godown duty');
+  toast(e.name+' on Office Duty');
   drawOffice();drawStats();
   if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}else{drawVenueGrid();}
   saveCloud();
@@ -3090,6 +3179,23 @@ function unGodown(eid){
   delete offMap[eid];
   toast('Removed','w');
   drawOffice();drawStats();
+  if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
+  saveCloud();
+}
+function markGdn(eid){
+  var e=getS(eid);if(!e)return;
+  Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][eid];});
+  delete lvMap[eid];delete offMap[eid];delete gdnMap[eid];
+  gdnMap[eid]={emp:e,duty:'6:00 AM'};
+  toast(e.name+' in Godown Team');
+  drawGodownTeam();drawStats();
+  if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}else{drawVenueGrid();}
+  saveCloud();
+}
+function unGdn(eid){
+  delete gdnMap[eid];
+  toast('Removed','w');
+  drawGodownTeam();drawStats();
   if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
   saveCloud();
 }
@@ -3107,6 +3213,19 @@ function drawOffice(){
   buildLoMarkPanel(g('OL_MARK'),mk,'office');
 }
 if(g('OSR'))g('OSR').addEventListener('input',drawOffice);
+
+function drawGodownTeam(){
+  var gc=g('GC');if(gc)gc.textContent=Object.keys(gdnMap).length+' staff';
+  var q=(g('GSR')||{}).value||'';
+  var aids=getAids(),lids=Object.keys(lvMap),oids=Object.keys(offMap),gids=Object.keys(gdnMap);
+  var av=staff.filter(function(e){
+    return lids.indexOf(e.id)<0&&oids.indexOf(e.id)<0&&gids.indexOf(e.id)<0&&
+      (!q||e.name.toLowerCase().indexOf(q.toLowerCase())>=0);
+  });
+  buildLoPanel(g('GL_AVAIL'),av,'godown');
+  buildLoMarkPanel(g('GL_MARK'),Object.values(gdnMap),'godown');
+}
+if(g('GSR'))g('GSR').addEventListener('input',drawGodownTeam);
 
 function buildLoPanel(el,list,type){
   if(!el)return;
@@ -3195,7 +3314,7 @@ function buildLoMarkPanel(el,list,type){
 // ── REPORT ────────────────────────────────────────────────────
 function saveLog(forDate){
   var d=forDate||getD();
-  var log={venues:{},leave:[],office:[]};
+  var log={venues:{},leave:[],office:[],godown:[]};
   Object.keys(asgn).forEach(function(vid){
     if(!asgn[vid])return;
     log.venues[vid]={};
@@ -3210,6 +3329,7 @@ function saveLog(forDate){
   });
   Object.keys(lvMap).forEach(function(eid){log.leave.push({id:eid,duty:lvMap[eid].duty});});
   Object.keys(offMap).forEach(function(eid){log.office.push({id:eid,duty:offMap[eid].duty});});
+  log.godown=[];Object.keys(gdnMap).forEach(function(eid){log.godown.push({id:eid,duty:gdnMap[eid].duty});});
   // Save date-specific VIP and halls
   if(Object.keys(_dateVip).length)log.dateVip=JSON.parse(JSON.stringify(_dateVip));
   log.dateHalls=JSON.parse(JSON.stringify(_dateHalls)); // always write (even empty {}) to clear stale Firebase value
@@ -3319,7 +3439,7 @@ function drawReport(){
     h+='</div>';
   }
   if(ov.length){
-    h+='<div class="pvcard" style="border-left:4px solid #e65100;"><div class="pvname" style="color:#e65100;margin-bottom:8px;">GAVS Godown Duty - '+ov.length+' staff</div>';
+    h+='<div class="pvcard" style="border-left:4px solid #e65100;"><div class="pvname" style="color:#e65100;margin-bottom:8px;">Office Duty - '+ov.length+' staff</div>';
     ov.forEach(function(a,i){var c=cc(a.emp.role);h+='<div class="prow"><span class="pnum">'+(i+1)+'</span><div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:12px;">'+esc(a.emp.name)+'</div><span style="font-size:9px;color:'+c+';background:'+c+'18;border-radius:3px;padding:1px 4px;">'+esc(a.emp.role)+'</span></div></div>';});
     h+='</div>';
   }
@@ -3684,10 +3804,10 @@ function drawSR(){
       var inL=null;if(log.leave){for(var j=0;j<log.leave.length;j++){if(log.leave[j].id===eid){inL=log.leave[j];break;}}}
       var inO=null;if(log.office){for(var j=0;j<log.office.length;j++){if(log.office[j].id===eid){inO=log.office[j];break;}}}
       if(inL){status='leave';detail='On Leave';duty=inL.duty;lvD++;}
-      else if(inO){status='office';detail='GAVS Godown Duty';duty=inO.duty;offD++;}
+      else if(inO){status='office';detail='Office Duty';duty=inO.duty;offD++;}
       else{Object.keys(log.venues||{}).forEach(function(vid){if(log.venues[vid]&&log.venues[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=log.venues[vid][eid];status='deployed';dep++;}});if(status==='free')frD++;}
     } else {
-      if(ds===today){var ft2=false;Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=asgn[vid][eid].duty;status='deployed';dep++;ft2=true;}});if(!ft2&&lvMap[eid]){status='leave';detail='On Leave';lvD++;}else if(!ft2&&offMap[eid]){status='office';detail='GAVS Godown Duty';offD++;}else if(!ft2)frD++;}
+      if(ds===today){var ft2=false;Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=asgn[vid][eid].duty;status='deployed';dep++;ft2=true;}});if(!ft2&&lvMap[eid]){status='leave';detail='On Leave';lvD++;}else if(!ft2&&offMap[eid]){status='office';detail='Office Duty';offD++;}else if(!ft2)frD++;}
       else frD++;
     }
     var dc=status==='deployed'?'#1565c0':status==='leave'?'#c62828':status==='office'?'#e65100':'#ccc';
@@ -3744,7 +3864,7 @@ function makeStaffPDF(){
       var inL2=null;if(log2.leave)for(var j=0;j<log2.leave.length;j++){if(log2.leave[j].id===eid){inL2=log2.leave[j];break;}}
       var inO2=null;if(log2.office)for(var j=0;j<log2.office.length;j++){if(log2.office[j].id===eid){inO2=log2.office[j];break;}}
       if(inL2){status='leave';detail='On Leave';duty=inL2.duty;lvD++;}
-      else if(inO2){status='office';detail='GAVS Godown Duty';duty=inO2.duty;offD++;}
+      else if(inO2){status='office';detail='Office Duty';duty=inO2.duty;offD++;}
       else{Object.keys(log2.venues||{}).forEach(function(vid){if(log2.venues[vid]&&log2.venues[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=log2.venues[vid][eid];status='deployed';dep++;}});if(status==='free')frD++;}
     }else frD++;
     var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,day).getDay()];
@@ -4024,13 +4144,14 @@ g('DP').addEventListener('change',function(){
 // ATB stats update
 function updateATBStats(){
   var el=document.getElementById('ATB_STATS');if(!el)return;
-  var a=getAids().length,l=Object.keys(lvMap).length,o=Object.keys(offMap).length;
-  var f=Math.max(0,staff.length-a-l-o);
+  var a=getAids().length,l=Object.keys(lvMap).length,o=Object.keys(offMap).length,gd=Object.keys(gdnMap).length;
+  var f=Math.max(0,staff.length-a-l-o-gd);
   el.innerHTML=
     '<div class="atb-stat"><div class="atb-stat-v">'+staff.length+'</div><div class="atb-stat-l">Staff</div></div>'+
     '<div class="atb-stat"><div class="atb-stat-v" style="color:#90ef90;">'+a+'</div><div class="atb-stat-l">Out</div></div>'+
     '<div class="atb-stat"><div class="atb-stat-v" style="color:#ff8a80;">'+l+'</div><div class="atb-stat-l">Leave</div></div>'+
-    (o>0?'<div class="atb-stat"><div class="atb-stat-v" style="color:#ffcc80;">'+o+'</div><div class="atb-stat-l">Godown</div></div>':'')+
+    (o>0?'<div class="atb-stat"><div class="atb-stat-v" style="color:#ffcc80;">'+o+'</div><div class="atb-stat-l">Office</div></div>':'')+
+    (gd>0?'<div class="atb-stat"><div class="atb-stat-v" style="color:#ffd54f;">'+gd+'</div><div class="atb-stat-l">Godown</div></div>':'')+
     '<div class="atb-stat"><div class="atb-stat-v" style="color:#ce93d8;">'+f+'</div><div class="atb-stat-l">Free</div></div>';
 }
 
@@ -4095,13 +4216,13 @@ function drawLOHistory(){
   }
   h+='</div></div>';
 
-  // GAVS Godown Duty section
+  // Office Duty section
   h+='<div class="pvcard">';
-  h+='<div class="pvname" style="color:#e65100;margin-bottom:12px;">🏢 GAVS Godown Duty</div>';
+  h+='<div class="pvname" style="color:#e65100;margin-bottom:12px;">🏢 Office Duty</div>';
   h+='<div style="border:1px solid #ffe0b2;border-radius:9px;overflow:hidden;">';
   h+='<div style="display:grid;grid-template-columns:140px 1fr;background:#e65100;">';
   h+='<div style="color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Date</div>';
-  h+='<div style="color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Staff on GAVS Godown Duty</div>';
+  h+='<div style="color:#fff;padding:8px 12px;font-size:11px;font-weight:700;">Staff on Office Duty</div>';
   h+='</div>';
   var cur2=new Date(fromDate);var ri2=0;
   while(cur2<=end){
@@ -4139,7 +4260,7 @@ function makeLOPDF(){
   doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
   try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');var _lscale=280/img.naturalWidth;cv.width=280;cv.height=Math.round(img.naturalHeight*_lscale);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);var logoW=28,logoH=Math.round(28*(img.naturalHeight/img.naturalWidth));if(logoH>28){logoH=28;logoW=Math.round(28*(img.naturalWidth/img.naturalHeight));}doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4+Math.round((28-logoH)/2),logoW,logoH);}}catch(er){}
   doc.setTextColor(255,255,255);doc.setFontSize(15);doc.setFont('helvetica','bold');doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,13,{align:'center'});
-  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Leave & GAVS Godown Duty History Report',pw/2+10,21,{align:'center'});y=40;
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Leave & Office Duty History Report',pw/2+10,21,{align:'center'});y=40;
   doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,14,3,3,'F');
   doc.setTextColor(13,71,161);doc.setFontSize(10);doc.setFont('helvetica','bold');
   doc.text('Period: '+fd(fromDate)+' to '+fd(toDate),pw/2,y+9,{align:'center'});y+=20;
@@ -4194,7 +4315,7 @@ function makeLOPDF(){
   doc.text('GAVS GODOWN DUTY',mg+5,y+7);y+=11;
   doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,7,'F');
   doc.setTextColor(13,71,161);doc.setFontSize(7);doc.setFont('helvetica','bold');
-  doc.text('Date',mg+3,y+5);doc.text('Staff on GAVS Godown Duty',mg+55,y+5);y+=8;
+  doc.text('Date',mg+3,y+5);doc.text('Staff on Office Duty',mg+55,y+5);y+=8;
   var cur2=new Date(fromDate);var ri2=0;
   var _gdColW=(pw-mg*2-6)/2;
   while(cur2<=end){
@@ -5130,7 +5251,7 @@ function drawAvailableStaffZone(parentEl,venueName,accentColor,label){
   var jpA=jaipurAsgn||{};
   Object.keys(jpA).forEach(function(hid){Object.keys(jpA[hid]||{}).forEach(function(eid){deployedEids[eid]=true;});});
 
-  var availStaff=pinnedStaff.filter(function(e){return !deployedEids[e.id]&&!lvMap[e.id]&&!offMap[e.id];});
+  var availStaff=pinnedStaff.filter(function(e){return !deployedEids[e.id]&&!lvMap[e.id]&&!offMap[e.id]&&!gdnMap[e.id];});
   if(!availStaff.length)return; // hide zone if no available staff
 
   // Render as a green-bordered box in the masonry grid (same as venue boxes)
@@ -5478,6 +5599,8 @@ document.addEventListener('touchend', function(ev) {
     // Check office drop zone
     var offZone = el.closest('#drop-office');
     if(offZone){ markGodown(eid); if(navigator.vibrate)navigator.vibrate([20,10,20]); return; }
+    var gdnZone = el.closest('#drop-godown');
+    if(gdnZone){ markGdn(eid); if(navigator.vibrate)navigator.vibrate([20,10,20]); return; }
     // Check venue box
     var vbox = el.closest('.vbox');
     if(vbox) {
@@ -5959,45 +6082,46 @@ function makeEventSheetPDF(){
     }
   });
 
-  // ON LEAVE + Godown on SAME page, 2-column, no timing for ON LEAVE
-  var gdList=Object.values(offMap);var lvList=Object.values(lvMap);
-  if(gdList.length||lvList.length){
-    // Move to next col or new page
-    if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}
-    var botY=Math.max(colY[0],colY[1])+4;
-    // Make sure both sections fit together — if not, new page
-    var sw=pw-mg*2;var colW2=(sw-gap)/2;var srH=7;
-    var gdH=gdList.length?10+Math.ceil(gdList.length/2)*srH+6:0;
-    var lvH=lvList.length?10+Math.ceil(lvList.length/2)*srH+6:0;
-    if(botY+gdH+lvH>pageH){doc.addPage();botY=startY;}
-    function renderBot2(title,list,hdrBg,ac,tc,showTime){
-      if(!list.length)return;
-      var sorted=list.slice().sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
-      if(botY+10+Math.ceil(sorted.length/2)*srH>pageH){doc.addPage();botY=startY;}
-      doc.setFillColor(hdrBg[0],hdrBg[1],hdrBg[2]);doc.roundedRect(mg,botY,sw,9,2,2,'F');
-      doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
-      doc.text(title+' — '+sorted.length+' staff',mg+4,botY+6.2);botY+=10;
-      for(var i=0;i<sorted.length;i+=2){
-        if(botY+srH>pageH){doc.addPage();botY=startY;}
-        [0,1].forEach(function(col){
-          var a=sorted[i+col];if(!a)return;
-          var cx=mg+col*(colW2+gap);
-          var rb=Math.floor(i/2)%2===0?[245,245,255]:[255,255,255];
-          doc.setFillColor(rb[0],rb[1],rb[2]);doc.rect(cx,botY,colW2,srH,'F');
-          doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(cx,botY,2,srH,'F');
-          var nm2=Math.floor((colW2-(showTime?14:4))/2.1);
-          var sn2=a.emp.name.length>nm2?a.emp.name.slice(0,nm2-1)+'...':a.emp.name;
-          doc.setTextColor(tc[0],tc[1],tc[2]);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
-          doc.text(sn2,cx+4,botY+srH-2);
-          if(showTime){doc.setTextColor(ac[0],ac[1],ac[2]);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(shortTime(a.duty),cx+colW2-1,botY+srH-2,{align:'right'});}
-        });
-        botY+=srH;
+  // OFFICE DUTY + GODOWN TEAM + ON LEAVE — each as full-width flowing section
+  var offList2=Object.values(offMap).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
+  var gdnList2=Object.values(gdnMap).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
+  var lvList2=Object.values(lvMap).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
+
+  function renderSectionPDF(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
+    if(!list.length)return;
+    var srH2=7;var sw2=pw-mg*2;
+    // Start new page for each section
+    doc.addPage();colY=[startY,startY];curCol=0;
+    // Full-width header
+    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,startY-6,sw2,10,2,2,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
+    doc.text(title+' — '+list.length+' staff',mg+4,startY+1);
+    colY=[startY+5,startY+5];
+    for(var i=0;i<list.length;i++){
+      var a=list[i];
+      var ci3=curCol;var x3=colX[ci3];var yy3=colY[ci3];
+      if(colY[ci3]+srH2>pageH){
+        if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}
+        ci3=curCol;x3=colX[ci3];yy3=colY[ci3];
       }
-      botY+=6;
+      var rb2=Math.floor(i/2)%2===0?[250,245,255]:[255,255,255];
+      doc.setFillColor(rb2[0],rb2[1],rb2[2]);doc.rect(x3,yy3,colW,srH2,'F');
+      doc.setFillColor(acR,acG,acB);doc.rect(x3,yy3,2,srH2,'F');
+      var nmw=Math.floor((colW-(showTime?14:4))/2.1);
+      var sn3=a.emp.name.length>nmw?a.emp.name.slice(0,nmw-1)+'...':a.emp.name;
+      doc.setTextColor(tcR,tcG,tcB);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+      doc.text(sn3,x3+4,yy3+srH2-2);
+      if(showTime){doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(shortTime(a.duty),x3+colW-1,yy3+srH2-2,{align:'right'});}
+      colY[ci3]+=srH2;
+      // Alternate columns
+      curCol=curCol===0?1:0;
     }
-    renderBot2('GAVS GODOWN DUTY',gdList,[180,80,20],[230,100,20],[80,40,0],true);
-    renderBot2('ON LEAVE',lvList,[160,30,30],[200,50,50],[80,0,0],false);
   }
+
+  if(offList2.length)renderSectionPDF('OFFICE DUTY',offList2,180,80,20,230,100,20,80,40,0,true);
+  if(gdnList2.length)renderSectionPDF('GODOWN TEAM',gdnList2,180,140,0,220,170,0,80,60,0,true);
+  if(lvList2.length)renderSectionPDF('ON LEAVE',lvList2,160,30,30,200,50,50,80,0,0,false);
+
   doc.save('GAVS_EventSheet_'+d+'.pdf');toast('Event Sheet downloaded!');
 }
 function _pdfH(doc,title,sub){
@@ -6320,41 +6444,39 @@ function makeDailySummaryPDF(){
   });
 
   // ON LEAVE + Godown — same page, 2-column, no timing on leave
-  var gdList=Object.values(offMap);var lvList=Object.values(lvMap);
-  if(gdList.length||lvList.length){
-    if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}
-    var botY=Math.max(colY[0],colY[1])+4;
-    var sw=pw-mg*2;var colW2=(sw-gap)/2;var srH=7;
-    var gdH=gdList.length?10+Math.ceil(gdList.length/2)*srH+6:0;
-    var lvH=lvList.length?10+Math.ceil(lvList.length/2)*srH+6:0;
-    if(botY+gdH+lvH>pageH){doc.addPage();botY=startY;}
-    function renderBot2(title,list,hdrBg,ac,tc,showTime){
-      if(!list.length)return;
-      var sorted=list.slice().sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
-      if(botY+10+Math.ceil(sorted.length/2)*srH>pageH){doc.addPage();botY=startY;}
-      doc.setFillColor(hdrBg[0],hdrBg[1],hdrBg[2]);doc.roundedRect(mg,botY,sw,9,2,2,'F');
-      doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
-      doc.text(title+' — '+sorted.length+' staff',mg+4,botY+6.2);botY+=10;
-      for(var i=0;i<sorted.length;i+=2){
-        if(botY+srH>pageH){doc.addPage();botY=startY;}
-        [0,1].forEach(function(col){
-          var a=sorted[i+col];if(!a)return;
-          var cx=mg+col*(colW2+gap);
-          var rb=Math.floor(i/2)%2===0?[245,245,255]:[255,255,255];
-          doc.setFillColor(rb[0],rb[1],rb[2]);doc.rect(cx,botY,colW2,srH,'F');
-          doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(cx,botY,2,srH,'F');
-          var nm2=Math.floor((colW2-(showTime?14:4))/2.1);
-          var sn2=a.emp.name.length>nm2?a.emp.name.slice(0,nm2-1)+'...':a.emp.name;
-          doc.setTextColor(tc[0],tc[1],tc[2]);doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.text(sn2,cx+4,botY+srH-2);
-          if(showTime){doc.setTextColor(ac[0],ac[1],ac[2]);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(shortTime(a.duty),cx+colW2-1,botY+srH-2,{align:'right'});}
-        });
-        botY+=srH;
+  var offListDS=Object.values(offMap).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
+  var gdnListDS=Object.values(gdnMap).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
+  var lvListDS=Object.values(lvMap).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
+  function renderSecDS(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
+    if(!list.length)return;
+    var srHD=7;
+    doc.addPage();colY=[startY,startY];curCol=0;
+    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,startY-6,pw-mg*2,10,2,2,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
+    doc.text(title+' — '+list.length+' staff',mg+4,startY+1);
+    colY=[startY+5,startY+5];
+    for(var i=0;i<list.length;i++){
+      var a=list[i];
+      var ciD=curCol;var xD=colX[ciD];var yyD=colY[ciD];
+      if(colY[ciD]+srHD>pageH){
+        if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}
+        ciD=curCol;xD=colX[ciD];yyD=colY[ciD];
       }
-      botY+=6;
+      var rbD=Math.floor(i/2)%2===0?[250,245,255]:[255,255,255];
+      doc.setFillColor(rbD[0],rbD[1],rbD[2]);doc.rect(xD,yyD,colW,srHD,'F');
+      doc.setFillColor(acR,acG,acB);doc.rect(xD,yyD,2,srHD,'F');
+      var nmwD=Math.floor((colW-(showTime?14:4))/2.1);
+      var snD=a.emp.name.length>nmwD?a.emp.name.slice(0,nmwD-1)+'...':a.emp.name;
+      doc.setTextColor(tcR,tcG,tcB);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+      doc.text(snD,xD+4,yyD+srHD-2);
+      if(showTime){doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(shortTime(a.duty),xD+colW-1,yyD+srHD-2,{align:'right'});}
+      colY[ciD]+=srHD;
+      curCol=curCol===0?1:0;
     }
-    renderBot2('GAVS GODOWN DUTY',gdList,[180,80,20],[230,100,20],[80,40,0],true);
-    renderBot2('ON LEAVE',lvList,[160,30,30],[200,50,50],[80,0,0],false);
   }
+  if(offListDS.length)renderSecDS('OFFICE DUTY',offListDS,180,80,20,230,100,20,80,40,0,true);
+  if(gdnListDS.length)renderSecDS('GODOWN TEAM',gdnListDS,180,140,0,220,170,0,80,60,0,true);
+  if(lvListDS.length)renderSecDS('ON LEAVE',lvListDS,160,30,30,200,50,50,80,0,0,false);
   doc.save('GAVS_DailySummary_'+d+'.pdf');toast('Daily Summary downloaded!');
 }
 

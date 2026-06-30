@@ -1685,7 +1685,7 @@ function makeVenueBox(v,hasPinned,viewData){
   var _hasCmt=!!(_dateComments[v.id]&&_dateComments[v.id].trim());
   cmtBtn.style.cssText='background:'+(_hasCmt?'#f48fb1':'rgba(255,255,255,0.15)')+';border:1px solid '+(_hasCmt?'#f48fb1':'rgba(255,255,255,0.4)')+';color:#fff;border-radius:6px;padding:2px 5px;font-size:10px;cursor:pointer;flex-shrink:0;';
   cmtBtn.textContent='💬';
-  cmtBtn.title=_hasCmt?'Edit today's comment':'Add comment for today';
+  cmtBtn.title=_hasCmt?'Edit comment for today':'Add comment for today';
   cmtBtn.addEventListener('click',(function(vid){return function(ev){ev.stopPropagation();showVenueCommentPrompt(vid);};})(v.id));
   hdr.appendChild(cmtBtn);
   // Eye button for contracted venues — toggle pinned staff visibility

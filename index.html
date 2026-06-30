@@ -762,6 +762,7 @@ var staff=[],venues=[],asgn={},lvMap={},offMap={},dlog={};
 var vHalls={}; // venueId -> number of halls (legacy - now use _dateHalls for date-specific)
 var _dateVip={}; // date-specific VIP override: vid -> true/false
 var _dateHalls={}; // date-specific halls: vid -> count
+var _dateComments={}; // date-specific venue comments: vid -> string
 // ── VENDOR SYSTEM ──────────────────────────────────────────
 // 9 fixed vendor type categories
 var VENDOR_TYPES=[
@@ -1060,6 +1061,7 @@ function loadLiveFromDlog(date){
   // Restore date-specific VIP and halls
   _dateVip=log&&log.dateVip?JSON.parse(JSON.stringify(log.dateVip)):{};
   _dateHalls=log&&log.dateHalls?JSON.parse(JSON.stringify(log.dateHalls)):{};
+  _dateComments=log&&log.dateComments?JSON.parse(JSON.stringify(log.dateComments)):{};
 }
 
 function switchToDate(newDate){
@@ -1607,9 +1609,10 @@ function makeVenueBox(v,hasPinned,viewData){
   var hdr=document.createElement('div');
   hdr.className='vbox-hdr';
 
+  var _hasInfo=!!(v.address&&v.address.trim())||!!(v.locUrl&&v.locUrl.trim());
   var icon=document.createElement('span');icon.textContent=v.vip?'⭐':'🏨';
   icon.title='Edit venue address & location';
-  icon.style.cssText='cursor:pointer;';
+  icon.style.cssText='cursor:pointer;border-radius:5px;padding:1px 3px;transition:background 0.2s;'+(_hasInfo?'background:#f9a825;box-shadow:0 0 0 2px #f9a825;':'');
   (function(vid2){icon.addEventListener('click',function(ev){ev.stopPropagation();showVenueInfoPopup(vid2);});})(v.id);
   var nm=document.createElement('div');nm.className='vbox-name';nm.textContent=v.name;
   var cnt=document.createElement('span');cnt.className='vbox-cnt';cnt.style.cssText='background:rgba(255,255,255,0.2);border-radius:6px;padding:1px 6px;font-size:9px;font-weight:700;flex-shrink:0;';
@@ -1677,6 +1680,14 @@ function makeVenueBox(v,hasPinned,viewData){
   cpyDayBtn.title='Copy staff from previous day';
   cpyDayBtn.addEventListener('click',(function(vid){return function(ev){ev.stopPropagation();showCopyPrevDay(vid);};})(v.id));
   hdr.appendChild(cpyDayBtn);
+  // 💬 Daily comment button
+  var cmtBtn=document.createElement('button');
+  var _hasCmt=!!(_dateComments[v.id]&&_dateComments[v.id].trim());
+  cmtBtn.style.cssText='background:'+(_hasCmt?'#f48fb1':'rgba(255,255,255,0.15)')+';border:1px solid '+(_hasCmt?'#f48fb1':'rgba(255,255,255,0.4)')+';color:#fff;border-radius:6px;padding:2px 5px;font-size:10px;cursor:pointer;flex-shrink:0;';
+  cmtBtn.textContent='💬';
+  cmtBtn.title=_hasCmt?'Edit today's comment':'Add comment for today';
+  cmtBtn.addEventListener('click',(function(vid){return function(ev){ev.stopPropagation();showVenueCommentPrompt(vid);};})(v.id));
+  hdr.appendChild(cmtBtn);
   // Eye button for contracted venues — toggle pinned staff visibility
   if(hasPinned){
     var eyeOn=pinnedVisibleVids.has(v.id);
@@ -1725,6 +1736,14 @@ function makeVenueBox(v,hasPinned,viewData){
   // If collapsed, show only header - skip body entirely
   if(collapsedVids.has(v.id)){return box;}
 
+  // Daily comment bar — shown below blue header if comment exists
+  var _cmt=(_dateComments[v.id]||'').trim();
+  if(_cmt){
+    var cmtBar=document.createElement('div');
+    cmtBar.style.cssText='background:#fce4ec;color:#880e4f;font-size:12px;font-weight:700;padding:6px 10px;border-bottom:2px solid #f48fb1;text-align:center;word-break:break-word;';
+    cmtBar.textContent=_cmt;
+    box.appendChild(cmtBar);
+  }
   // Halls warning - shown when 2+ halls set, regardless of mode
   var hallsN=(_dateHalls[v.id]||0);
   if(hallsN>=2){
@@ -2182,6 +2201,31 @@ function _applyCopyPrevDay(vid,toAssign,curDate){
   var vname=getV(vid)?getV(vid).name:'venue';
   toast('Copied '+toAssign.length+' staff to '+vname);
   drawVenueGrid();drawStaffPanel();drawStats();saveCloud();
+}
+
+
+function showVenueCommentPrompt(vid){
+  var v=getV(vid);if(!v)return;
+  var existing=(_dateComments[vid]||'').trim();
+  showModal(
+    '<div class="mt">💬 Daily Comment</div>'+
+    '<div style="font-size:12px;color:#555;text-align:center;margin-bottom:12px;">Venue: <strong>'+esc(v.name)+'</strong> — today only</div>'+
+    '<textarea id="cmt-ta" rows="3" placeholder="e.g. Extra setup required, Client VIP arrival at 8 AM..." style="width:100%;box-sizing:border-box;border:1.5px solid #f48fb1;border-radius:8px;padding:9px 11px;font-size:13px;font-weight:600;resize:vertical;color:#880e4f;background:#fff9fb;">'+esc(existing)+'</textarea>'+
+    '<div style="font-size:11px;color:#aaa;margin:6px 0 14px 2px;">Leave blank to remove comment</div>'+
+    '<button class="mbtn blue" id="m-yes">Save Comment</button>'+
+    '<button class="mcancel" id="m-no">Cancel</button>'
+  );
+  var ta=document.getElementById('cmt-ta');
+  if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
+  g('m-yes').onclick=function(){
+    var val=(document.getElementById('cmt-ta').value||'').trim();
+    if(val)_dateComments[vid]=val;else delete _dateComments[vid];
+    closeModal();
+    drawVenueGrid();
+    saveCloud();
+    toast(val?'Comment saved':'Comment removed');
+  };
+  g('m-no').onclick=closeModal;
 }
 
 function showVenueInfoPopup(vid){
@@ -3169,6 +3213,7 @@ function saveLog(forDate){
   // Save date-specific VIP and halls
   if(Object.keys(_dateVip).length)log.dateVip=JSON.parse(JSON.stringify(_dateVip));
   log.dateHalls=JSON.parse(JSON.stringify(_dateHalls)); // always write (even empty {}) to clear stale Firebase value
+  log.dateComments=JSON.parse(JSON.stringify(_dateComments));
   // Save manually-added empty venues so they persist on refresh
   log.manualVids=activeVids.filter(function(vid){
     var hasStaff=asgn[vid]&&Object.keys(asgn[vid]).length>0;
@@ -5814,7 +5859,7 @@ function makeEventSheetPDF(){
     // Venue header — grows if address/url present
     var hasAddr=!!(v.address&&v.address.trim());
     var hasUrl=!!(v.locUrl&&v.locUrl.trim());
-    var extraH=(hasAddr?4.5:0)+(hasUrl?4.5:0);
+    var extraH=(hasAddr?5.5:0)+(hasUrl?5.5:0);
     var thisHdrH=hdrH+extraH;
     addLineIfNeeded(thisHdrH+rowH);
     ci=curCol;x=colX[ci];yy=colY[ci];
@@ -5830,19 +5875,33 @@ function makeEventSheetPDF(){
     doc.text(entries.length+' staff',x+colW-2,yy+6.8,{align:'right'});
     var infoY=yy+hdrH;
     if(hasAddr){
-      doc.setTextColor(200,230,255);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
-      var atr=Math.floor((colW-6)/1.8);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
-      doc.text('Addr: '+at,x+3,infoY+3.5);infoY+=4.5;
+      doc.setTextColor(220,240,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      var atr=Math.floor((colW-6)/1.5);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
+      doc.text('Addr: '+at,x+3,infoY+4);infoY+=5.5;
     }
     if(hasUrl){
-      // Yellow highlighted box for map link
+      // Full yellow box is the clickable URL link
       var mapLabel='View Map';
-      var mapBoxW=colW-6;var mapBoxH=4.5;
-      doc.setFillColor(255,235,59);doc.roundedRect(x+3,infoY+0.5,mapBoxW,mapBoxH-0.5,1,1,'F');
-      doc.setTextColor(0,0,180);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
-      doc.textWithLink(mapLabel,x+5,infoY+3.5,{url:v.locUrl});infoY+=4.5;
+      var mapBoxW=colW-6;var mapBoxH=5.5;
+      doc.setFillColor(255,235,59);doc.roundedRect(x+3,infoY+0.5,mapBoxW,mapBoxH-0.5,1.5,1.5,'F');
+      doc.setTextColor(0,0,180);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      doc.link(x+3,infoY+0.5,mapBoxW,mapBoxH-0.5,{url:v.locUrl});
+      doc.text(mapLabel,x+3+mapBoxW/2,infoY+4,{align:'center'});infoY+=5.5;
     }
     colY[ci]+=thisHdrH+1;yy=colY[ci];
+    // Comment pink box in PDF
+    var _pdfCmt=(_dateComments&&_dateComments[v.id]||'').trim();
+    if(_pdfCmt&&!isCont){
+      var cmtH=6;
+      addLineIfNeeded(cmtH+1);
+      var _cci=curCol;var _cx=colX[_cci];var _cy=colY[_cci];
+      doc.setFillColor(252,228,236);doc.roundedRect(_cx,_cy,colW,cmtH,1.5,1.5,'F');
+      doc.setDrawColor(244,143,177);doc.roundedRect(_cx,_cy,colW,cmtH,1.5,1.5,'S');
+      doc.setTextColor(136,14,79);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+      var cmtDisp=_pdfCmt.length>Math.floor((colW-6)/1.8)?_pdfCmt.slice(0,Math.floor((colW-6)/1.8)-1)+'...':_pdfCmt;
+      doc.text(cmtDisp,_cx+colW/2,_cy+cmtH/2+1.5,{align:'center'});
+      colY[_cci]+=cmtH+1;yy=colY[_cci];
+    }
     var rendered=0;
     for(var i=si;i<entries.length;i++){
       var a=entries[i];var isMgr=a.emp.role==='Manager';var rh=isMgr?mgrH:rowH;
@@ -6146,7 +6205,7 @@ function makeDailySummaryPDF(){
     var hp=!isContracted&&rows.some(function(r){return r._rt==='staff'&&r._isPinned;});
     var hasAddr=!!(v.address&&v.address.trim());
     var hasUrl=!!(v.locUrl&&v.locUrl.trim());
-    var extraH=(hasAddr?4.5:0)+(hasUrl?4.5:0);
+    var extraH=(hasAddr?5.5:0)+(hasUrl?5.5:0);
     var thisHdrH=hdrH+extraH;
     addLineIfNeeded(thisHdrH+rowH);
     var ci=curCol;var x=colX[ci];var yy=colY[ci];
@@ -6161,18 +6220,31 @@ function makeDailySummaryPDF(){
     doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(sc+' staff',x+colW-2,yy+6.8,{align:'right'});
     var infoY=yy+hdrH;
     if(hasAddr){
-      doc.setTextColor(200,230,255);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
-      var atr=Math.floor((colW-6)/1.8);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
-      doc.text('Addr: '+at,x+3,infoY+3.5);infoY+=4.5;
+      doc.setTextColor(220,240,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      var atr=Math.floor((colW-6)/1.5);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
+      doc.text('Addr: '+at,x+3,infoY+4);infoY+=5.5;
     }
     if(hasUrl){
       var mapLabel2='View Map';
-      var mapBoxW2=colW-6;var mapBoxH2=4.5;
-      doc.setFillColor(255,235,59);doc.roundedRect(x+3,infoY+0.5,mapBoxW2,mapBoxH2-0.5,1,1,'F');
-      doc.setTextColor(0,0,180);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
-      doc.textWithLink(mapLabel2,x+5,infoY+3.5,{url:v.locUrl});infoY+=4.5;
+      var mapBoxW2=colW-6;var mapBoxH2=5.5;
+      doc.setFillColor(255,235,59);doc.roundedRect(x+3,infoY+0.5,mapBoxW2,mapBoxH2-0.5,1.5,1.5,'F');
+      doc.setTextColor(0,0,180);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      doc.link(x+3,infoY+0.5,mapBoxW2,mapBoxH2-0.5,{url:v.locUrl});
+      doc.text(mapLabel2,x+3+mapBoxW2/2,infoY+4,{align:'center'});infoY+=5.5;
     }
-    colY[curCol]+=thisHdrH+1;
+    // Comment pink box in Daily Summary PDF
+    var _pdfCmt2=(_dateComments&&_dateComments[v.id]||'').trim();
+    if(_pdfCmt2){
+      var cmtH2=6;
+      doc.setFillColor(252,228,236);doc.roundedRect(x,colY[curCol]+thisHdrH+1,colW,cmtH2,1.5,1.5,'F');
+      doc.setDrawColor(244,143,177);doc.roundedRect(x,colY[curCol]+thisHdrH+1,colW,cmtH2,1.5,1.5,'S');
+      doc.setTextColor(136,14,79);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+      var cmtDisp2=_pdfCmt2.length>Math.floor((colW-6)/1.8)?_pdfCmt2.slice(0,Math.floor((colW-6)/1.8)-1)+'...':_pdfCmt2;
+      doc.text(cmtDisp2,x+colW/2,colY[curCol]+thisHdrH+1+cmtH2/2+1.5,{align:'center'});
+      colY[curCol]+=thisHdrH+1+cmtH2+1;
+    } else {
+      colY[curCol]+=thisHdrH+1;
+    }
     var rendered=0;
     for(var i=si;i<rows.length;i++){
       var row=rows[i];var rht=rh(row);

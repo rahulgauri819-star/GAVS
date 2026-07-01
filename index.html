@@ -1134,6 +1134,12 @@ function chip(v,l,c){return '<div class="sc"><div class="sc-v" style="color:'+c+
 // ── APPLY PINNED ──────────────────────────────────────────────
 function applyPinned(){
   var lids=Object.keys(lvMap),oids=Object.keys(offMap),gids2=Object.keys(gdnMap);
+  // Auto-assign staff pinned to Godown Team
+  staff.forEach(function(e){
+    if(!e.pgdn)return;
+    if(lids.indexOf(e.id)>=0||oids.indexOf(e.id)>=0)return;
+    if(!gdnMap[e.id])gdnMap[e.id]={emp:e,duty:e.fixedDuty||'6:00 AM'};
+  });
   staff.forEach(function(e){
     if(!e.pv)return;
     if(lids.indexOf(e.id)>=0||oids.indexOf(e.id)>=0||gids2.indexOf(e.id)>=0)return;
@@ -1516,32 +1522,47 @@ function drawVenueGrid(){
     if(!gdnList.length){
       gdnBody.innerHTML='<div style="text-align:center;color:#ffd54f;font-size:12px;padding:12px;">Drag staff here for Godown Team</div>';
     } else {
-      gdnList.forEach(function(a){
-        var row=document.createElement('div');
-        var c=cc(a.emp.role);
-        row.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;';
-        var nm=document.createElement('div');
-        nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;';
-        nm.textContent=a.emp.name;
-        var gdSel=document.createElement('select');
-        gdSel.style.cssText='flex-shrink:0;background:#fffde7;border:1px solid #ffd54f;border-radius:4px;color:#f57f17;padding:1px 1px;font-size:8px;cursor:pointer;width:38px;max-width:38px;';
-        TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;gdSel.appendChild(o);});
-        (function(eid){gdSel.addEventListener('change',function(){if(gdnMap[eid]){gdnMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
-        var rm=document.createElement('button');
-        rm.className='v3rm';rm.textContent='✕';
-        rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
-        rm.addEventListener('click',(function(eid,ename){return function(){
-          showModal(
-            '<div class="mt" style="color:#f57f17;">Remove from Godown Team?</div>'+
-            '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong> from Godown Team?</div>'+
-            '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
-            '<button class="mcancel" id="m-no">Cancel</button>'
-          );
-          g('m-yes').onclick=function(){unGdn(eid);closeModal();};
-          g('m-no').onclick=closeModal;
-        };})(a.emp.id,a.emp.name));
-        row.appendChild(nm);row.appendChild(gdSel);row.appendChild(rm);
-        gdnBody.appendChild(row);
+      // Group by role
+      var gdnRoleGroups={};
+      gdnList.forEach(function(a){var r=a.emp.role||'Other';if(!gdnRoleGroups[r])gdnRoleGroups[r]=[];gdnRoleGroups[r].push(a);});
+      var gdnMgrs=gdnRoleGroups['Manager']||[];
+      var gdnOtherRoles=Object.keys(gdnRoleGroups).filter(function(r){return r!=='Manager';}).sort();
+      var gdnOrderedRoles=gdnMgrs.length?['Manager'].concat(gdnOtherRoles):gdnOtherRoles;
+      gdnOrderedRoles.forEach(function(role){
+        var grp=gdnRoleGroups[role];if(!grp||!grp.length)return;
+        var rc=cc(role);
+        var rhdr=document.createElement('div');
+        rhdr.style.cssText='padding:2px 6px;font-size:9px;font-weight:800;letter-spacing:0.06em;color:#fff;background:'+rc+';border-radius:4px;margin:5px 0 2px 0;';
+        rhdr.textContent=role.toUpperCase();
+        gdnBody.appendChild(rhdr);
+        grp.forEach(function(a){
+          var isPinned=!!(a.emp.pgdn);
+          var row=document.createElement('div');
+          var c=cc(a.emp.role);
+          row.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;';
+          var nm=document.createElement('div');
+          nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;';
+          nm.textContent=(isPinned?'🔒 ':'')+a.emp.name;
+          var gdSel=document.createElement('select');
+          gdSel.style.cssText='flex-shrink:0;background:#fffde7;border:1px solid #ffd54f;border-radius:4px;color:#f57f17;padding:1px 1px;font-size:8px;cursor:pointer;width:38px;max-width:38px;';
+          TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;gdSel.appendChild(o);});
+          (function(eid){gdSel.addEventListener('change',function(){if(gdnMap[eid]){gdnMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
+          var rm=document.createElement('button');
+          rm.className='v3rm';rm.textContent='✕';
+          rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
+          rm.addEventListener('click',(function(eid,ename){return function(){
+            showModal(
+              '<div class="mt" style="color:#f57f17;">Remove from Godown Team?</div>'+
+              '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong> from Godown Team?</div>'+
+              '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
+              '<button class="mcancel" id="m-no">Cancel</button>'
+            );
+            g('m-yes').onclick=function(){unGdn(eid);closeModal();};
+            g('m-no').onclick=closeModal;
+          };})(a.emp.id,a.emp.name));
+          row.appendChild(nm);row.appendChild(gdSel);row.appendChild(rm);
+          gdnBody.appendChild(row);
+        });
       });
     }
     gdnBox.appendChild(gdnBody);
@@ -1697,7 +1718,8 @@ function makeVenueBox(v,hasPinned,viewData){
   var hdr=document.createElement('div');
   hdr.className='vbox-hdr';
 
-  var _hasInfo=!!(v.address&&v.address.trim())||!!(v.locUrl&&v.locUrl.trim());
+  var _vFresh=venues.find(function(x){return x.id===v.id;})||v;
+  var _hasInfo=!!(_vFresh.address&&_vFresh.address.trim())||!!(_vFresh.locUrl&&_vFresh.locUrl.trim());
   var icon=document.createElement('span');icon.textContent=v.vip?'⭐':'🏨';
   icon.title='Edit venue address & location';
   icon.style.cssText='cursor:pointer;border-radius:5px;padding:1px 3px;transition:background 0.2s;'+(_hasInfo?'background:#f9a825;box-shadow:0 0 0 2px #f9a825;':'');
@@ -2980,6 +3002,11 @@ function editStaff(eid){
     '<label class="lbl">Phone</label><input id="ESP" class="inp" value="'+esc(e.phone||'')+'"/>'+
     '<label class="lbl">Fixed Venue</label><select id="ESPV" class="sel">'+pvOpts+'</select>'+
     '<label class="lbl">Fixed Duty Time</label><select id="ESFT" class="sel">'+ftOpts+'</select>'+
+    '<label class="lbl" style="margin-top:8px;">Pin to Godown Team</label>'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'+
+      '<input type="checkbox" id="ESPGDN" style="width:18px;height:18px;cursor:pointer;accent-color:#f57f17;"'+(e.pgdn?' checked':'')+'>'+
+      '<span style="font-size:12px;color:#f57f17;font-weight:600;">Auto-assign to Godown Team every day</span>'+
+    '</div>'+
     '<button class="mbtn blue" id="m-yes">Save Changes</button>'+
     '<button class="mcancel" id="m-no">Cancel</button>'
   );
@@ -2988,12 +3015,14 @@ function editStaff(eid){
     if(!n){toast('Enter name','w');return;}
     if(staff.find(function(x){return x.name.toLowerCase()===n.toLowerCase()&&x.id!==eid;})){toast('"'+n+'" already exists!','e');return;}
     var r=g('ESR').value,ph=(g('ESP').value||'').trim(),pv=g('ESPV').value||'',ft=g('ESFT').value||'6:00 AM';
+    var pgdn=!!(g('ESPGDN')&&g('ESPGDN').checked);
     var oldPv=e.pv;var oldFt=e.fixedDuty||'6:00 AM';
-    e.name=n;e.role=r;e.phone=ph;e.pv=pv;e.fixedDuty=ft;
+    e.name=n;e.role=r;e.phone=ph;e.pv=pv;e.fixedDuty=ft;e.pgdn=pgdn;
     // Update in asgn
     Object.values(asgn).forEach(function(vm){if(vm&&vm[eid])vm[eid].emp=e;});
     if(lvMap[eid])lvMap[eid].emp=e;
     if(offMap[eid])offMap[eid].emp=e;
+    if(gdnMap[eid])gdnMap[eid].emp=e;
     // Update fixed venue assignment
     if(pv&&pv!==oldPv){
       if(oldPv&&asgn[oldPv])delete asgn[oldPv][eid];
@@ -6092,6 +6121,9 @@ function makeEventSheetPDF(){
     if(entries.length>30){
       // Fresh page for large venues — always start on new page, always left col
       doc.addPage();colY=[startY,startY];curCol=0;
+    } else {
+      // After previous venue, if we're in right col but left col has space, go back to left
+      if(curCol===1&&colY[0]<=colY[1]){curCol=0;}
     }
     while(idx<entries.length){
       var done=renderBlock(v,entries,idx,isCont);
@@ -6107,21 +6139,22 @@ function makeEventSheetPDF(){
   function renderSectionPDF(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
     if(!list.length)return;
     var srH2=7;var sw2=pw-mg*2;
-    // Start new page for each section
+    // New page, always left col first
     doc.addPage();colY=[startY,startY];curCol=0;
     // Full-width header
     doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,startY-6,sw2,10,2,2,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
     doc.text(title+' — '+list.length+' staff',mg+4,startY+1);
-    colY=[startY+5,startY+5];
+    colY=[startY+5,startY+5];curCol=0;
     for(var i=0;i<list.length;i++){
       var a=list[i];
-      var ci3=curCol;var x3=colX[ci3];var yy3=colY[ci3];
-      if(colY[ci3]+srH2>pageH){
-        if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}
-        ci3=curCol;x3=colX[ci3];yy3=colY[ci3];
+      // Fill left col fully first, then right col, then new page
+      if(colY[curCol]+srH2>pageH){
+        if(curCol===0){curCol=1;}
+        else{doc.addPage();colY=[startY,startY];curCol=0;}
       }
-      var rb2=Math.floor(i/2)%2===0?[250,245,255]:[255,255,255];
+      var ci3=curCol;var x3=colX[ci3];var yy3=colY[ci3];
+      var rb2=i%2===0?[250,245,255]:[255,255,255];
       doc.setFillColor(rb2[0],rb2[1],rb2[2]);doc.rect(x3,yy3,colW,srH2,'F');
       doc.setFillColor(acR,acG,acB);doc.rect(x3,yy3,2,srH2,'F');
       var nmw=Math.floor((colW-(showTime?14:4))/1.65);
@@ -6130,8 +6163,7 @@ function makeEventSheetPDF(){
       doc.text(sn3,x3+4,yy3+srH2-2);
       if(showTime){doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(shortTime(a.duty),x3+colW-1,yy3+srH2-2,{align:'right'});}
       colY[ci3]+=srH2;
-      // Alternate columns
-      curCol=curCol===0?1:0;
+      // NO column alternation — stay in left col until full
     }
   }
 
@@ -6471,15 +6503,16 @@ function makeDailySummaryPDF(){
     doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,startY-6,pw-mg*2,10,2,2,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
     doc.text(title+' — '+list.length+' staff',mg+4,startY+1);
-    colY=[startY+5,startY+5];
+    colY=[startY+5,startY+5];curCol=0;
     for(var i=0;i<list.length;i++){
       var a=list[i];
-      var ciD=curCol;var xD=colX[ciD];var yyD=colY[ciD];
-      if(colY[ciD]+srHD>pageH){
-        if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}
-        ciD=curCol;xD=colX[ciD];yyD=colY[ciD];
+      // Fill left col fully first, then right, then new page
+      if(colY[curCol]+srHD>pageH){
+        if(curCol===0){curCol=1;}
+        else{doc.addPage();colY=[startY,startY];curCol=0;}
       }
-      var rbD=Math.floor(i/2)%2===0?[250,245,255]:[255,255,255];
+      var ciD=curCol;var xD=colX[ciD];var yyD=colY[ciD];
+      var rbD=i%2===0?[250,245,255]:[255,255,255];
       doc.setFillColor(rbD[0],rbD[1],rbD[2]);doc.rect(xD,yyD,colW,srHD,'F');
       doc.setFillColor(acR,acG,acB);doc.rect(xD,yyD,2,srHD,'F');
       var nmwD=Math.floor((colW-(showTime?14:4))/1.65);
@@ -6488,7 +6521,7 @@ function makeDailySummaryPDF(){
       doc.text(snD,xD+4,yyD+srHD-2);
       if(showTime){doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(shortTime(a.duty),xD+colW-1,yyD+srHD-2,{align:'right'});}
       colY[ciD]+=srHD;
-      curCol=curCol===0?1:0;
+      // NO column alternation — stay in left col until full
     }
   }
   if(offListDS.length)renderSecDS('OFFICE DUTY',offListDS,180,80,20,230,100,20,80,40,0,true);

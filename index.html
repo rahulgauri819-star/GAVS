@@ -782,6 +782,7 @@ var MONS=['January','February','March','April','May','June','July','August','Sep
 var DEFAULT_VENUES=['The Leela Palace New Delhi','The Oberoi New Delhi','ITC Maurya New Delhi','Taj Mahal Hotel New Delhi','The Imperial New Delhi','Hyatt Regency Delhi','Radisson Blu Plaza Delhi Airport','Le Meridien New Delhi','The Ashok New Delhi','Sheraton New Delhi Hotel','Eros Hotel New Delhi','The Suryaa New Delhi','Crowne Plaza Today Okhla','JW Marriott New Delhi Aerocity','Pullman New Delhi Aerocity','Novotel New Delhi Aerocity','Andaz Delhi','Aloft New Delhi Aerocity','Ibis New Delhi Aerocity','Pride Plaza Hotel Aerocity','Holiday Inn New Delhi Aerocity','Roseate House New Delhi','The Grand New Delhi','Shangri-La Eros New Delhi','Lalit New Delhi','Hans Hotel New Delhi','The Manor New Delhi','Hotel Bristol New Delhi','Jaypee Siddharth New Delhi','Vivanta New Delhi Dwarka','Lemon Tree Premier New Delhi','The Westin Gurgaon','Trident Gurgaon','Hyatt Place Gurgaon','Courtyard by Marriott Gurgaon','ITC Grand Bharat Gurgaon','Hilton Garden Inn Gurgaon','Four Points by Sheraton Gurgaon','DoubleTree Hilton Gurgaon','Le Meridien Gurgaon','Park Hyatt Gurgaon','Radisson Blu MBD Noida','Crowne Plaza Greater Noida','Jaypee Greens Golf Resort Noida','The Westin Sohna Resort','Vivanta Surajkund','Sheraton Saket New Delhi','Fortune Select Excalibur Gurgaon','Country Inn Sahibabad','Maidens Hotel Delhi'];
 var ROLES=['Manager','Sound Engineer','Lighting Tech','AV Tech','Stage Manager','Camera Operator','Video Tech','Crew Lead','Setup Specialist','Live Stream Tech','Projection Tech','DJ Operator','Truss Rigger'];
 var staff=[],venues=[],asgn={},lvMap={},offMap={},gdnMap={},dlog={};
+var annualLeave=[]; // [{id, name, startDate, endDate}] — cross-date leave periods
 var vHalls={}; // venueId -> number of halls (legacy - now use _dateHalls for date-specific)
 var _dateVip={}; // date-specific VIP override: vid -> true/false
 var _dateHalls={}; // date-specific halls: vid -> count
@@ -1088,6 +1089,22 @@ function loadLiveFromDlog(date){
   _dateVip=log&&log.dateVip?JSON.parse(JSON.stringify(log.dateVip)):{};
   _dateHalls=log&&log.dateHalls?JSON.parse(JSON.stringify(log.dateHalls)):{};
   _dateComments=log&&log.dateComments?JSON.parse(JSON.stringify(log.dateComments)):{};
+  // Auto-apply annual/period leave for this date
+  var _alDateMs=new Date(date+'T00:00:00').getTime();
+  annualLeave.forEach(function(al){
+    var sMs=new Date(al.startDate+'T00:00:00').getTime();
+    var eMs=new Date(al.endDate+'T00:00:00').getTime();
+    if(_alDateMs>=sMs&&_alDateMs<=eMs){
+      var emp=getS(al.id);if(!emp)return;
+      // Skip if manually excluded on this date
+      if(log&&log.leaveExclude&&log.leaveExclude[al.id])return;
+      // Skip if already in lvMap (manually marked leave)
+      if(lvMap[al.id])return;
+      lvMap[al.id]={emp:emp,duty:'6:00 AM',annualLeave:true};
+      Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][al.id];});
+      delete offMap[al.id];delete gdnMap[al.id];
+    }
+  });
 }
 
 function switchToDate(newDate){
@@ -1721,11 +1738,11 @@ function makeVenueBox(v,hasPinned,viewData){
 
   var _vFresh=venues.find(function(x){return x.id===v.id;})||v;
   var _hasInfo=!!(_vFresh.address&&_vFresh.address.trim())||!!(_vFresh.locUrl&&_vFresh.locUrl.trim());
-  var icon=document.createElement('span');icon.textContent=_vipToday?'⭐':'🏨';
+  var icon=document.createElement('span');icon.textContent='🏨';
   icon.title='Edit venue address & location';
   icon.style.cssText='cursor:pointer;border-radius:5px;padding:1px 3px;transition:background 0.2s;'+(_hasInfo?'background:#f9a825;box-shadow:0 0 0 2px #f9a825;':'');
   (function(vid2){icon.addEventListener('click',function(ev){ev.stopPropagation();showVenueInfoPopup(vid2);});})(v.id);
-  var nm=document.createElement('div');nm.className='vbox-name';nm.textContent=v.name;
+  var nm=document.createElement('div');nm.className='vbox-name';nm.textContent=v.name;nm.style.cssText='flex:1;font-size:12px;font-weight:700;white-space:normal;word-break:break-word;line-height:1.25;min-width:0;';
   var cnt=document.createElement('span');cnt.className='vbox-cnt';cnt.style.cssText='background:rgba(255,255,255,0.2);border-radius:6px;padding:1px 6px;font-size:9px;font-weight:700;flex-shrink:0;';
   var vm0=vendorAsgn[v.id]||{};
   var totalVendorEntries=0;
@@ -3181,6 +3198,14 @@ function markLeave(eid){
 }
 function unLeave(eid){
   delete lvMap[eid];
+  // If staff is on annual/period leave, record this date as an exception
+  var _hasAL=annualLeave.find(function(x){return x.id===eid;});
+  if(_hasAL){
+    var _excDate=_lastLoadedDate||getD();
+    if(!dlog[_excDate])dlog[_excDate]={};
+    if(!dlog[_excDate].leaveExclude)dlog[_excDate].leaveExclude={};
+    dlog[_excDate].leaveExclude[eid]=true;
+  }
   toast('Leave removed','w');
   drawLeave();drawStats();
   if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
@@ -3297,6 +3322,45 @@ function buildLoPanel(el,list,type){
   });
 }
 
+
+function showPeriodLeavePrompt(eid, ename){
+  var existing=annualLeave.find(function(x){return x.id===eid;})||{};
+  var today=getD();
+  showModal(
+    '<div class="mt">📅 Period Leave</div>'+
+    '<div style="font-size:13px;font-weight:700;text-align:center;color:#1565c0;margin-bottom:14px;">'+esc(ename)+'</div>'+
+    '<label class="lbl">Start Date</label>'+
+    '<input type="date" id="al-start" class="inp" value="'+(existing.startDate||today)+'"/>'+
+    '<label class="lbl">End Date</label>'+
+    '<input type="date" id="al-end" class="inp" value="'+(existing.endDate||today)+'"/>'+
+    '<button class="mbtn blue" id="m-yes">Save Period Leave</button>'+
+    (existing.startDate?'<button class="mbtn" id="m-clear" style="background:#ef9a9a;color:#b71c1c;margin-top:6px;">🗑 Remove Period Leave</button>':'')+
+    '<button class="mcancel" id="m-no">Cancel</button>'
+  );
+  g('m-yes').onclick=function(){
+    var s=(g('al-start').value||'').trim();
+    var e2=(g('al-end').value||'').trim();
+    if(!s||!e2){toast('Please select both dates','w');return;}
+    if(s>e2){toast('End date must be after start date','w');return;}
+    // Remove existing entry if any
+    annualLeave=annualLeave.filter(function(x){return x.id!==eid;});
+    annualLeave.push({id:eid,name:ename,startDate:s,endDate:e2});
+    closeModal();
+    saveCloud();
+    // Re-apply for current date
+    loadLiveFromDlog(_lastLoadedDate||getD());
+    drawLeave();drawStats();drawStaffPanel();drawVenueGrid();
+    toast('Period leave set: '+fd(s)+' → '+fd(e2));
+  };
+  if(g('m-clear'))g('m-clear').onclick=function(){
+    annualLeave=annualLeave.filter(function(x){return x.id!==eid;});
+    closeModal();saveCloud();
+    drawLeave();drawStats();drawStaffPanel();drawVenueGrid();
+    toast('Period leave removed');
+  };
+  g('m-no').onclick=closeModal;
+}
+
 function buildLoMarkPanel(el,list,type){
   if(!el)return;
   el.innerHTML='';
@@ -3339,10 +3403,14 @@ function buildLoMarkPanel(el,list,type){
       } else {
         sel.addEventListener('change',function(){if(offMap[capturedEid]){offMap[capturedEid].duty=this.value;saveCloud();}});
       }
-      info.innerHTML='<div style="font-weight:700;font-size:14px;">'+esc(a.emp.name)+'</div>';
+      // Annual leave badge if active
+      var _alEntry=annualLeave.find(function(x){return x.id===a.emp.id;});
+      var _alBadge=_alEntry?('<span style="font-size:10px;color:#1565c0;font-weight:700;background:#e3f2fd;border-radius:4px;padding:1px 6px;margin-left:6px;">📅 Until '+fd(_alEntry.endDate)+'</span>'):'';
+      info.innerHTML='<div style="font-weight:700;font-size:14px;">'+esc(a.emp.name)+_alBadge+'</div>';
       var dtRow=document.createElement('div');dtRow.style.cssText='display:flex;align-items:center;gap:5px;margin-top:4px;';
       dtRow.innerHTML='<span style="font-size:10px;color:#888;">⏰</span>';
       dtRow.appendChild(sel);info.appendChild(dtRow);
+      var btnWrap=document.createElement('div');btnWrap.style.cssText='display:flex;flex-direction:column;gap:5px;align-items:flex-end;';
       var btn=document.createElement('button');
       var _btnBg=type==='leave'?'#ffebee':type==='godown'?'#fffde7':'#fff3e0';
       var _btnCl=type==='leave'?'#c62828':type==='godown'?'#f57f17':'#e65100';
@@ -3352,7 +3420,16 @@ function buildLoMarkPanel(el,list,type){
       if(type==='leave'){btn.addEventListener('click',(function(eid){return function(){unLeave(eid);};})(a.emp.id));}
       else if(type==='godown'){btn.addEventListener('click',(function(eid){return function(){unGdn(eid);};})(a.emp.id));}
       else{btn.addEventListener('click',(function(eid){return function(){unGodown(eid);};})(a.emp.id));}
-      row.appendChild(info);row.appendChild(btn);
+      btnWrap.appendChild(btn);
+      // 📅 Period leave button — only for leave type
+      if(type==='leave'){
+        var palBtn=document.createElement('button');
+        palBtn.style.cssText='background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;';
+        palBtn.textContent='📅 Period Leave';
+        palBtn.addEventListener('click',(function(eid,ename){return function(){showPeriodLeavePrompt(eid,ename);};})(a.emp.id,a.emp.name));
+        btnWrap.appendChild(palBtn);
+      }
+      row.appendChild(info);row.appendChild(btnWrap);
       el.appendChild(row);
     });
   });
@@ -5781,7 +5858,7 @@ function actuallySaveCloud(){
     });
     var payload={
       staff:staffData,venues:venueData,asgn:asgnData,lvMap:lvData,offMap:offData,
-      drafts:draftsData,roles:ROLES,dlog:dlog,activeVids:activeVids,
+      drafts:draftsData,roles:ROLES,dlog:dlog,activeVids:activeVids,annualLeave:annualLeave,
       vHalls:vHalls,venueOrder:venueOrder,
       vendorAsgn:vendorAsgn,vendorCompanies:vendorCompanies,
       vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,portalPasswords:portalPasswords,portalAccess:portalAccess,ihcHalls:ihcHalls,jaipurHalls:jaipurHalls,ihcAsgn:ihcAsgn,jaipurAsgn:jaipurAsgn,ihcLog:ihcLog,jaipurLog:jaipurLog,
@@ -5858,6 +5935,7 @@ function loadFromCloud(callback){
       // Restore dlog FIRST — it is the source of truth for every date's data
       if(d.dlog)dlog=d.dlog;
       if(d.vdlog)vdlog=d.vdlog;
+      if(d.annualLeave)annualLeave=d.annualLeave;
       // Build the live working set from dlog for the date currently shown.
       // We deliberately IGNORE the stale top-level d.asgn (it may hold any date's
       // data); each date's data lives only in dlog[date]. This is what prevents
@@ -5978,6 +6056,12 @@ function makeEventSheetPDF(){
   var pdfData={};
   Object.keys(asgn).forEach(function(vid){
     var entries=Object.values(asgn[vid]||{});
+    // Filter out staff on leave/office/godown
+    entries=entries.filter(function(a){return !lvMap[a.emp.id]&&!offMap[a.emp.id]&&!gdnMap[a.emp.id];});
+    // For IHC and Jaipur: exclude pinned/fixed staff
+    var v0=getV(vid);
+    var isIHCJaipur=v0&&(v0.name.toLowerCase().indexOf('india habitat')>=0||v0.name.toLowerCase().indexOf('jaipur')>=0);
+    if(isIHCJaipur)entries=entries.filter(function(a){return !a.pinned&&!a.isFixed;});
     var all=entries.map(function(a){return Object.assign({},a,{_isPinned:!!(a.pinned&&a.emp.pv===vid)});});
     if(all.length>0){
       all.sort(function(a,b){

@@ -775,7 +775,7 @@ var DB_LOADED=false;
 var CREDS=[{u:'admin',p:'gavs2024'},{u:'grover',p:'audio123'}];
 var curUser='';
 var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e','#37474f','#6a1b9a','#bf360c','#1565c0','#2e7d32'];
-var TIMES=['6:00 AM','7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM','7:00 PM','8:00 PM','9:00 PM','10:00 PM','11:00 PM'];
+var TIMES=['5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM','12:00 AM'];
 // Display-only short time label e.g. "6:00 AM" -> "6 AM". Stored values/PDFs always use the full TIMES format above.
 function shortTime(t){return (t||'').replace(':00 ',' ');}
 var MONS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -2486,14 +2486,14 @@ function wireBtnPDF(el){
       '<button class="mbtn grn" id="m-event">⚡ Event Sheet<br><span style="font-size:11px;font-weight:400;opacity:0.85;">Compact 2-column, pinned staff with lock icons</span></button>'+
       '<button class="mbtn" style="background:#e8f5e9;border-color:#c8e6c9;color:#1b5e20;" id="m-daily">📊 Daily Summary<br><span style="font-size:11px;font-weight:400;opacity:0.85;">All venues + staff + vendors, full picture of the day</span></button>'+
       '<button class="mbtn" style="background:#fff8f0;border-color:#ffe0b2;color:#e65100;" id="m-vendor">🚚 Vendor Summary<br><span style="font-size:11px;font-weight:400;opacity:0.85;">All vendors assigned, grouped by venue</span></button>'+
-      '<button class="mbtn" style="background:#f3e5f5;border-color:#ce93d8;color:#6a1b9a;" id="m-company">🏢 Company-Wise Vendors<br><span style="font-size:11px;font-weight:400;opacity:0.85;">Each vendor company and their assignments</span></button>'+
+      '<button class="mbtn" style="background:#fff8e1;border-color:#ffe082;color:#e65100;" id="m-company">📲 Vendor Duty Cards ZIP<br><span style="font-size:11px;font-weight:400;opacity:0.85;">WhatsApp-ready JPG cards per vendor company</span></button>'+
       '<button class="mcancel" id="m-no">Cancel</button>'
     );
     g('m-full').onclick=function(){closeModal();makePDF();};
     g('m-event').onclick=function(){closeModal();makeEventSheetPDF();};
     g('m-daily').onclick=function(){closeModal();makeDailySummaryPDF();};
     g('m-vendor').onclick=function(){closeModal();makeVendorSummaryPDF();};
-    g('m-company').onclick=function(){closeModal();makeCompanyWisePDF();};
+    g('m-company').onclick=function(){closeModal();makeVendorCardZip();};
     g('m-no').onclick=closeModal;
   });
 }
@@ -6032,12 +6032,14 @@ function makeEventSheetPDF(){
     var thisHdrH=hdrH+extraH;
     addLineIfNeeded(thisHdrH+rowH);
     ci=curCol;x=colX[ci];yy=colY[ci];
-    if(v.vip){doc.setFillColor(180,60,0);}else{doc.setFillColor(21,101,192);}
+    if(v.vip){doc.setFillColor(180,130,0);}else{doc.setFillColor(21,101,192);}
     doc.roundedRect(x,yy,colW,thisHdrH,2,2,'F');
+    if(v.vip){// Gold shimmer border for VIP
+      doc.setDrawColor(255,215,0);doc.setLineWidth(0.8);doc.roundedRect(x,yy,colW,thisHdrH,2,2,'S');doc.setLineWidth(0.3);}
     doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
     var mc=Math.floor((colW-timeW-4)/2.2);
-    var vn=v.name.length>mc?v.name.slice(0,mc-1)+'...':v.name;
-    if(isCont)vn+=' (cont.)';
+    var mc=Math.floor((colW-timeW-4)/2.2);
+    var _vipPfx=v.vip?'* ':'';var vn=(_vipPfx+v.name);if(vn.length>mc)vn=vn.slice(0,mc-1)+'...';
     doc.text(vn,x+3,yy+6.8);
     // No lock icon on venue header
     doc.setFontSize(7.5);doc.setFont('helvetica','normal');
@@ -6058,17 +6060,18 @@ function makeEventSheetPDF(){
       doc.text(mapLabel,x+3+mapBoxW/2,infoY+4,{align:'center'});infoY+=5.5;
     }
     colY[ci]+=thisHdrH+1;yy=colY[ci];
-    // Comment pink box in PDF
+    // Comment pink box in PDF — multi-line, shown on first block AND cont. blocks
     var _pdfCmt=(_dateComments&&_dateComments[v.id]||'').trim();
-    if(_pdfCmt&&!isCont){
-      var cmtH=6;
+    if(_pdfCmt){
+      doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+      var _cmtLines=doc.splitTextToSize(_pdfCmt,colW-8);
+      var cmtH=_cmtLines.length*4.5+3;
       addLineIfNeeded(cmtH+1);
       var _cci=curCol;var _cx=colX[_cci];var _cy=colY[_cci];
       doc.setFillColor(252,228,236);doc.roundedRect(_cx,_cy,colW,cmtH,1.5,1.5,'F');
       doc.setDrawColor(244,143,177);doc.roundedRect(_cx,_cy,colW,cmtH,1.5,1.5,'S');
-      doc.setTextColor(136,14,79);doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-      var cmtDisp=_pdfCmt.length>Math.floor((colW-6)/1.8)?_pdfCmt.slice(0,Math.floor((colW-6)/1.8)-1)+'...':_pdfCmt;
-      doc.text(cmtDisp,_cx+colW/2,_cy+cmtH/2+1.5,{align:'center'});
+      doc.setTextColor(136,14,79);
+      _cmtLines.forEach(function(l,li){doc.text(l,_cx+4,_cy+4+li*4.5);});
       colY[_cci]+=cmtH+1;yy=colY[_cci];
     }
     var rendered=0;
@@ -6116,6 +6119,48 @@ function makeEventSheetPDF(){
     return rendered;
   }
 
+  // Vendor rows renderer — brown background, below staff
+  var PDF_VENDOR_IDS=['genset','ups','photovideo','led','watchout'];
+  function renderVendorRowsPDF(vid){
+    var vm=vendorAsgn[vid]||{};
+    var vendorH=6;
+    PDF_VENDOR_IDS.forEach(function(tid){
+      var entries=vm[tid];if(!entries||!entries.length)return;
+      var vt=VENDOR_TYPES.find(function(x){return x.id===tid;});
+      var vtName=vt?vt.name:tid;
+      entries.forEach(function(entry){
+        if(!entry.company)return;
+        // Check space in current col
+        if(colY[curCol]+vendorH>pageH){
+          if(curCol===0){curCol=1;}
+          else{doc.addPage();colY=[startY,startY];curCol=0;}
+        }
+        var ci=curCol;var x=colX[ci];var yy=colY[ci];
+        // Brown background row
+        doc.setFillColor(93,64,55);doc.rect(x,yy,colW,vendorH,'F');
+        doc.setFillColor(188,143,116);doc.rect(x,yy,2,vendorH,'F');
+        // Vendor type label
+        doc.setTextColor(255,220,180);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+        var vtShort=vtName.replace(' Vendor','');
+        doc.text(vtShort+':',x+4,yy+vendorH-1.5);
+        // Company name
+        doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+        var compStr=entry.company;
+        if(tid==='photovideo'&&entry.serviceLabel)compStr+=(' ['+entry.serviceLabel+']');
+        var qtyStr=entry.qty?(' x'+entry.qty):'';
+        var maxW=Math.floor((colW-30)/1.6);
+        if(compStr.length>maxW)compStr=compStr.slice(0,maxW-1)+'...';
+        doc.text(compStr,x+22,yy+vendorH-1.5);
+        // Qty
+        if(qtyStr){
+          doc.setTextColor(255,220,180);doc.setFontSize(7);doc.setFont('helvetica','bold');
+          doc.text(qtyStr,x+colW-2,yy+vendorH-1.5,{align:'right'});
+        }
+        colY[ci]+=vendorH;
+      });
+    });
+  }
+
   vList.forEach(function(v){
     var entries=pdfData[v.id];var idx=0;var isCont=false;
     if(entries.length>30){
@@ -6129,6 +6174,8 @@ function makeEventSheetPDF(){
       var done=renderBlock(v,entries,idx,isCont);
       idx+=done;isCont=true;
     }
+    // Render vendor rows below staff (only on last block, not cont.)
+    renderVendorRowsPDF(v.id);
   });
 
   // OFFICE DUTY + GODOWN TEAM + ON LEAVE — each as full-width flowing section
@@ -6228,13 +6275,11 @@ function makeVendorSummaryPDF(){
 }
 
 // ── COMPANY-WISE VENDOR PDF — ZIP with folders ────────────────
-function makeCompanyWisePDF(){
-  if(!window.jspdf){toast('PDF loading...','w');return;}
-  if(!window.JSZip){toast('ZIP library not loaded yet, try again.','w');return;}
+function makeVendorCardZip(){
+  if(!window.JSZip){toast('ZIP library not loading, please try again.','w');return;}
   var d=getD();
-  // Build: typeId -> {name, companies: {co -> [{venue,qty,time,notes}]}}
-  var byType={};
-  VENDOR_TYPES.forEach(function(vt){byType[vt.id]={name:vt.name,companies:{}};});
+  // Build: company -> [{venueName, vendorType, serviceLabel, qty, time, notes}]
+  var byCompany={};
   Object.keys(vendorAsgn).forEach(function(vid){
     var v=getV(vid);if(!v)return;
     var vm=vendorAsgn[vid];
@@ -6243,54 +6288,131 @@ function makeCompanyWisePDF(){
       if(!ens.length)return;
       ens.forEach(function(en){
         var co=(en.company||'Unknown').trim();
-        if(!byType[vt.id].companies[co])byType[vt.id].companies[co]=[];
-        byType[vt.id].companies[co].push({venue:v.name,qty:en.qty||1,time:en.time||'-',notes:en.notes||''});
+        if(!byCompany[co])byCompany[co]=[];
+        byCompany[co].push({
+          venueName:v.name,
+          vendorType:vt.name,
+          serviceLabel:en.serviceLabel||'',
+          qty:en.qty||1,
+          time:en.time||'',
+          notes:en.notes||''
+        });
       });
     });
   });
-  var hasData=VENDOR_TYPES.some(function(vt){return Object.keys(byType[vt.id].companies).length>0;});
-  if(!hasData){toast('No vendors assigned for this date.','w');return;}
-  toast('Generating ZIP...','w');
+  var companies=Object.keys(byCompany).sort();
+  if(!companies.length){toast('No vendors assigned for this date.','w');return;}
+  toast('Generating Vendor Cards...','w');
   var zip=new window.JSZip();
-  VENDOR_TYPES.forEach(function(vt){
-    var td=byType[vt.id];
-    var cos=Object.keys(td.companies).sort();
-    if(!cos.length)return;
-    var folder=zip.folder(td.name);
-    cos.forEach(function(co){
-      var rows=td.companies[co];
-      var pw=210,mg=12;
-      var cdoc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-      var cy=_pdfH(cdoc,td.name,co+' - '+fd(d));
-      var cpg=pw-mg*2;
-      // Company name header
-      cdoc.setFillColor(106,27,154);cdoc.roundedRect(mg,cy,cpg,9,1.5,1.5,'F');
-      cdoc.setTextColor(255,255,255);cdoc.setFontSize(10);cdoc.setFont('helvetica','bold');
-      cdoc.text(_tr2(co,44),mg+3,cy+6.2);cy+=11;
-      // Table header
-      cdoc.setFillColor(240,244,255);cdoc.rect(mg,cy,cpg,7,'F');
-      cdoc.setTextColor(21,101,192);cdoc.setFontSize(7.5);cdoc.setFont('helvetica','bold');
-      cdoc.text('Venue',mg+2,cy+5);cdoc.text('Qty',mg+120,cy+5);cdoc.text('Time',mg+140,cy+5);cdoc.text('Notes',mg+160,cy+5);cy+=7;
-      rows.forEach(function(row){
-        if(cy+8>285){cdoc.addPage();cy=mg;}
-        cdoc.setDrawColor(220,210,240);cdoc.setLineWidth(0.3);cdoc.line(mg,cy+8,mg+cpg,cy+8);
-        cdoc.setTextColor(30,30,30);cdoc.setFontSize(8);cdoc.setFont('helvetica','normal');
-        cdoc.text(_tr2(row.venue,60),mg+2,cy+5.5);
-        cdoc.text(String(row.qty),mg+120,cy+5.5);
-        cdoc.text(_tr2(row.time,14),mg+140,cy+5.5);
-        cdoc.text(_tr2(row.notes,20),mg+160,cy+5.5);
-        cy+=8;
-      });
-      var safeName=co.replace(/[\/\\?%*:|"<>]/g,'_');
-      folder.file(safeName+'.pdf', cdoc.output('arraybuffer'));
+  var W=1080,PAD=60,ACCENT='#1a237e';
+  var logoImg=document.getElementById('logoImg');
+  function hexToRgb(hex){var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return[r,g,b];}
+  function wrapText(ctx,text,x,y,maxW,lineH){
+    var words=text.split(' ');var line='';var lines=[];
+    for(var i=0;i<words.length;i++){
+      var test=line+(line?' ':'')+words[i];
+      if(ctx.measureText(test).width>maxW&&line){lines.push(line);line=words[i];}
+      else{line=test;}
+    }
+    if(line)lines.push(line);
+    lines.forEach(function(l,i){ctx.fillText(l,x,y+i*lineH);});
+    return lines.length;
+  }
+  companies.forEach(function(co){
+    var duties=byCompany[co];
+    // Estimate height: header(320) + per duty(~210) + footer(120)
+    var H=Math.max(1920,320+duties.length*220+140);
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    var ctx=cv.getContext('2d');
+    // White background
+    ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
+    // Top header bar
+    ctx.fillStyle=ACCENT;ctx.fillRect(0,0,W,220);
+    // Logo
+    if(logoImg&&logoImg.complete&&logoImg.naturalWidth>0){
+      try{
+        var lh=130,lw=Math.round(lh*(logoImg.naturalWidth/logoImg.naturalHeight));
+        ctx.drawImage(logoImg,PAD,45,lw,lh);
+      }catch(e){}
+    }
+    // GAVS title
+    ctx.fillStyle='#ffffff';
+    ctx.font='bold 52px Arial';ctx.fillText('GROVER AUDIO VISUAL SERVICES',PAD+160,90);
+    ctx.font='32px Arial';ctx.fillText('VENDOR DUTY CARD',PAD+160,135);
+    ctx.font='bold 36px Arial';ctx.fillStyle='#ffd54f';
+    ctx.fillText(fd(d),PAD+160,180);
+    var cy=240;
+    // Company name block
+    ctx.fillStyle='#e8eaf6';ctx.fillRect(PAD,cy,W-PAD*2,110);
+    ctx.fillStyle=ACCENT;ctx.fillRect(PAD,cy,8,110);
+    ctx.fillStyle=ACCENT;ctx.font='bold 58px Arial';
+    ctx.fillText(co.length>22?co.slice(0,22)+'...':co,PAD+30,cy+48);
+    ctx.fillStyle='#555';ctx.font='32px Arial';
+    ctx.fillText(duties.length+' assignment'+(duties.length>1?'s':''),PAD+30,cy+88);
+    cy+=130;
+    // Duty cards
+    duties.forEach(function(duty,idx){
+      var cardH=190;
+      if(duty.notes)cardH+=50;
+      // Card background — alternate
+      ctx.fillStyle=idx%2===0?'#f5f5f5':'#ffffff';
+      ctx.fillRect(PAD,cy,W-PAD*2,cardH);
+      // Left accent bar colored by vendor type
+      var typeColor='#1565c0';
+      if(duty.vendorType.indexOf('Genset')>=0)typeColor='#e65100';
+      else if(duty.vendorType.indexOf('UPS')>=0)typeColor='#2e7d32';
+      else if(duty.vendorType.indexOf('Photo')>=0)typeColor='#6a1b9a';
+      else if(duty.vendorType.indexOf('LED')>=0)typeColor='#f9a825';
+      else if(duty.vendorType.indexOf('Watchout')>=0)typeColor='#00838f';
+      ctx.fillStyle=typeColor;ctx.fillRect(PAD,cy,10,cardH);
+      // Venue name
+      ctx.fillStyle='#111';ctx.font='bold 40px Arial';
+      var vn=duty.venueName.length>28?duty.venueName.slice(0,28)+'...':duty.venueName;
+      ctx.fillText(vn,PAD+26,cy+50);
+      // Vendor type + service
+      var typeLabel=duty.vendorType+(duty.serviceLabel?' — '+duty.serviceLabel:'');
+      ctx.fillStyle=typeColor;ctx.font='bold 30px Arial';
+      ctx.fillText(typeLabel.length>40?typeLabel.slice(0,40)+'...':typeLabel,PAD+26,cy+92);
+      // Qty and Time chips
+      ctx.fillStyle='#e3f2fd';ctx.fillRect(PAD+26,cy+108,160,42);
+      ctx.fillStyle='#1565c0';ctx.font='bold 28px Arial';
+      ctx.fillText('Qty: '+duty.qty,PAD+40,cy+137);
+      if(duty.time){
+        ctx.fillStyle='#e8f5e9';ctx.fillRect(PAD+200,cy+108,220,42);
+        ctx.fillStyle='#2e7d32';ctx.font='bold 28px Arial';
+        ctx.fillText(shortTime(duty.time),PAD+214,cy+137);
+      }
+      // Notes
+      if(duty.notes){
+        ctx.fillStyle='#fff9c4';ctx.fillRect(PAD+26,cy+162,W-PAD*2-36,46);
+        ctx.fillStyle='#827717';ctx.font='26px Arial';
+        ctx.fillText(duty.notes.length>55?duty.notes.slice(0,55)+'...':duty.notes,PAD+36,cy+193);
+      }
+      // Divider
+      ctx.strokeStyle='#e0e0e0';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(PAD,cy+cardH);ctx.lineTo(W-PAD,cy+cardH);ctx.stroke();
+      cy+=cardH+10;
     });
+    // Footer
+    cy=H-110;
+    ctx.fillStyle=ACCENT;ctx.fillRect(0,cy,W,110);
+    ctx.fillStyle='#ffffff';ctx.font='bold 32px Arial';ctx.textAlign='center';
+    ctx.fillText('GROVER AUDIO VISUAL SERVICES',W/2,cy+42);
+    ctx.font='26px Arial';ctx.fillStyle='#90caf9';
+    ctx.fillText('gavsindia.com | Generated: '+fd(d),W/2,cy+82);
+    ctx.textAlign='left';
+    // Export as JPG
+    var jpgData=cv.toDataURL('image/jpeg',0.92);
+    var b64=jpgData.split(',')[1];
+    var safeName=co.replace(/[\/\\?%*:|"<>]/g,'_');
+    zip.file(safeName+'_'+d+'.jpg',b64,{base64:true});
   });
   zip.generateAsync({type:'blob'}).then(function(blob){
     var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');a.href=url;a.download='GAVS_CompanyWise_'+d+'.zip';
+    var a=document.createElement('a');a.href=url;a.download='GAVS_VendorCards_'+d+'.zip';
     document.body.appendChild(a);a.click();document.body.removeChild(a);
     setTimeout(function(){URL.revokeObjectURL(url);},2000);
-    toast('Company-Wise ZIP downloaded!');
+    toast('Vendor Cards ZIP downloaded! ('+companies.length+' cards)');
   }).catch(function(e){toast('ZIP error: '+e.message,'e');});
 }
 

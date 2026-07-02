@@ -1512,7 +1512,11 @@ function drawVenueGrid(){
           g('m-yes').onclick=function(){unGodown(eid);closeModal();};
           g('m-no').onclick=closeModal;
         };})(a.emp.id,a.emp.name));
-        cell.appendChild(nm);cell.appendChild(rm);
+        var tSel=document.createElement('select');
+        tSel.style.cssText='flex-shrink:0;background:#fff8f0;border:1px solid #ffcc80;border-radius:4px;color:#e65100;padding:1px;font-size:7.5px;cursor:pointer;width:36px;max-width:36px;';
+        TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;tSel.appendChild(o);});
+        (function(eid){tSel.addEventListener('change',function(){if(offMap[eid]){offMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
+        cell.appendChild(nm);cell.appendChild(tSel);cell.appendChild(rm);
         offGrid.appendChild(cell);
       });
       offBody.appendChild(offGrid);
@@ -1559,6 +1563,10 @@ function drawVenueGrid(){
         var nm=document.createElement('div');
         nm.style.cssText='font-size:8.5px;font-weight:700;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
         nm.textContent=(isPinned?'🔒 ':'')+a.emp.name;nm.title=a.emp.name;
+        var gdtSel=document.createElement('select');
+        gdtSel.style.cssText='flex-shrink:0;background:#fffde7;border:1px solid #ffd54f;border-radius:4px;color:#f57f17;padding:1px;font-size:7.5px;cursor:pointer;width:36px;max-width:36px;';
+        TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;gdtSel.appendChild(o);});
+        (function(eid){gdtSel.addEventListener('change',function(){if(gdnMap[eid]){gdnMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
         var rm=document.createElement('button');
         rm.textContent='✕';rm.title='Remove from Godown Team';
         rm.style.cssText='background:none;border:none;color:#f57f17;font-size:10px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
@@ -1569,7 +1577,7 @@ function drawVenueGrid(){
           g('m-yes').onclick=function(){unGdn(eid);closeModal();};
           g('m-no').onclick=closeModal;
         };})(a.emp.id,a.emp.name));
-        cell.appendChild(nm);cell.appendChild(rm);
+        cell.appendChild(nm);cell.appendChild(gdtSel);cell.appendChild(rm);
         gdnGrid.appendChild(cell);
       });
       gdnBody.appendChild(gdnGrid);
@@ -6315,11 +6323,11 @@ function makeEventSheetPDF(){
         var coMaxW=Math.floor((colW-timeW-28)/1.7);
         var coStr=entry.company.length>coMaxW?entry.company.slice(0,coMaxW-1)+'...':entry.company;
         doc.text(coStr,vx+28,vyy+4.5);
-        // Service label — line 2 (small, brown italic)
+        // Service label — line 2, same style as staff name
         var svcStr=entry.serviceLabel||(tid==='photovideo'?'':vtShort);
         if(svcStr){
-          doc.setTextColor(141,87,60);doc.setFontSize(6.5);doc.setFont('helvetica','italic');
-          var svcMaxW=Math.floor((colW-timeW-28)/1.5);
+          doc.setTextColor(60,30,10);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+          var svcMaxW=Math.floor((colW-timeW-28)/1.65);
           if(svcStr.length>svcMaxW)svcStr=svcStr.slice(0,svcMaxW-1)+'...';
           doc.text(svcStr,vx+28,vyy+8.5);
         }
@@ -6334,12 +6342,12 @@ function makeEventSheetPDF(){
           doc.setTextColor(141,87,60);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
           doc.text('x'+entry.qty,vx+colW-2,vyy+8.5,{align:'right'});
         }
-        // Notes
+        // Notes — same font as staff name
         if(hasNotes){
           var noteStr=entry.notes.trim();
-          var noteMaxW=Math.floor((colW-10)/1.7);
+          var noteMaxW=Math.floor((colW-10)/1.65);
           if(noteStr.length>noteMaxW)noteStr=noteStr.slice(0,noteMaxW-1)+'...';
-          doc.setTextColor(120,80,50);doc.setFontSize(6.5);doc.setFont('helvetica','italic');
+          doc.setTextColor(60,30,10);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
           doc.text(noteStr,vx+28,vyy+rowH+2.5);
         }
         colY[vci]+=vRowH;

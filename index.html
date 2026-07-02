@@ -1087,6 +1087,12 @@ function loadLiveFromDlog(date){
   }
   // Restore date-specific VIP and halls
   _dateVip=log&&log.dateVip?JSON.parse(JSON.stringify(log.dateVip)):{};
+  // Restore contracted venue toggles for this date
+  if(log&&log.contractedVisible){
+    (log.contractedVisible).forEach(function(vid){
+      contractedHiddenVids.delete(vid);
+    });
+  }
   _dateHalls=log&&log.dateHalls?JSON.parse(JSON.stringify(log.dateHalls)):{};
   _dateComments=log&&log.dateComments?JSON.parse(JSON.stringify(log.dateComments)):{};
   // Auto-apply annual/period leave for this date
@@ -1426,7 +1432,10 @@ function drawVenueGrid(){
         row.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;';
         var nm=document.createElement('div');
         nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;';
-        nm.textContent=a.emp.name;
+        var _alE=annualLeave.find(function(x){return x.id===a.emp.id;});
+        nm.textContent=a.emp.name+(_alE?' 📅':'');
+        nm.title=_alE?('Period leave until '+fd(_alE.endDate)):'';
+        var rmWrap=document.createElement('div');rmWrap.style.cssText='display:flex;flex-direction:column;gap:2px;align-items:flex-end;flex-shrink:0;';
         var rm=document.createElement('button');
         rm.className='v3rm';rm.textContent='✕';
         rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;min-width:14px;';
@@ -1440,7 +1449,15 @@ function drawVenueGrid(){
           g('m-yes').onclick=function(){unLeave(eid);closeModal();};
           g('m-no').onclick=closeModal;
         };})(a.emp.id,a.emp.name));
-        row.appendChild(nm);row.appendChild(rm);
+        rmWrap.appendChild(rm);
+        // 📅 Period leave button
+        var palBtn2=document.createElement('button');
+        palBtn2.style.cssText='background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;border-radius:3px;padding:1px 4px;font-size:7px;font-weight:700;cursor:pointer;white-space:nowrap;';
+        palBtn2.textContent='📅';
+        palBtn2.title='Set period leave';
+        palBtn2.addEventListener('click',(function(eid,ename){return function(ev){ev.stopPropagation();showPeriodLeavePrompt(eid,ename);};})(a.emp.id,a.emp.name));
+        rmWrap.appendChild(palBtn2);
+        row.appendChild(nm);row.appendChild(rmWrap);
         lvBody.appendChild(row);
       });
     }
@@ -2591,6 +2608,12 @@ function showContractedDD(anchorBtn){
     row.addEventListener('click',function(ev){
       ev.stopPropagation();
       if(contractedHiddenVids.has(vid)){contractedHiddenVids.delete(vid);}else{contractedHiddenVids.add(vid);}
+      // Save toggle state to dlog for this date
+      var _ctDate=_lastLoadedDate||getD();
+      if(!dlog[_ctDate])dlog[_ctDate]={};
+      var _cvids=venues.filter(function(v2){return staff.some(function(e){return e.pv===v2.id;})&&!contractedHiddenVids.has(v2.id);}).map(function(v2){return v2.id;});
+      dlog[_ctDate].contractedVisible=_cvids;
+      saveCloud();
       initActiveVids();drawVenueGrid();showContractedDD._rebuild(anchorBtn);
     });
     dd.appendChild(row);
@@ -2879,6 +2902,70 @@ function drawMVenues(){
     el.innerHTML='<div style="text-align:center;padding:40px;color:#bbb;"><div style="font-size:40px;">🏨</div><div style="font-size:15px;color:#1565c0;font-weight:700;margin-top:10px;">No Venues</div></div>';
     return;
   }
+  // Godown Team pinning card — always at top
+  if(!q||'godown team'.indexOf(q.toLowerCase())>=0){
+    var gdnCard=document.createElement('div');
+    gdnCard.style.cssText='border:2px solid #ffd54f;border-radius:12px;padding:12px 14px;margin-bottom:14px;background:#fffde7;';
+    var gdnTopRow=document.createElement('div');gdnTopRow.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px;';
+    var gdnTitle=document.createElement('div');gdnTitle.style.cssText='font-size:14px;font-weight:800;color:#e65100;flex:1;';
+    gdnTitle.textContent='🏗️ Godown Team';
+    var gdnBadge=document.createElement('span');gdnBadge.style.cssText='background:#f57f17;color:#fff;border-radius:5px;padding:1px 8px;font-size:10px;font-weight:800;';
+    gdnBadge.textContent='Auto-assign';
+    gdnTopRow.appendChild(gdnTitle);gdnTopRow.appendChild(gdnBadge);
+    gdnCard.appendChild(gdnTopRow);
+    // Show pinned godown staff
+    var gdnPinned=staff.filter(function(e){return e.pgdn;});
+    if(gdnPinned.length){
+      var gdnPl=document.createElement('div');gdnPl.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;';
+      gdnPinned.forEach(function(e){
+        var pc=document.createElement('div');
+        pc.style.cssText='background:#fff9c4;border:1px solid #ffd54f;border-radius:14px;padding:2px 8px 2px 6px;font-size:11px;display:flex;align-items:center;gap:4px;';
+        pc.innerHTML='<span style="color:#e65100;font-weight:700;">'+esc(e.name)+'</span><span style="color:#555;font-size:10px;">('+esc(e.role)+')</span>';
+        var unpin=document.createElement('button');
+        unpin.style.cssText='background:none;border:none;color:#c62828;cursor:pointer;font-size:11px;padding:0 0 0 3px;line-height:1;';
+        unpin.textContent='✕';unpin.title='Remove from Godown Team';
+        (function(eid){unpin.addEventListener('click',function(){
+          var emp=getS(eid);if(!emp)return;
+          emp.pgdn=false;
+          delete gdnMap[eid];
+          toast(emp.name+' removed from Godown Team');
+          saveCloud();drawMVenues();drawGodownTeam();drawVenueGrid();drawStats();
+        });})(e.id);
+        pc.appendChild(unpin);gdnPl.appendChild(pc);
+      });
+      gdnCard.appendChild(gdnPl);
+    }
+    // Pin new staff to Godown Team
+    var gdnPinWrap=document.createElement('div');gdnPinWrap.style.cssText='position:relative;';
+    var gdnInput=document.createElement('input');
+    gdnInput.placeholder='+ Pin a staff member to Godown Team...';
+    gdnInput.style.cssText='width:100%;border:1.5px solid #ffd54f;border-radius:8px;padding:5px 10px;font-size:12px;box-sizing:border-box;background:#fffde7;';
+    var gdnDD=document.createElement('div');
+    gdnDD.style.cssText='position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #ffd54f;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:200;max-height:180px;overflow-y:auto;display:none;';
+    gdnInput.addEventListener('input',function(){
+      var qv=this.value.toLowerCase();
+      var opts=staff.filter(function(e){return !e.pgdn&&e.name.toLowerCase().indexOf(qv)>=0;}).slice(0,8);
+      gdnDD.innerHTML='';
+      opts.forEach(function(e){
+        var item=document.createElement('div');
+        item.style.cssText='padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0;';
+        item.textContent=e.name+' ('+e.role+')';
+        item.addEventListener('mousedown',function(ev){ev.preventDefault();
+          e.pgdn=true;
+          gdnInput.value='';gdnDD.style.display='none';
+          toast(e.name+' pinned to Godown Team');
+          saveCloud();drawMVenues();drawGodownTeam();applyPinned();drawVenueGrid();drawStats();
+        });
+        gdnDD.appendChild(item);
+      });
+      gdnDD.style.display=opts.length?'block':'none';
+    });
+    gdnInput.addEventListener('blur',function(){setTimeout(function(){gdnDD.style.display='none';},150);});
+    gdnPinWrap.appendChild(gdnInput);gdnPinWrap.appendChild(gdnDD);
+    gdnCard.appendChild(gdnPinWrap);
+    el.appendChild(gdnCard);
+  }
+
   var f=venues.filter(function(v){return v.name.toLowerCase().indexOf(q.toLowerCase())>=0;});
   f.forEach(function(v,i){
     var wrap=document.createElement('div');
@@ -6101,6 +6188,8 @@ function makeEventSheetPDF(){
   var curCol=0;var colY=[startY,startY];
 
   function addLineIfNeeded(needed){
+    // Always try left col first if it has space
+    if(curCol===1&&colY[0]+needed<=pageH){curCol=0;return;}
     if(colY[curCol]+needed>pageH){
       if(curCol===0){curCol=1;}
       else{doc.addPage();colY=[startY,startY];curCol=0;}
@@ -6222,41 +6311,51 @@ function makeEventSheetPDF(){
   var PDF_VENDOR_IDS=['genset','ups','photovideo','led','watchout'];
   function renderVendorRowsPDF(vid){
     var vm=vendorAsgn[vid]||{};
-    var vendorH=rowH; // Same height as staff rows
     PDF_VENDOR_IDS.forEach(function(tid){
       var entries2=vm[tid];if(!entries2||!entries2.length)return;
       var vt=VENDOR_TYPES.find(function(x){return x.id===tid;});
       var vtName=vt?vt.name:tid;
+      var vtShort=vtName.replace(' Vendor','');
       entries2.forEach(function(entry,ei){
         if(!entry.company)return;
-        if(colY[curCol]+vendorH>pageH){
+        // Calculate row height — extra line if notes present
+        var hasNotes=!!(entry.notes&&entry.notes.trim());
+        var vRowH=hasNotes?rowH+4:rowH;
+        if(colY[curCol]+vRowH>pageH){
           if(curCol===0){curCol=1;}
           else{doc.addPage();colY=[startY,startY];curCol=0;}
         }
-        var ci=curCol;var x=colX[ci];var yy=colY[ci];
-        // Brown alternating background — same pattern as staff rows
-        var vBg=ei%2===0?[62,39,35]:[74,48,43]; // dark brown alternating
-        doc.setFillColor(vBg[0],vBg[1],vBg[2]);doc.rect(x,yy,colW,vendorH,'F');
+        var vci=curCol;var vx=colX[vci];var vyy=colY[vci];
+        // Alternating light brown background — same style as staff rows
+        var vBg=ei%2===0?[250,240,230]:[255,248,242];
+        doc.setFillColor(vBg[0],vBg[1],vBg[2]);doc.rect(vx,vyy,colW,vRowH,'F');
         // Brown left accent bar
-        doc.setFillColor(188,143,116);doc.rect(x,yy,2,vendorH,'F');
-        // Vendor type short label (left, small, light brown)
-        var vtShort=vtName.replace(' Vendor','');
-        doc.setTextColor(210,170,130);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
-        doc.text(vtShort,x+4,yy+vendorH-2);
-        // Company name (center, white, same size as staff name)
+        doc.setFillColor(141,87,60);doc.rect(vx,vyy,2,vRowH,'F');
+        // Vendor type label — small, brown, left
+        doc.setTextColor(141,87,60);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+        doc.text(vtShort+':',vx+4,vyy+rowH-2);
+        // Company + service label — same size as staff name
         var compStr=entry.company;
         if(tid==='photovideo'&&entry.serviceLabel)compStr+=' ['+entry.serviceLabel+']';
-        var nmMaxW=Math.floor((colW-timeW-20)/1.85);
+        var nmMaxW=Math.floor((colW-timeW-26)/1.85);
         if(compStr.length>nmMaxW)compStr=compStr.slice(0,nmMaxW-1)+'...';
-        doc.setTextColor(255,240,220);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
-        doc.text(compStr,x+4+28,yy+vendorH-2);
-        // Qty (right, amber, bold — same position as time)
-        var qtyStr=entry.qty?'x'+entry.qty:'';
-        if(qtyStr){
-          doc.setTextColor(210,170,130);doc.setFontSize(8);doc.setFont('helvetica','bold');
-          doc.text(qtyStr,x+colW-2,yy+vendorH-2,{align:'right'});
+        doc.setTextColor(60,30,10);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+        doc.text(compStr,vx+28,vyy+rowH-2);
+        // Time — same position as staff time
+        var tStr=entry.time?shortTime(entry.time):(entry.qty?'x'+entry.qty:'');
+        if(tStr){
+          doc.setTextColor(141,87,60);doc.setFontSize(8);doc.setFont('helvetica','bold');
+          doc.text(tStr,vx+colW-2,vyy+rowH-2,{align:'right'});
         }
-        colY[ci]+=vendorH;
+        // Notes — small italic below company name
+        if(hasNotes){
+          var noteStr=entry.notes.trim();
+          var noteMaxW=Math.floor((colW-10)/1.85);
+          if(noteStr.length>noteMaxW)noteStr=noteStr.slice(0,noteMaxW-1)+'...';
+          doc.setTextColor(120,80,50);doc.setFontSize(6.5);doc.setFont('helvetica','italic');
+          doc.text(noteStr,vx+28,vyy+rowH+2.5);
+        }
+        colY[vci]+=vRowH;
       });
     });
   }
@@ -6264,17 +6363,17 @@ function makeEventSheetPDF(){
   vList.forEach(function(v){
     var entries=pdfData[v.id];var idx=0;var isCont=false;
     if(entries.length>30){
-      // Fresh page for large venues — always start on new page, always left col
+      // Large venues always get a fresh page, left col
       doc.addPage();colY=[startY,startY];curCol=0;
     } else {
-      // After previous venue, if we're in right col but left col has space, go back to left
-      if(curCol===1&&colY[0]<=colY[1]){curCol=0;}
+      // Always use whichever column has more space (prefer left on tie)
+      if(colY[0]<=colY[1]){curCol=0;}else{curCol=1;}
     }
     while(idx<entries.length){
       var done=renderBlock(v,entries,idx,isCont);
       idx+=done;isCont=true;
     }
-    // Render vendor rows below staff (only on last block, not cont.)
+    // Render vendor rows below staff
     renderVendorRowsPDF(v.id);
   });
 

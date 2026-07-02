@@ -6320,7 +6320,7 @@ function makeEventSheetPDF(){
         if(!entry.company)return;
         // Calculate row height — extra line if notes present
         var hasNotes=!!(entry.notes&&entry.notes.trim());
-        var vRowH=hasNotes?rowH+4:rowH;
+        var vRowH=rowH+4+(hasNotes?4:0); // always 2 lines + notes if present
         if(colY[curCol]+vRowH>pageH){
           if(curCol===0){curCol=1;}
           else{doc.addPage();colY=[startY,startY];curCol=0;}
@@ -6331,26 +6331,37 @@ function makeEventSheetPDF(){
         doc.setFillColor(vBg[0],vBg[1],vBg[2]);doc.rect(vx,vyy,colW,vRowH,'F');
         // Brown left accent bar
         doc.setFillColor(141,87,60);doc.rect(vx,vyy,2,vRowH,'F');
-        // Vendor type label — small, brown, left
+        // Vendor type label — small, brown, left, vertically centered
         doc.setTextColor(141,87,60);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
-        doc.text(vtShort+':',vx+4,vyy+rowH-2);
-        // Company + service label — same size as staff name
-        var compStr=entry.company;
-        if(tid==='photovideo'&&entry.serviceLabel)compStr+=' ['+entry.serviceLabel+']';
-        var nmMaxW=Math.floor((colW-timeW-26)/1.85);
-        if(compStr.length>nmMaxW)compStr=compStr.slice(0,nmMaxW-1)+'...';
-        doc.setTextColor(60,30,10);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
-        doc.text(compStr,vx+28,vyy+rowH-2);
-        // Time — same position as staff time
+        doc.text(vtShort+':',vx+4,vyy+4.5);
+        // Company name — line 1
+        doc.setTextColor(60,30,10);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
+        var coMaxW=Math.floor((colW-timeW-28)/1.7);
+        var coStr=entry.company.length>coMaxW?entry.company.slice(0,coMaxW-1)+'...':entry.company;
+        doc.text(coStr,vx+28,vyy+4.5);
+        // Service label — line 2 (small, brown italic)
+        var svcStr=entry.serviceLabel||(tid==='photovideo'?'':vtShort);
+        if(svcStr){
+          doc.setTextColor(141,87,60);doc.setFontSize(6.5);doc.setFont('helvetica','italic');
+          var svcMaxW=Math.floor((colW-timeW-28)/1.5);
+          if(svcStr.length>svcMaxW)svcStr=svcStr.slice(0,svcMaxW-1)+'...';
+          doc.text(svcStr,vx+28,vyy+8.5);
+        }
+        // Time right
         var tStr=entry.time?shortTime(entry.time):(entry.qty?'x'+entry.qty:'');
         if(tStr){
           doc.setTextColor(141,87,60);doc.setFontSize(8);doc.setFont('helvetica','bold');
-          doc.text(tStr,vx+colW-2,vyy+rowH-2,{align:'right'});
+          doc.text(tStr,vx+colW-2,vyy+4.5,{align:'right'});
         }
-        // Notes — small italic below company name
+        // Qty below time
+        if(entry.qty&&entry.time){
+          doc.setTextColor(141,87,60);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
+          doc.text('x'+entry.qty,vx+colW-2,vyy+8.5,{align:'right'});
+        }
+        // Notes
         if(hasNotes){
           var noteStr=entry.notes.trim();
-          var noteMaxW=Math.floor((colW-10)/1.85);
+          var noteMaxW=Math.floor((colW-10)/1.7);
           if(noteStr.length>noteMaxW)noteStr=noteStr.slice(0,noteMaxW-1)+'...';
           doc.setTextColor(120,80,50);doc.setFontSize(6.5);doc.setFont('helvetica','italic');
           doc.text(noteStr,vx+28,vyy+rowH+2.5);
@@ -6477,22 +6488,21 @@ function makeVendorSummaryPDF(){
 function makeVendorCardZip(){
   if(!window.JSZip){toast('ZIP library not loading, please try again.','w');return;}
   var d=getD();
-  // Build: company -> [{venueName, vendorType, serviceLabel, qty, time, notes}]
   var byCompany={};
   Object.keys(vendorAsgn).forEach(function(vid){
     var v=getV(vid);if(!v)return;
     var vm=vendorAsgn[vid];
     VENDOR_TYPES.forEach(function(vt){
       var ens=Array.isArray(vm[vt.id])?vm[vt.id]:[];
-      if(!ens.length)return;
       ens.forEach(function(en){
-        var co=(en.company||'Unknown').trim();
+        if(!en.company)return;
+        var co=en.company.trim();
         if(!byCompany[co])byCompany[co]=[];
         byCompany[co].push({
           venueName:v.name,
           vendorType:vt.name,
           serviceLabel:en.serviceLabel||'',
-          qty:en.qty||1,
+          qty:en.qty||'',
           time:en.time||'',
           notes:en.notes||''
         });
@@ -6503,109 +6513,172 @@ function makeVendorCardZip(){
   if(!companies.length){toast('No vendors assigned for this date.','w');return;}
   toast('Generating Vendor Cards...','w');
   var zip=new window.JSZip();
-  var W=1080,PAD=60,ACCENT='#1a237e';
+  var W=1080;
   var logoImg=document.getElementById('logoImg');
-  function hexToRgb(hex){var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return[r,g,b];}
-  function wrapText(ctx,text,x,y,maxW,lineH){
+
+  // Helper: wrap text, returns array of lines
+  function getLines(ctx,text,maxW){
     var words=text.split(' ');var line='';var lines=[];
     for(var i=0;i<words.length;i++){
       var test=line+(line?' ':'')+words[i];
       if(ctx.measureText(test).width>maxW&&line){lines.push(line);line=words[i];}
-      else{line=test;}
+      else line=test;
     }
     if(line)lines.push(line);
-    lines.forEach(function(l,i){ctx.fillText(l,x,y+i*lineH);});
-    return lines.length;
+    return lines;
   }
+  function drawLines(ctx,lines,x,y,lh){lines.forEach(function(l,i){ctx.fillText(l,x,y+i*lh);});}
+
   companies.forEach(function(co){
     var duties=byCompany[co];
-    // Estimate height: header(320) + per duty(~210) + footer(120)
-    var H=Math.max(1920,320+duties.length*220+140);
-    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
-    var ctx=cv.getContext('2d');
-    // White background
-    ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);
-    // Top header bar
-    ctx.fillStyle=ACCENT;ctx.fillRect(0,0,W,220);
-    // Logo
-    if(logoImg&&logoImg.complete&&logoImg.naturalWidth>0){
-      try{
-        var lh=130,lw=Math.round(lh*(logoImg.naturalWidth/logoImg.naturalHeight));
-        ctx.drawImage(logoImg,PAD,45,lw,lh);
-      }catch(e){}
-    }
-    // GAVS title
-    ctx.fillStyle='#ffffff';
-    ctx.font='bold 52px Arial';ctx.fillText('GROVER AUDIO VISUAL SERVICES',PAD+160,90);
-    ctx.font='32px Arial';ctx.fillText('VENDOR DUTY CARD',PAD+160,135);
-    ctx.font='bold 36px Arial';ctx.fillStyle='#ffd54f';
-    ctx.fillText(fd(d),PAD+160,180);
-    var cy=240;
-    // Company name block
-    ctx.fillStyle='#e8eaf6';ctx.fillRect(PAD,cy,W-PAD*2,110);
-    ctx.fillStyle=ACCENT;ctx.fillRect(PAD,cy,8,110);
-    ctx.fillStyle=ACCENT;ctx.font='bold 58px Arial';
-    ctx.fillText(co.length>22?co.slice(0,22)+'...':co,PAD+30,cy+48);
-    ctx.fillStyle='#555';ctx.font='32px Arial';
-    ctx.fillText(duties.length+' assignment'+(duties.length>1?'s':''),PAD+30,cy+88);
-    cy+=130;
-    // Duty cards
-    duties.forEach(function(duty,idx){
-      var cardH=190;
-      if(duty.notes)cardH+=50;
-      // Card background — alternate
-      ctx.fillStyle=idx%2===0?'#f5f5f5':'#ffffff';
-      ctx.fillRect(PAD,cy,W-PAD*2,cardH);
-      // Left accent bar colored by vendor type
-      var typeColor='#1565c0';
-      if(duty.vendorType.indexOf('Genset')>=0)typeColor='#e65100';
-      else if(duty.vendorType.indexOf('UPS')>=0)typeColor='#2e7d32';
-      else if(duty.vendorType.indexOf('Photo')>=0)typeColor='#6a1b9a';
-      else if(duty.vendorType.indexOf('LED')>=0)typeColor='#f9a825';
-      else if(duty.vendorType.indexOf('Watchout')>=0)typeColor='#00838f';
-      ctx.fillStyle=typeColor;ctx.fillRect(PAD,cy,10,cardH);
+    // ── Pre-calculate total canvas height ──
+    var PAD=54,INNER=W-PAD*2;
+    var HDR_H=200,CO_H=120,FOOTER_H=90;
+    var DUTY_PAD=24;
+    // Measure each duty card height on a temp canvas
+    var tmpCv=document.createElement('canvas');tmpCv.width=W;tmpCv.height=10;
+    var tmpCtx=tmpCv.getContext('2d');
+    var totalDutyH=0;
+    duties.forEach(function(duty){
+      var h=DUTY_PAD*2;
       // Venue name
-      ctx.fillStyle='#111';ctx.font='bold 40px Arial';
-      var vn=duty.venueName.length>28?duty.venueName.slice(0,28)+'...':duty.venueName;
-      ctx.fillText(vn,PAD+26,cy+50);
-      // Vendor type + service
-      var typeLabel=duty.vendorType+(duty.serviceLabel?' — '+duty.serviceLabel:'');
-      ctx.fillStyle=typeColor;ctx.font='bold 30px Arial';
-      ctx.fillText(typeLabel.length>40?typeLabel.slice(0,40)+'...':typeLabel,PAD+26,cy+92);
-      // Qty and Time chips
-      ctx.fillStyle='#e3f2fd';ctx.fillRect(PAD+26,cy+108,160,42);
-      ctx.fillStyle='#1565c0';ctx.font='bold 28px Arial';
-      ctx.fillText('Qty: '+duty.qty,PAD+40,cy+137);
-      if(duty.time){
-        ctx.fillStyle='#e8f5e9';ctx.fillRect(PAD+200,cy+108,220,42);
-        ctx.fillStyle='#2e7d32';ctx.font='bold 28px Arial';
-        ctx.fillText(shortTime(duty.time),PAD+214,cy+137);
-      }
+      tmpCtx.font='bold 38px Arial';
+      h+=getLines(tmpCtx,duty.venueName,INNER-20).length*46+8;
+      // Service/type label
+      var svcLabel=duty.serviceLabel||(duty.vendorType.replace(' Vendor',''));
+      tmpCtx.font='28px Arial';
+      h+=getLines(tmpCtx,svcLabel,INNER-20).length*36+6;
+      // Qty + Time row
+      h+=50;
       // Notes
       if(duty.notes){
-        ctx.fillStyle='#fff9c4';ctx.fillRect(PAD+26,cy+162,W-PAD*2-36,46);
-        ctx.fillStyle='#827717';ctx.font='26px Arial';
-        ctx.fillText(duty.notes.length>55?duty.notes.slice(0,55)+'...':duty.notes,PAD+36,cy+193);
+        tmpCtx.font='26px Arial';
+        h+=getLines(tmpCtx,duty.notes,INNER-40).length*34+8;
       }
-      // Divider
-      ctx.strokeStyle='#e0e0e0';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(PAD,cy+cardH);ctx.lineTo(W-PAD,cy+cardH);ctx.stroke();
-      cy+=cardH+10;
+      h+=14; // divider
+      totalDutyH+=h;
     });
-    // Footer
-    cy=H-110;
-    ctx.fillStyle=ACCENT;ctx.fillRect(0,cy,W,110);
-    ctx.fillStyle='#ffffff';ctx.font='bold 32px Arial';ctx.textAlign='center';
-    ctx.fillText('GROVER AUDIO VISUAL SERVICES',W/2,cy+42);
-    ctx.font='26px Arial';ctx.fillStyle='#90caf9';
-    ctx.fillText('gavsindia.com | Generated: '+fd(d),W/2,cy+82);
+    var H=HDR_H+CO_H+totalDutyH+FOOTER_H+40;
+
+    var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+    var ctx=cv.getContext('2d');
+    ctx.textBaseline='top';
+
+    // ── Background ──
+    ctx.fillStyle='#f4f6fb';ctx.fillRect(0,0,W,H);
+
+    // ── Header ──
+    ctx.fillStyle='#1a237e';ctx.fillRect(0,0,W,HDR_H);
+    // Logo
+    if(logoImg&&logoImg.complete&&logoImg.naturalWidth>0){
+      try{var lh=110,lw=Math.round(lh*(logoImg.naturalWidth/logoImg.naturalHeight));ctx.drawImage(logoImg,PAD,PAD-10,lw,lh);}catch(e){}
+    }
+    // Title right side
+    ctx.fillStyle='#ffffff';ctx.font='bold 44px Arial';ctx.textAlign='right';
+    ctx.fillText('GROVER AUDIO VISUAL',W-PAD,34);
+    ctx.font='bold 44px Arial';ctx.fillText('SERVICES',W-PAD,82);
+    ctx.font='28px Arial';ctx.fillStyle='#90caf9';ctx.fillText('VENDOR DUTY CARD',W-PAD,132);
+    ctx.font='bold 30px Arial';ctx.fillStyle='#ffd54f';ctx.fillText(fd(d),W-PAD,166);
     ctx.textAlign='left';
-    // Export as JPG
-    var jpgData=cv.toDataURL('image/jpeg',0.92);
+
+    var cy=HDR_H+16;
+
+    // ── Company name block ──
+    ctx.fillStyle='#ffffff';ctx.fillRect(PAD,cy,INNER,CO_H);
+    ctx.fillStyle='#1a237e';ctx.fillRect(PAD,cy,6,CO_H);
+    ctx.fillStyle='#1a237e';ctx.font='bold 52px Arial';
+    var coDisp=co.length>20?co.slice(0,20)+'...':co;
+    ctx.fillText(coDisp,PAD+22,cy+18);
+    ctx.fillStyle='#888';ctx.font='26px Arial';
+    ctx.fillText(duties.length+' assignment'+(duties.length!==1?'s':''),PAD+22,cy+76);
+    cy+=CO_H+18;
+
+    // ── Duty cards ──
+    duties.forEach(function(duty,idx){
+      // Determine color by vendor type
+      var tc='#1565c0';
+      if(duty.vendorType.indexOf('Genset')>=0)tc='#bf360c';
+      else if(duty.vendorType.indexOf('UPS')>=0)tc='#1b5e20';
+      else if(duty.vendorType.indexOf('Photo')>=0)tc='#4a148c';
+      else if(duty.vendorType.indexOf('LED')>=0)tc='#e65100';
+      else if(duty.vendorType.indexOf('Watchout')>=0)tc='#006064';
+
+      // Measure this card
+      var cH=DUTY_PAD*2;
+      ctx.font='bold 38px Arial';
+      var vnLines=getLines(ctx,duty.venueName,INNER-20);
+      cH+=vnLines.length*46+8;
+      var svcLabel=duty.serviceLabel||(duty.vendorType.replace(' Vendor',''));
+      ctx.font='28px Arial';
+      var slLines=getLines(ctx,svcLabel,INNER-20);
+      cH+=slLines.length*36+6;
+      cH+=50;
+      var noteLines=[];
+      if(duty.notes){ctx.font='26px Arial';noteLines=getLines(ctx,duty.notes,INNER-40);cH+=noteLines.length*34+8;}
+      cH+=14;
+
+      // Card bg
+      ctx.fillStyle=idx%2===0?'#ffffff':'#f9f9ff';
+      ctx.fillRect(PAD,cy,INNER,cH);
+      // Left accent
+      ctx.fillStyle=tc;ctx.fillRect(PAD,cy,8,cH);
+      // Bottom divider
+      ctx.fillStyle='#e0e0e0';ctx.fillRect(PAD,cy+cH-2,INNER,2);
+
+      var iy=cy+DUTY_PAD;
+
+      // Venue name
+      ctx.fillStyle='#111';ctx.font='bold 38px Arial';
+      drawLines(ctx,vnLines,PAD+24,iy,46);
+      iy+=vnLines.length*46+8;
+
+      // Service/type label
+      ctx.fillStyle=tc;ctx.font='600 28px Arial';
+      drawLines(ctx,slLines,PAD+24,iy,36);
+      iy+=slLines.length*36+6;
+
+      // Qty + Time row
+      var chips=[];
+      if(duty.qty)chips.push({label:'Qty: '+duty.qty,bg:'#e8eaf6',col:'#1a237e'});
+      if(duty.time)chips.push({label:shortTime(duty.time),bg:'#e8f5e9',col:'#1b5e20'});
+      var cx2=PAD+24;
+      chips.forEach(function(chip){
+        var cw=ctx.measureText(chip.label).width+40;
+        ctx.fillStyle=chip.bg;
+        ctx.beginPath();ctx.roundRect(cx2,iy,cw,44,8);ctx.fill();
+        ctx.fillStyle=chip.col;ctx.font='bold 26px Arial';
+        ctx.fillText(chip.label,cx2+20,iy+10);
+        cx2+=cw+16;
+      });
+      iy+=50;
+
+      // Notes
+      if(duty.notes){
+        ctx.fillStyle='#fffde7';ctx.fillRect(PAD+24,iy,INNER-48,noteLines.length*34+16);
+        ctx.fillStyle='#795548';ctx.font='italic 26px Arial';
+        drawLines(ctx,noteLines,PAD+36,iy+8,34);
+        iy+=noteLines.length*34+8;
+      }
+
+      cy+=cH;
+    });
+
+    // ── Footer ──
+    cy=H-FOOTER_H;
+    ctx.fillStyle='#1a237e';ctx.fillRect(0,cy,W,FOOTER_H);
+    ctx.fillStyle='#ffffff';ctx.font='bold 28px Arial';ctx.textAlign='center';
+    ctx.fillText('GROVER AUDIO VISUAL SERVICES',W/2,cy+18);
+    ctx.font='22px Arial';ctx.fillStyle='#90caf9';
+    ctx.fillText('gavsindia.com  |  '+fd(d),W/2,cy+52);
+    ctx.textAlign='left';
+
+    var jpgData=cv.toDataURL('image/jpeg',0.93);
     var b64=jpgData.split(',')[1];
     var safeName=co.replace(/[\/\\?%*:|"<>]/g,'_');
-    zip.file(safeName+'_'+d+'.jpg',b64,{base64:true});
+    var folderName='GAVS_VendorCards_'+d+'/';
+    zip.file(folderName+safeName+'_'+d+'.jpg',b64,{base64:true});
   });
+
   zip.generateAsync({type:'blob'}).then(function(blob){
     var url=URL.createObjectURL(blob);
     var a=document.createElement('a');a.href=url;a.download='GAVS_VendorCards_'+d+'.zip';

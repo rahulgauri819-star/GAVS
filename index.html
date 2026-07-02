@@ -1575,6 +1575,7 @@ function drawVenueGrid(){
       gdnBody.appendChild(gdnGrid);
     }
     gdnBox.appendChild(gdnBody);
+  }
   gdnBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#f57f17';this.style.background='#fff9c4';});
   gdnBox.addEventListener('dragleave',function(){this.style.borderColor='#ffd54f';this.style.background='#fffde7';});
   gdnBox.addEventListener('drop',function(ev){

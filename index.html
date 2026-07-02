@@ -814,6 +814,7 @@ var pinnedVisibleVids=new Set(); // contracted venues where pinned staff are vis
 var lvCollapsed=false; // On Leave box collapsed state
 var offCollapsed=false;
 var gdnCollapsed=false; // Office Duty box collapsed state
+var gdnPinnedVisible=true; // show/hide pinned staff in Godown Team
 var venueOrder=[]; // custom drag order for activeVids (saved to Firebase)
 var multiViewMode=false; // when true, venue boxes show BOTH staff and vendors together regardless of assignMode
 var drafts=[],curDraftId=null,curDraftVer=0;
@@ -1435,11 +1436,28 @@ function drawVenueGrid(){
         var c=cc(a.emp.role);
         var _alE=annualLeave.find(function(x){return x.id===a.emp.id;});
         var cell=document.createElement('div');
-        cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;';
+        // Annual leave staff spans full width
+        if(_alE){
+          cell.style.cssText='grid-column:1/-1;background:'+c+'20;border-left:3px solid '+c+';padding:3px 6px;display:flex;align-items:center;gap:4px;min-width:0;';
+        } else {
+          cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;';
+        }
         var nm=document.createElement('div');
         nm.style.cssText='font-size:8.5px;font-weight:700;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
         nm.textContent=a.emp.name;
         nm.title=_alE?'Period leave until '+fd(_alE.endDate):a.emp.name;
+        cell.appendChild(nm);
+        // Annual leave badge — shown in right area
+        if(_alE){
+          var alBadge=document.createElement('span');
+          alBadge.style.cssText='font-size:8px;color:#1565c0;font-weight:700;background:#e3f2fd;border-radius:4px;padding:1px 5px;flex-shrink:0;white-space:nowrap;';
+          alBadge.textContent='(On leave till '+fd(_alE.endDate)+')';
+          cell.appendChild(alBadge);
+        }
+        var calBtn=document.createElement('button');
+        calBtn.textContent='📅';calBtn.title='Set period leave';
+        calBtn.style.cssText='background:none;border:none;font-size:9px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
+        calBtn.addEventListener('click',(function(eid,ename){return function(ev){ev.stopPropagation();showPeriodLeavePrompt(eid,ename);};})(a.emp.id,a.emp.name));
         var rm=document.createElement('button');
         rm.textContent='✕';rm.title='Remove from leave';
         rm.style.cssText='background:none;border:none;color:#c62828;font-size:10px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
@@ -1450,11 +1468,7 @@ function drawVenueGrid(){
           g('m-yes').onclick=function(){unLeave(eid);closeModal();};
           g('m-no').onclick=closeModal;
         };})(a.emp.id,a.emp.name));
-        var calBtn=document.createElement('button');
-        calBtn.textContent='📅';calBtn.title='Set period leave';
-        calBtn.style.cssText='background:none;border:none;font-size:9px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
-        calBtn.addEventListener('click',(function(eid,ename){return function(ev){ev.stopPropagation();showPeriodLeavePrompt(eid,ename);};})(a.emp.id,a.emp.name));
-        cell.appendChild(nm);cell.appendChild(calBtn);cell.appendChild(rm);
+        cell.appendChild(calBtn);cell.appendChild(rm);
         lvGrid.appendChild(cell);
       });
       lvBody.appendChild(lvGrid);
@@ -1546,6 +1560,16 @@ function drawVenueGrid(){
   gdnColBtn.title=gdnCollapsed?'Expand':'Collapse';
   gdnColBtn.addEventListener('click',function(){gdnCollapsed=!gdnCollapsed;drawVenueGrid();});
   gdnHdr.appendChild(gdnColBtn);
+  // 👁 Eye button — show/hide pinned godown staff
+  var hasPinnedGdn=staff.some(function(e){return e.pgdn&&gdnMap[e.id];});
+  if(hasPinnedGdn){
+    var gdnEyeBtn=document.createElement('button');
+    gdnEyeBtn.style.cssText='background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:5px;cursor:pointer;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:2px;';
+    gdnEyeBtn.textContent=gdnPinnedVisible?'👁':'🚫';
+    gdnEyeBtn.title=gdnPinnedVisible?'Hide pinned staff':'Show pinned staff';
+    gdnEyeBtn.addEventListener('click',function(){gdnPinnedVisible=!gdnPinnedVisible;drawVenueGrid();});
+    gdnHdr.appendChild(gdnEyeBtn);
+  }
   gdnBox.appendChild(gdnHdr);
   if(!gdnCollapsed){
     var gdnBody=document.createElement('div');gdnBody.style.cssText='padding:10px;min-height:60px;';
@@ -1555,7 +1579,11 @@ function drawVenueGrid(){
     } else {
       var gdnGrid=document.createElement('div');
       gdnGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px;';
-      gdnList.forEach(function(a){
+      var _gdnDisplay=gdnList.filter(function(a){
+        if(a.emp.pgdn&&!gdnPinnedVisible)return false;
+        return true;
+      });
+      _gdnDisplay.forEach(function(a){
         var isPinned=!!(a.emp.pgdn);
         var c=cc(a.emp.role);
         var cell=document.createElement('div');
@@ -1570,13 +1598,26 @@ function drawVenueGrid(){
         var rm=document.createElement('button');
         rm.textContent='✕';rm.title='Remove from Godown Team';
         rm.style.cssText='background:none;border:none;color:#f57f17;font-size:10px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
-        rm.addEventListener('click',(function(eid,ename){return function(){
-          showModal('<div class="mt" style="color:#f57f17;">Remove from Godown Team?</div>'+
-            '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong>?</div>'+
-            '<button class="mbtn red" id="m-yes">Yes, Remove</button><button class="mcancel" id="m-no">Cancel</button>');
-          g('m-yes').onclick=function(){unGdn(eid);closeModal();};
-          g('m-no').onclick=closeModal;
-        };})(a.emp.id,a.emp.name));
+        rm.addEventListener('click',(function(eid,ename,isPinned2){return function(){
+          if(isPinned2){
+            showModal(
+              '<div class="mt" style="color:#f57f17;">'+esc(ename)+'</div>'+
+              '<div style="font-size:12px;color:#888;text-align:center;margin-bottom:14px;">Pinned to Godown Team</div>'+
+              '<button class="mbtn" id="m-leave" style="background:#ffebee;color:#c62828;border-color:#ffcdd2;margin-bottom:8px;">🌴 Mark On Leave</button>'+
+              '<button class="mbtn red" id="m-yes">Remove from Today</button>'+
+              '<button class="mcancel" id="m-no">Cancel</button>'
+            );
+            g('m-leave').onclick=function(){markLeave(eid);closeModal();};
+            g('m-yes').onclick=function(){unGdn(eid);closeModal();};
+            g('m-no').onclick=closeModal;
+          } else {
+            showModal('<div class="mt" style="color:#f57f17;">Remove from Godown Team?</div>'+
+              '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong>?</div>'+
+              '<button class="mbtn red" id="m-yes">Yes, Remove</button><button class="mcancel" id="m-no">Cancel</button>');
+            g('m-yes').onclick=function(){unGdn(eid);closeModal();};
+            g('m-no').onclick=closeModal;
+          }
+        };})(a.emp.id,a.emp.name,isPinned));
         cell.appendChild(nm);cell.appendChild(gdtSel);cell.appendChild(rm);
         gdnGrid.appendChild(cell);
       });

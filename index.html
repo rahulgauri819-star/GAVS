@@ -6302,53 +6302,57 @@ function makeEventSheetPDF(){
       var vtShort=vtName.replace(' Vendor','');
       entries2.forEach(function(entry,ei){
         if(!entry.company)return;
-        // Calculate row height — extra line if notes present
+        // Calculate row height based on actual content
+        var hasSvc=!!(entry.serviceLabel||(tid!=='photovideo'&&vtShort));
         var hasNotes=!!(entry.notes&&entry.notes.trim());
-        var vRowH=rowH+4+(hasNotes?4:0); // always 2 lines + notes if present
+        var lineH=5.0; // mm per line
+        var lineCount=1+(hasSvc?1:0)+(hasNotes?1:0);
+        var vRowH=lineCount*lineH+4; // padding top+bottom
         if(colY[curCol]+vRowH>pageH){
           if(curCol===0){curCol=1;}
           else{doc.addPage();colY=[startY,startY];curCol=0;}
         }
         var vci=curCol;var vx=colX[vci];var vyy=colY[vci];
-        // Alternating light brown background — same style as staff rows
+        // Alternating light brown background
         var vBg=ei%2===0?[250,240,230]:[255,248,242];
         doc.setFillColor(vBg[0],vBg[1],vBg[2]);doc.rect(vx,vyy,colW,vRowH,'F');
-        // Brown left accent bar
         doc.setFillColor(141,87,60);doc.rect(vx,vyy,2,vRowH,'F');
-        // Vendor type label — small, brown, left, vertically centered
-        doc.setTextColor(141,87,60);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
-        doc.text(vtShort+':',vx+4,vyy+4.5);
-        // Company name — line 1
+        // Vendor type label — top left, small
+        doc.setTextColor(141,87,60);doc.setFontSize(6);doc.setFont('helvetica','bold');
+        doc.text(vtShort+':',vx+4,vyy+3.5);
+        // Company name — line 1, bold
         doc.setTextColor(60,30,10);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
-        var coMaxW=Math.floor((colW-timeW-28)/1.7);
+        var coMaxW=Math.floor((colW-timeW-28)/1.65);
         var coStr=entry.company.length>coMaxW?entry.company.slice(0,coMaxW-1)+'...':entry.company;
-        doc.text(coStr,vx+28,vyy+4.5);
-        // Service label — line 2, same style as staff name
+        doc.text(coStr,vx+28,vyy+3.5);
+        // Time top-right
+        var tStr=entry.time?shortTime(entry.time):(entry.qty?'x'+entry.qty:'');
+        if(tStr){
+          doc.setTextColor(141,87,60);doc.setFontSize(8);doc.setFont('helvetica','bold');
+          doc.text(tStr,vx+colW-2,vyy+3.5,{align:'right'});
+        }
+        var curLineY=vyy+3.5+lineH;
+        // Service label — line 2
         var svcStr=entry.serviceLabel||(tid==='photovideo'?'':vtShort);
         if(svcStr){
           doc.setTextColor(60,30,10);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
           var svcMaxW=Math.floor((colW-timeW-28)/1.65);
           if(svcStr.length>svcMaxW)svcStr=svcStr.slice(0,svcMaxW-1)+'...';
-          doc.text(svcStr,vx+28,vyy+8.5);
+          doc.text(svcStr,vx+28,curLineY);
+          // Qty on same line right
+          if(entry.qty&&entry.time){
+            doc.setTextColor(141,87,60);doc.setFontSize(7);doc.setFont('helvetica','normal');
+            doc.text('x'+entry.qty,vx+colW-2,curLineY,{align:'right'});
+          }
+          curLineY+=lineH;
         }
-        // Time right
-        var tStr=entry.time?shortTime(entry.time):(entry.qty?'x'+entry.qty:'');
-        if(tStr){
-          doc.setTextColor(141,87,60);doc.setFontSize(8);doc.setFont('helvetica','bold');
-          doc.text(tStr,vx+colW-2,vyy+4.5,{align:'right'});
-        }
-        // Qty below time
-        if(entry.qty&&entry.time){
-          doc.setTextColor(141,87,60);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
-          doc.text('x'+entry.qty,vx+colW-2,vyy+8.5,{align:'right'});
-        }
-        // Notes — same font as staff name
+        // Notes — line 3
         if(hasNotes){
           var noteStr=entry.notes.trim();
-          var noteMaxW=Math.floor((colW-10)/1.65);
+          var noteMaxW=Math.floor((colW-32)/1.65);
           if(noteStr.length>noteMaxW)noteStr=noteStr.slice(0,noteMaxW-1)+'...';
           doc.setTextColor(60,30,10);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
-          doc.text(noteStr,vx+28,vyy+rowH+2.5);
+          doc.text(noteStr,vx+28,curLineY);
         }
         colY[vci]+=vRowH;
       });

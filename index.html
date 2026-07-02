@@ -1404,10 +1404,13 @@ function drawVenueGrid(){
   // All dates are fully editable — no read-only mode
 
   if(assignMode==='staff'){
+  // ── Drop zones wrapper — keeps leave/office/godown in same CSS column ──
+  var dropZoneWrap=document.createElement('div');
+  dropZoneWrap.style.cssText='break-inside:avoid;display:inline-block;width:100%;';
   // ── Leave drop zone ─────────────────────────────────────────
   var lvBox=document.createElement('div');
   var lvCount=Object.keys(lvMap).length;
-  lvBox.style.cssText='background:#fff5f5;border:2px dashed #ef9a9a;border-radius:14px;overflow:hidden;min-height:100px;';
+  lvBox.style.cssText='background:#fff5f5;border:2px dashed #ef9a9a;border-radius:14px;overflow:hidden;min-height:100px;break-inside:avoid;';
   lvBox.id='drop-leave';
   var lvHdr=document.createElement('div');
   lvHdr.style.cssText='background:#c62828;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
@@ -1426,40 +1429,35 @@ function drawVenueGrid(){
     if(!lvList.length){
       lvBody.innerHTML='<div style="text-align:center;color:#ef9a9a;font-size:12px;padding:12px;">Drag staff here to mark On Leave</div>';
     } else {
+      var lvGrid=document.createElement('div');
+      lvGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px;';
       lvList.forEach(function(a){
-        var row=document.createElement('div');
         var c=cc(a.emp.role);
-        row.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;';
-        var nm=document.createElement('div');
-        nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;';
         var _alE=annualLeave.find(function(x){return x.id===a.emp.id;});
-        nm.textContent=a.emp.name+(_alE?' 📅':'');
-        nm.title=_alE?('Period leave until '+fd(_alE.endDate)):'';
-        var rmWrap=document.createElement('div');rmWrap.style.cssText='display:flex;flex-direction:column;gap:2px;align-items:flex-end;flex-shrink:0;';
+        var cell=document.createElement('div');
+        cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;';
+        var nm=document.createElement('div');
+        nm.style.cssText='font-size:8.5px;font-weight:700;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        nm.textContent=a.emp.name;
+        nm.title=_alE?'Period leave until '+fd(_alE.endDate):a.emp.name;
         var rm=document.createElement('button');
-        rm.className='v3rm';rm.textContent='✕';
-        rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;min-width:14px;';
+        rm.textContent='✕';rm.title='Remove from leave';
+        rm.style.cssText='background:none;border:none;color:#c62828;font-size:10px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
         rm.addEventListener('click',(function(eid,ename){return function(){
-          showModal(
-            '<div class="mt" style="color:#c62828;">Remove from On Leave?</div>'+
-            '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong> from On Leave?</div>'+
-            '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
-            '<button class="mcancel" id="m-no">Cancel</button>'
-          );
+          showModal('<div class="mt" style="color:#c62828;">Remove from On Leave?</div>'+
+            '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong>?</div>'+
+            '<button class="mbtn red" id="m-yes">Yes, Remove</button><button class="mcancel" id="m-no">Cancel</button>');
           g('m-yes').onclick=function(){unLeave(eid);closeModal();};
           g('m-no').onclick=closeModal;
         };})(a.emp.id,a.emp.name));
-        rmWrap.appendChild(rm);
-        // 📅 Period leave button
-        var palBtn2=document.createElement('button');
-        palBtn2.style.cssText='background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;border-radius:3px;padding:1px 4px;font-size:7px;font-weight:700;cursor:pointer;white-space:nowrap;';
-        palBtn2.textContent='📅';
-        palBtn2.title='Set period leave';
-        palBtn2.addEventListener('click',(function(eid,ename){return function(ev){ev.stopPropagation();showPeriodLeavePrompt(eid,ename);};})(a.emp.id,a.emp.name));
-        rmWrap.appendChild(palBtn2);
-        row.appendChild(nm);row.appendChild(rmWrap);
-        lvBody.appendChild(row);
+        var calBtn=document.createElement('button');
+        calBtn.textContent='📅';calBtn.title='Set period leave';
+        calBtn.style.cssText='background:none;border:none;font-size:9px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
+        calBtn.addEventListener('click',(function(eid,ename){return function(ev){ev.stopPropagation();showPeriodLeavePrompt(eid,ename);};})(a.emp.id,a.emp.name));
+        cell.appendChild(nm);cell.appendChild(calBtn);cell.appendChild(rm);
+        lvGrid.appendChild(cell);
       });
+      lvBody.appendChild(lvGrid);
     }
     lvBox.appendChild(lvBody);
   }
@@ -1471,7 +1469,7 @@ function drawVenueGrid(){
     var eid=ev.dataTransfer.getData('text/plain')||touchDragEid;
     if(eid)markLeave(eid);
   });
-  el.appendChild(lvBox);
+  dropZoneWrap.appendChild(lvBox);
 
   // ── Office Duty drop zone ───────────────────────────────────
   var offBox=document.createElement('div');
@@ -1495,36 +1493,32 @@ function drawVenueGrid(){
     if(!offList.length){
       offBody.innerHTML='<div style="text-align:center;color:#ffcc80;font-size:12px;padding:12px;">Drag staff here for Office Duty</div>';
     } else {
+      var offGrid=document.createElement('div');
+      offGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px;';
       offList.forEach(function(a){
-        var row=document.createElement('div');
         var c=cc(a.emp.role);
-        row.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;';
+        var cell=document.createElement('div');
+        cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;';
         var nm=document.createElement('div');
-        nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;';
-        nm.textContent=a.emp.name;
-        // Time dropdown for godown duty
-        var goSel=document.createElement('select');
-        goSel.style.cssText='flex-shrink:0;background:#fff8f0;border:1px solid #ffcc80;border-radius:4px;color:#e65100;padding:1px 1px;font-size:8px;cursor:pointer;width:38px;max-width:38px;';
-        TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;goSel.appendChild(o);});
-        (function(eid){goSel.addEventListener('change',function(){if(offMap[eid]){offMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
+        nm.style.cssText='font-size:8.5px;font-weight:700;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        nm.textContent=a.emp.name;nm.title=a.emp.name;
         var rm=document.createElement('button');
-        rm.className='v3rm';rm.textContent='✕';
-        rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
+        rm.textContent='✕';rm.title='Remove from Office Duty';
+        rm.style.cssText='background:none;border:none;color:#e65100;font-size:10px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
         rm.addEventListener('click',(function(eid,ename){return function(){
-          showModal(
-            '<div class="mt" style="color:#e65100;">Remove from Office Duty?</div>'+
-            '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong> from Office Duty?</div>'+
-            '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
-            '<button class="mcancel" id="m-no">Cancel</button>'
-          );
+          showModal('<div class="mt" style="color:#e65100;">Remove from Office Duty?</div>'+
+            '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong>?</div>'+
+            '<button class="mbtn red" id="m-yes">Yes, Remove</button><button class="mcancel" id="m-no">Cancel</button>');
           g('m-yes').onclick=function(){unGodown(eid);closeModal();};
           g('m-no').onclick=closeModal;
         };})(a.emp.id,a.emp.name));
-        row.appendChild(nm);row.appendChild(goSel);row.appendChild(rm);
-        offBody.appendChild(row);
+        cell.appendChild(nm);cell.appendChild(rm);
+        offGrid.appendChild(cell);
       });
+      offBody.appendChild(offGrid);
     }
     offBox.appendChild(offBody);
+  }
   }
   offBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#e65100';this.style.background='#fff3e0';});
   offBox.addEventListener('dragleave',function(){this.style.borderColor='#ffcc80';this.style.background='#fff8f0';});
@@ -1533,12 +1527,12 @@ function drawVenueGrid(){
     var eid=ev.dataTransfer.getData('text/plain')||touchDragEid;
     if(eid)markGodown(eid);
   });
-  el.appendChild(offBox);
+  dropZoneWrap.appendChild(offBox);
 
   // ── Godown Team drop zone ─────────────────────────────────────────
   var gdnBox=document.createElement('div');
   var gdnCount=Object.keys(gdnMap).length;
-  gdnBox.style.cssText='background:#fffde7;border:2px dashed #ffd54f;border-radius:14px;overflow:hidden;min-height:100px;margin-top:10px;';
+  gdnBox.style.cssText='background:#fffde7;border:2px dashed #ffd54f;border-radius:14px;overflow:hidden;min-height:100px;margin-top:10px;break-inside:avoid;';
   gdnBox.id='drop-godown';
   var gdnHdr=document.createElement('div');
   gdnHdr.style.cssText='background:#f57f17;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
@@ -1556,48 +1550,30 @@ function drawVenueGrid(){
     if(!gdnList.length){
       gdnBody.innerHTML='<div style="text-align:center;color:#ffd54f;font-size:12px;padding:12px;">Drag staff here for Godown Team</div>';
     } else {
-      // Group by role
-      var gdnRoleGroups={};
-      gdnList.forEach(function(a){var r=a.emp.role||'Other';if(!gdnRoleGroups[r])gdnRoleGroups[r]=[];gdnRoleGroups[r].push(a);});
-      var gdnMgrs=gdnRoleGroups['Manager']||[];
-      var gdnOtherRoles=Object.keys(gdnRoleGroups).filter(function(r){return r!=='Manager';}).sort();
-      var gdnOrderedRoles=gdnMgrs.length?['Manager'].concat(gdnOtherRoles):gdnOtherRoles;
-      gdnOrderedRoles.forEach(function(role){
-        var grp=gdnRoleGroups[role];if(!grp||!grp.length)return;
-        var rc=cc(role);
-        var rhdr=document.createElement('div');
-        rhdr.style.cssText='padding:2px 6px;font-size:9px;font-weight:800;letter-spacing:0.06em;color:#fff;background:'+rc+';border-radius:4px;margin:5px 0 2px 0;';
-        rhdr.textContent=role.toUpperCase();
-        gdnBody.appendChild(rhdr);
-        grp.forEach(function(a){
-          var isPinned=!!(a.emp.pgdn);
-          var row=document.createElement('div');
-          var c=cc(a.emp.role);
-          row.style.cssText='background:'+c+'12;border:none;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;';
-          var nm=document.createElement('div');
-          nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;';
-          nm.textContent=(isPinned?'🔒 ':'')+a.emp.name;
-          var gdSel=document.createElement('select');
-          gdSel.style.cssText='flex-shrink:0;background:#fffde7;border:1px solid #ffd54f;border-radius:4px;color:#f57f17;padding:1px 1px;font-size:8px;cursor:pointer;width:38px;max-width:38px;';
-          TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;gdSel.appendChild(o);});
-          (function(eid){gdSel.addEventListener('change',function(){if(gdnMap[eid]){gdnMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
-          var rm=document.createElement('button');
-          rm.className='v3rm';rm.textContent='✕';
-          rm.style.cssText='flex-shrink:0;width:14px;height:14px;font-size:8px;line-height:1;padding:0;';
-          rm.addEventListener('click',(function(eid,ename){return function(){
-            showModal(
-              '<div class="mt" style="color:#f57f17;">Remove from Godown Team?</div>'+
-              '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong> from Godown Team?</div>'+
-              '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
-              '<button class="mcancel" id="m-no">Cancel</button>'
-            );
-            g('m-yes').onclick=function(){unGdn(eid);closeModal();};
-            g('m-no').onclick=closeModal;
-          };})(a.emp.id,a.emp.name));
-          row.appendChild(nm);row.appendChild(gdSel);row.appendChild(rm);
-          gdnBody.appendChild(row);
-        });
+      var gdnGrid=document.createElement('div');
+      gdnGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px;';
+      gdnList.forEach(function(a){
+        var isPinned=!!(a.emp.pgdn);
+        var c=cc(a.emp.role);
+        var cell=document.createElement('div');
+        cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;';
+        var nm=document.createElement('div');
+        nm.style.cssText='font-size:8.5px;font-weight:700;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        nm.textContent=(isPinned?'🔒 ':'')+a.emp.name;nm.title=a.emp.name;
+        var rm=document.createElement('button');
+        rm.textContent='✕';rm.title='Remove from Godown Team';
+        rm.style.cssText='background:none;border:none;color:#f57f17;font-size:10px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
+        rm.addEventListener('click',(function(eid,ename){return function(){
+          showModal('<div class="mt" style="color:#f57f17;">Remove from Godown Team?</div>'+
+            '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong>?</div>'+
+            '<button class="mbtn red" id="m-yes">Yes, Remove</button><button class="mcancel" id="m-no">Cancel</button>');
+          g('m-yes').onclick=function(){unGdn(eid);closeModal();};
+          g('m-no').onclick=closeModal;
+        };})(a.emp.id,a.emp.name));
+        cell.appendChild(nm);cell.appendChild(rm);
+        gdnGrid.appendChild(cell);
       });
+      gdnBody.appendChild(gdnGrid);
     }
     gdnBox.appendChild(gdnBody);
   }
@@ -1608,7 +1584,8 @@ function drawVenueGrid(){
     var eid=ev.dataTransfer.getData('text/plain')||touchDragEid;
     if(eid)markGdn(eid);
   });
-  el.appendChild(gdnBox);
+  dropZoneWrap.appendChild(gdnBox);
+  el.appendChild(dropZoneWrap);
   } // end if assignMode==='staff'
 
   // ── Venue boxes — sorted by staff count (most first) unless custom order set ─

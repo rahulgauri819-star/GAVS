@@ -1697,7 +1697,8 @@ function makeVenueBox(v,hasPinned,viewData){
   var eyeOn=pinnedVisibleVids.has(v.id);
   var t=hasPinned?allT.filter(function(a){return !a.pinned||eyeOn;}):allT;
   var box=document.createElement('div');
-  box.className='vbox'+(v.vip?' vip':'');
+  var _vipToday=(_dateVip[v.id]!==undefined)?_dateVip[v.id]:v.vip;
+  box.className='vbox'+(_vipToday?' vip':'');
   box.id='vb-'+v.id;
 
   // Drag and drop — always enabled on all dates
@@ -1720,7 +1721,7 @@ function makeVenueBox(v,hasPinned,viewData){
 
   var _vFresh=venues.find(function(x){return x.id===v.id;})||v;
   var _hasInfo=!!(_vFresh.address&&_vFresh.address.trim())||!!(_vFresh.locUrl&&_vFresh.locUrl.trim());
-  var icon=document.createElement('span');icon.textContent=v.vip?'⭐':'🏨';
+  var icon=document.createElement('span');icon.textContent=_vipToday?'⭐':'🏨';
   icon.title='Edit venue address & location';
   icon.style.cssText='cursor:pointer;border-radius:5px;padding:1px 3px;transition:background 0.2s;'+(_hasInfo?'background:#f9a825;box-shadow:0 0 0 2px #f9a825;':'');
   (function(vid2){icon.addEventListener('click',function(ev){ev.stopPropagation();showVenueInfoPopup(vid2);});})(v.id);
@@ -1741,7 +1742,7 @@ function makeVenueBox(v,hasPinned,viewData){
   }
 
   hdr.appendChild(icon);hdr.appendChild(nm);
-  if(v.vip){var vipBdg=document.createElement('span');vipBdg.style.cssText='background:rgba(0,0,0,0.15);color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:800;flex-shrink:0;';vipBdg.textContent='VIP';hdr.appendChild(vipBdg);}
+  if(_vipToday){var vipBdg=document.createElement('span');vipBdg.style.cssText='background:rgba(0,0,0,0.15);color:#fff;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:800;flex-shrink:0;';vipBdg.textContent='VIP';hdr.appendChild(vipBdg);}
   hdr.appendChild(cnt);
 
   // Collapse/expand toggle — will be appended LAST (extreme right)
@@ -6032,14 +6033,15 @@ function makeEventSheetPDF(){
     var thisHdrH=hdrH+extraH;
     addLineIfNeeded(thisHdrH+rowH);
     ci=curCol;x=colX[ci];yy=colY[ci];
-    if(v.vip){doc.setFillColor(180,130,0);}else{doc.setFillColor(21,101,192);}
+    var _vipPDF=(_dateVip&&_dateVip[v.id]!==undefined)?_dateVip[v.id]:v.vip;
+    if(_vipPDF){doc.setFillColor(180,130,0);}else{doc.setFillColor(21,101,192);}
     doc.roundedRect(x,yy,colW,thisHdrH,2,2,'F');
-    if(v.vip){// Gold shimmer border for VIP
+    if(_vipPDF){// Gold shimmer border for VIP
       doc.setDrawColor(255,215,0);doc.setLineWidth(0.8);doc.roundedRect(x,yy,colW,thisHdrH,2,2,'S');doc.setLineWidth(0.3);}
     doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
     var mc=Math.floor((colW-timeW-4)/2.2);
     var mc=Math.floor((colW-timeW-4)/2.2);
-    var _vipPfx=v.vip?'* ':'';var vn=(_vipPfx+v.name);if(vn.length>mc)vn=vn.slice(0,mc-1)+'...';
+    var _vipPfx=_vipPDF?'* ':'';var vn=(_vipPfx+v.name);if(vn.length>mc)vn=vn.slice(0,mc-1)+'...';
     doc.text(vn,x+3,yy+6.8);
     // No lock icon on venue header
     doc.setFontSize(7.5);doc.setFont('helvetica','normal');
@@ -6081,7 +6083,7 @@ function makeEventSheetPDF(){
         if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}
         // cont header
         var ci2=curCol;var x2=colX[ci2];var yy2=colY[ci2];
-        if(v.vip){doc.setFillColor(180,60,0);}else{doc.setFillColor(21,101,192);}
+        if(_vipPDF){doc.setFillColor(180,130,0);}else{doc.setFillColor(21,101,192);}
         doc.roundedRect(x2,yy2,colW,hdrH,2,2,'F');
         doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
         var vn2=v.name.length>mc?v.name.slice(0,mc-1)+'...':v.name;
@@ -6089,6 +6091,19 @@ function makeEventSheetPDF(){
         doc.setFontSize(7.5);doc.setFont('helvetica','normal');
         doc.text(entries.length+' staff',x2+colW-2,yy2+6.8,{align:'right'});
         colY[curCol]+=hdrH+1;
+        // Repeat comment pink box on cont. blocks
+        var _pdfCmtC=(_dateComments&&_dateComments[v.id]||'').trim();
+        if(_pdfCmtC){
+          doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+          var _cmtLinesC=doc.splitTextToSize(_pdfCmtC,colW-8);
+          var cmtHC=_cmtLinesC.length*4.5+3;
+          var _ccc=curCol;var _cxc=colX[_ccc];var _cyc=colY[_ccc];
+          doc.setFillColor(252,228,236);doc.roundedRect(_cxc,_cyc,colW,cmtHC,1.5,1.5,'F');
+          doc.setDrawColor(244,143,177);doc.roundedRect(_cxc,_cyc,colW,cmtHC,1.5,1.5,'S');
+          doc.setTextColor(136,14,79);
+          _cmtLinesC.forEach(function(l,li){doc.text(l,_cxc+4,_cyc+4+li*4.5);});
+          colY[_ccc]+=cmtHC+1;
+        }
       }
       var ci3=curCol;var x3=colX[ci3];var yy3=colY[ci3];
       var idx2=rendered;
@@ -6123,38 +6138,39 @@ function makeEventSheetPDF(){
   var PDF_VENDOR_IDS=['genset','ups','photovideo','led','watchout'];
   function renderVendorRowsPDF(vid){
     var vm=vendorAsgn[vid]||{};
-    var vendorH=6;
+    var vendorH=rowH; // Same height as staff rows
     PDF_VENDOR_IDS.forEach(function(tid){
-      var entries=vm[tid];if(!entries||!entries.length)return;
+      var entries2=vm[tid];if(!entries2||!entries2.length)return;
       var vt=VENDOR_TYPES.find(function(x){return x.id===tid;});
       var vtName=vt?vt.name:tid;
-      entries.forEach(function(entry){
+      entries2.forEach(function(entry,ei){
         if(!entry.company)return;
-        // Check space in current col
         if(colY[curCol]+vendorH>pageH){
           if(curCol===0){curCol=1;}
           else{doc.addPage();colY=[startY,startY];curCol=0;}
         }
         var ci=curCol;var x=colX[ci];var yy=colY[ci];
-        // Brown background row
-        doc.setFillColor(93,64,55);doc.rect(x,yy,colW,vendorH,'F');
+        // Brown alternating background — same pattern as staff rows
+        var vBg=ei%2===0?[62,39,35]:[74,48,43]; // dark brown alternating
+        doc.setFillColor(vBg[0],vBg[1],vBg[2]);doc.rect(x,yy,colW,vendorH,'F');
+        // Brown left accent bar
         doc.setFillColor(188,143,116);doc.rect(x,yy,2,vendorH,'F');
-        // Vendor type label
-        doc.setTextColor(255,220,180);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+        // Vendor type short label (left, small, light brown)
         var vtShort=vtName.replace(' Vendor','');
-        doc.text(vtShort+':',x+4,yy+vendorH-1.5);
-        // Company name
-        doc.setTextColor(255,255,255);doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+        doc.setTextColor(210,170,130);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+        doc.text(vtShort,x+4,yy+vendorH-2);
+        // Company name (center, white, same size as staff name)
         var compStr=entry.company;
-        if(tid==='photovideo'&&entry.serviceLabel)compStr+=(' ['+entry.serviceLabel+']');
-        var qtyStr=entry.qty?(' x'+entry.qty):'';
-        var maxW=Math.floor((colW-30)/1.6);
-        if(compStr.length>maxW)compStr=compStr.slice(0,maxW-1)+'...';
-        doc.text(compStr,x+22,yy+vendorH-1.5);
-        // Qty
+        if(tid==='photovideo'&&entry.serviceLabel)compStr+=' ['+entry.serviceLabel+']';
+        var nmMaxW=Math.floor((colW-timeW-20)/1.85);
+        if(compStr.length>nmMaxW)compStr=compStr.slice(0,nmMaxW-1)+'...';
+        doc.setTextColor(255,240,220);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+        doc.text(compStr,x+4+28,yy+vendorH-2);
+        // Qty (right, amber, bold — same position as time)
+        var qtyStr=entry.qty?'x'+entry.qty:'';
         if(qtyStr){
-          doc.setTextColor(255,220,180);doc.setFontSize(7);doc.setFont('helvetica','bold');
-          doc.text(qtyStr,x+colW-2,yy+vendorH-1.5,{align:'right'});
+          doc.setTextColor(210,170,130);doc.setFontSize(8);doc.setFont('helvetica','bold');
+          doc.text(qtyStr,x+colW-2,yy+vendorH-2,{align:'right'});
         }
         colY[ci]+=vendorH;
       });

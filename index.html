@@ -6311,7 +6311,8 @@ function makeEventSheetPDF(){
       doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(x3,yy3,2,rh,'F');
       var ts=shortTime(a.duty);var lkX=a._isPinned?4.5:0;
       var isCam=a.emp.role==='Cameraman';
-      var camTag=isCam&&a.camType?' ['+a.camType+']':'';
+      var _camType=a.camType||(isCam?'Video':'');
+      var camTag=isCam?' ['+_camType+']':'';
       var nm=Math.floor((colW-timeW-7-lkX)/2.1);
       if(isMgr){
         var ph2=a.emp.phone?' - '+a.emp.phone:'';var ml=a.emp.name+ph2;
@@ -6865,7 +6866,8 @@ function makeDailySummaryPDF(){
         var ac=isMgr?[230,165,0]:[21,101,192];doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(x3,yy3,2,rht,'F');
         var ts=shortTime(row.duty);var lkX=row._isPinned?4.5:0;
         var isCam=row.emp.role==='Cameraman';
-        var camTag=isCam&&row.camType?' ['+row.camType+']':'';
+        var _camType2=row.camType||(isCam?'Video':'');
+        var camTag=isCam?' ['+_camType2+']':'';
         var nm2=Math.floor((colW-timeW-7-lkX)/2.1);
         if(isMgr){
           var ph2=row.emp.phone?' - '+row.emp.phone:'';var ml=row.emp.name+ph2;

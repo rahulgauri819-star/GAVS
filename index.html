@@ -5957,7 +5957,7 @@ function actuallySaveCloud(){
   saveLog(_sd);
   saveVendorLog(_sd);
   try{
-    var staffData=staff.map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
+    var staffData=staff.map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM',pgdn:e.pgdn||false};});
     var venueData=venues.map(function(v){return{id:v.id,name:v.name,vip:v.vip||false,address:v.address||'',locUrl:v.locUrl||''};});
     var asgnData={};
     Object.keys(asgn).forEach(function(vid){
@@ -6046,7 +6046,7 @@ function loadFromCloud(callback){
       var d=doc.data();
       // Restore staff
       if(d.staff&&d.staff.length){
-        staff=d.staff.map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
+        staff=d.staff.map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM',pgdn:e.pgdn||false};});
       }
       // Restore venues
       if(d.venues&&d.venues.length){

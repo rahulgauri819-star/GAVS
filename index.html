@@ -947,8 +947,7 @@ function go(s){
     document.body.classList.remove('in-assign');
     if(s==='manage')drawManage();
     else if(s==='leave')drawLeave();
-    else if(s==='office')drawOffice();
-    else if(s==='godown')drawGodownTeam();
+    else if(s==='office'){drawOffice();drawGodownTeam();}
     else if(s==='report'){drawReport();populateVHVenue();refreshSREmp();}
     else if(s==='vendorreport'){initVendorReportDates();populateVRVVenue();populateVRCCompany();}
     else if(s==='drafts')showDraftList();
@@ -2365,6 +2364,11 @@ function _applyCopyPrevDay(vid,toAssign,curDate){
     asgn[vid][e.eid]={emp:emp,duty:e.duty,pinned:(emp.pv===vid),isFixed:(emp.pv===vid)};
     if(e.camType)asgn[vid][e.eid].camType=e.camType;
   });
+  // Also copy comment from previous day if exists and no comment today
+  var prevDate=toAssign.length&&toAssign[0]._prevDate?toAssign[0]._prevDate:'';
+  if(!prevDate){var cur=new Date(curDate);cur.setDate(cur.getDate()-1);prevDate=cur.toISOString().slice(0,10);}
+  var prevCmt=(dlog[prevDate]&&dlog[prevDate].dateComments&&dlog[prevDate].dateComments[vid])||'';
+  if(prevCmt&&!_dateComments[vid])_dateComments[vid]=prevCmt;
   closeModal();
   var vname=getV(vid)?getV(vid).name:'venue';
   toast('Copied '+toAssign.length+' staff to '+vname);
@@ -3393,7 +3397,7 @@ function drawGodownTeam(){
   var q=(g('GSR')||{}).value||'';
   var aids=getAids(),lids=Object.keys(lvMap),oids=Object.keys(offMap),gids=Object.keys(gdnMap);
   var av=staff.filter(function(e){
-    return lids.indexOf(e.id)<0&&oids.indexOf(e.id)<0&&gids.indexOf(e.id)<0&&
+    return lids.indexOf(e.id)<0&&oids.indexOf(e.id)<0&&gids.indexOf(e.id)<0&&aids.indexOf(e.id)<0&&
       (!q||e.name.toLowerCase().indexOf(q.toLowerCase())>=0);
   });
   buildLoPanel(g('GL_AVAIL'),av,'godown');
@@ -3466,6 +3470,12 @@ function showPeriodLeavePrompt(eid, ename){
   };
   if(g('m-clear'))g('m-clear').onclick=function(){
     annualLeave=annualLeave.filter(function(x){return x.id!==eid;});
+    // Clean up any leaveExclude exceptions for this staff across all dlog dates
+    Object.keys(dlog).forEach(function(dt){
+      if(dlog[dt]&&dlog[dt].leaveExclude&&dlog[dt].leaveExclude[eid]){
+        delete dlog[dt].leaveExclude[eid];
+      }
+    });
     closeModal();saveCloud();
     drawLeave();drawStats();drawStaffPanel();drawVenueGrid();
     toast('Period leave removed');

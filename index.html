@@ -1090,9 +1090,7 @@ function loadLiveFromDlog(date){
   _dateVip=log&&log.dateVip?JSON.parse(JSON.stringify(log.dateVip)):{};
   // Restore contracted venue toggles for this date
   if(log&&log.contractedVisible){
-    (log.contractedVisible).forEach(function(vid){
-      contractedHiddenVids.delete(vid);
-    });
+    log.contractedVisible.forEach(function(vid){contractedHiddenVids.delete(vid);});
   }
   _dateHalls=log&&log.dateHalls?JSON.parse(JSON.stringify(log.dateHalls)):{};
   _dateComments=log&&log.dateComments?JSON.parse(JSON.stringify(log.dateComments)):{};

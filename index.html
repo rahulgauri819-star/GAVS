@@ -2631,12 +2631,14 @@ function showContractedDD(anchorBtn){
     row.addEventListener('click',function(ev){
       ev.stopPropagation();
       if(contractedHiddenVids.has(vid)){contractedHiddenVids.delete(vid);}else{contractedHiddenVids.add(vid);}
-      // Save toggle state to dlog for this date
+      // Update contractedVisible in dlog memory only — no saveCloud() here
+      // to prevent accidentally overwriting real data with empty working set
       var _ctDate=_lastLoadedDate||getD();
       if(!dlog[_ctDate])dlog[_ctDate]={};
       var _cvids=venues.filter(function(v2){return staff.some(function(e){return e.pv===v2.id;})&&!contractedHiddenVids.has(v2.id);}).map(function(v2){return v2.id;});
       dlog[_ctDate].contractedVisible=_cvids;
-      saveCloud();
+      // Note: saveCloud() intentionally NOT called here — toggle state saved
+      // naturally on next user action (assign/remove staff etc.)
       initActiveVids();drawVenueGrid();showContractedDD._rebuild(anchorBtn);
     });
     dd.appendChild(row);

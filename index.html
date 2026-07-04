@@ -961,10 +961,11 @@ document.querySelectorAll('.nb').forEach(function(btn){
 
 // ── INIT ──────────────────────────────────────────────────────
 function initApp(){
-  // Always start on today — the correct date will be set AFTER Firebase loads
-  g('DP').value=todayIST();
+  // Default to tomorrow's date on login/reload
+  var _tomorrow=nd(todayIST());
+  g('DP').value=_tomorrow;
   var dp2init=document.getElementById('DP2');
-  if(dp2init)dp2init.value=g('DP').value;
+  if(dp2init)dp2init.value=_tomorrow;
   document.body.classList.add('in-assign');
   updateADate();
   populateRoleDD();populateVenueDD();populateTimeDD();

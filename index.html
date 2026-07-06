@@ -6407,7 +6407,13 @@ function makeEventSheetPDF(){
       if(isCont){
         if(curCol===0){curCol=1;}
         else{doc.addPage();colY=[startY,startY];curCol=0;}
-        // Draw cont. header in the new column
+        // Check space — need header + at least 1 row
+        if(colY[curCol]+hdrH+rowH>pageH){
+          // Not enough space even for 1 row — try next col or new page
+          if(curCol===0){curCol=1;}
+          else{doc.addPage();colY=[startY,startY];curCol=0;}
+        }
+        // Draw cont. header
         var _ci=curCol;var _cx=colX[_ci];var _cy=colY[_ci];
         var _vipH=(_dateVip&&_dateVip[v.id]!==undefined)?_dateVip[v.id]:v.vip;
         if(_vipH){doc.setFillColor(180,130,0);}else{doc.setFillColor(21,101,192);}
@@ -6421,13 +6427,11 @@ function makeEventSheetPDF(){
         colY[_ci]+=hdrH+1;
       }
       var done=renderBlock(v,entries,idx,isCont);
-      if(done===0){
-        // No rows fit — force new page and retry
-        doc.addPage();colY=[startY,startY];curCol=0;
-      } else {
+      if(done>0){
         idx+=done;
         isCont=true;
       }
+      // if done=0, isCont stays true and next iteration will try new column/page
     }
     // Render vendor rows below staff
     renderVendorRowsPDF(v.id);

@@ -6436,30 +6436,22 @@ function makeEventSheetPDF(){
 
   function renderSectionPDF(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
     if(!list.length)return;
-    var srH2=7;var sw2=pw-mg*2;
-    var hdrH2=10;
-    // Check if section header + at least 2 rows fits in current column
-    // If not, try other column; if neither fits, new page
-    var needed=hdrH2+srH2*2;
-    if(colY[curCol]+needed>pageH){
-      if(curCol===0&&colY[1]+needed<=pageH){curCol=1;}
-      else{doc.addPage();colY=[startY,startY];curCol=0;}
+    var srH2=7;var sw2=pw-mg*2;var hdrH2=11;
+    // Find the column with more space
+    if(colY[0]<=colY[1])curCol=0;else curCol=1;
+    // If not enough space for header+1 row in best column, new page
+    if(colY[curCol]+hdrH2+srH2>pageH){
+      doc.addPage();colY=[startY,startY];curCol=0;
     }
-    // Full-width header spanning both columns
-    var hdrY=Math.min(colY[0],colY[1]);
-    // If columns are at different heights, move both to same level
-    if(colY[0]!==colY[1]){
-      var maxColY=Math.max(colY[0],colY[1]);
-      if(maxColY+needed>pageH){doc.addPage();colY=[startY,startY];curCol=0;hdrY=startY;}
-      else{colY[0]=maxColY;colY[1]=maxColY;hdrY=maxColY;}
-    }
+    // Draw full-width section header at bottom of the shorter column
+    var hdrY=colY[curCol];
     doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,hdrY,sw2,hdrH2,2,2,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
-    doc.text(title+' — '+list.length+' staff',mg+4,hdrY+7);
-    colY=[hdrY+hdrH2+2,hdrY+hdrH2+2];curCol=0;
+    doc.text(title+' — '+list.length+' staff',mg+4,hdrY+7.5);
+    // Both columns start below the header
+    colY=[hdrY+hdrH2+1,hdrY+hdrH2+1];curCol=0;
     for(var i=0;i<list.length;i++){
       var a=list[i];
-      // Fill left col fully first, then right col, then new page
       if(colY[curCol]+srH2>pageH){
         if(curCol===0){curCol=1;}
         else{doc.addPage();colY=[startY,startY];curCol=0;}
@@ -6474,7 +6466,6 @@ function makeEventSheetPDF(){
       doc.text(sn3,x3+4,yy3+srH2-2);
       if(showTime){doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(shortTime(a.duty),x3+colW-1,yy3+srH2-2,{align:'right'});}
       colY[ci3]+=srH2;
-      // NO column alternation — stay in left col until full
     }
   }
 

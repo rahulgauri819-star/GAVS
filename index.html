@@ -6436,13 +6436,16 @@ function makeEventSheetPDF(){
   // OFFICE DUTY + GODOWN TEAM + ON LEAVE — simple new page each, 2-col staff list
   function renderSectionSimple(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
     if(!list.length)return;
-    var srH=rowH;var sw=pw-mg*2;
+    var srH=rowH;var sw=pw-mg*2;var hdrHs=10;
     var sorted=list.slice().sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
-    doc.addPage();colY=[startY,startY];curCol=0;
-    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,startY-6,sw,10,2,2,'F');
+    // Sync both columns to same Y, then draw full-width header
+    var syncY=Math.max(colY[0],colY[1]);
+    if(syncY+hdrHs+srH>pageH){doc.addPage();syncY=startY;}
+    colY=[syncY,syncY];curCol=0;
+    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,syncY,sw,hdrHs,2,2,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
-    doc.text(title+' — '+sorted.length+' staff',mg+4,startY+1);
-    colY=[startY+5,startY+5];curCol=0;
+    doc.text(title+' — '+sorted.length+' staff',mg+4,syncY+7);
+    colY=[syncY+hdrHs+1,syncY+hdrHs+1];curCol=0;
     for(var i=0;i<sorted.length;i++){
       if(colY[curCol]+srH>pageH){
         if(curCol===0){curCol=1;}

@@ -6437,13 +6437,26 @@ function makeEventSheetPDF(){
   function renderSectionPDF(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
     if(!list.length)return;
     var srH2=7;var sw2=pw-mg*2;
-    // New page, always left col first
-    doc.addPage();colY=[startY,startY];curCol=0;
-    // Full-width header
-    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,startY-6,sw2,10,2,2,'F');
+    var hdrH2=10;
+    // Check if section header + at least 2 rows fits in current column
+    // If not, try other column; if neither fits, new page
+    var needed=hdrH2+srH2*2;
+    if(colY[curCol]+needed>pageH){
+      if(curCol===0&&colY[1]+needed<=pageH){curCol=1;}
+      else{doc.addPage();colY=[startY,startY];curCol=0;}
+    }
+    // Full-width header spanning both columns
+    var hdrY=Math.min(colY[0],colY[1]);
+    // If columns are at different heights, move both to same level
+    if(colY[0]!==colY[1]){
+      var maxColY=Math.max(colY[0],colY[1]);
+      if(maxColY+needed>pageH){doc.addPage();colY=[startY,startY];curCol=0;hdrY=startY;}
+      else{colY[0]=maxColY;colY[1]=maxColY;hdrY=maxColY;}
+    }
+    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,hdrY,sw2,hdrH2,2,2,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
-    doc.text(title+' — '+list.length+' staff',mg+4,startY+1);
-    colY=[startY+5,startY+5];curCol=0;
+    doc.text(title+' — '+list.length+' staff',mg+4,hdrY+7);
+    colY=[hdrY+hdrH2+2,hdrY+hdrH2+2];curCol=0;
     for(var i=0;i<list.length;i++){
       var a=list[i];
       // Fill left col fully first, then right col, then new page
@@ -6934,12 +6947,22 @@ function makeDailySummaryPDF(){
   var lvListDS=Object.values(lvMap).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
   function renderSecDS(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
     if(!list.length)return;
-    var srHD=7;
-    doc.addPage();colY=[startY,startY];curCol=0;
-    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,startY-6,pw-mg*2,10,2,2,'F');
+    var srHD=7;var hdrHD=10;var sw3=pw-mg*2;
+    var neededD=hdrHD+srHD*2;
+    if(colY[curCol]+neededD>pageH){
+      if(curCol===0&&colY[1]+neededD<=pageH){curCol=1;}
+      else{doc.addPage();colY=[startY,startY];curCol=0;}
+    }
+    var hdrYD=Math.min(colY[0],colY[1]);
+    if(colY[0]!==colY[1]){
+      var maxColYD=Math.max(colY[0],colY[1]);
+      if(maxColYD+neededD>pageH){doc.addPage();colY=[startY,startY];curCol=0;hdrYD=startY;}
+      else{colY[0]=maxColYD;colY[1]=maxColYD;hdrYD=maxColYD;}
+    }
+    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,hdrYD,sw3,hdrHD,2,2,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
-    doc.text(title+' — '+list.length+' staff',mg+4,startY+1);
-    colY=[startY+5,startY+5];curCol=0;
+    doc.text(title+' — '+list.length+' staff',mg+4,hdrYD+7);
+    colY=[hdrYD+hdrHD+2,hdrYD+hdrHD+2];curCol=0;
     for(var i=0;i<list.length;i++){
       var a=list[i];
       // Fill left col fully first, then right, then new page

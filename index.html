@@ -6414,8 +6414,8 @@ function makeEventSheetPDF(){
     var firstBlock=true;
     var i=0;
     while(i<entries.length){
-      // Ensure space for header + at least 1 row
-      ensureColSpace(thisHdrH+rowH);
+      // Ensure space for cont. header + at least 1 row (col was already advanced)
+      if(colY[curCol]+thisHdrH+rowH>pageH)nextColumn();
       var ci=curCol;var x=colX[ci];var y=colY[ci];
 
       // Draw header
@@ -6459,7 +6459,11 @@ function makeEventSheetPDF(){
       // Draw rows until column full
       while(i<entries.length){
         var a=entries[i];var isMgr=a.emp.role==='Manager';var rh=isMgr?mgrH:rowH;
-        if(colY[curCol]+rh>pageH)break; // column full — next iteration draws cont. header
+        if(colY[curCol]+rh>pageH){
+          // Column full — advance to next column NOW before outer loop can move elsewhere
+          nextColumn();
+          break;
+        }
         var cx=colX[curCol];var cy=colY[curCol];
         var bg=isMgr?[255,253,225]:i%2===0?[240,245,255]:[255,255,255];
         doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(cx,cy,colW,rh,'F');

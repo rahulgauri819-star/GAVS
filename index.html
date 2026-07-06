@@ -6436,20 +6436,36 @@ function makeEventSheetPDF(){
   // OFFICE DUTY + GODOWN TEAM + ON LEAVE — simple new page each, 2-col staff list
   function renderSectionSimple(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
     if(!list.length)return;
-    var srH=rowH;var sw=pw-mg*2;var hdrHs=10;
+    var srH=rowH;var hdrHs=9;
     var sorted=list.slice().sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
-    // Sync both columns to same Y, then draw full-width header
-    var syncY=Math.max(colY[0],colY[1]);
-    if(syncY+hdrHs+srH>pageH){doc.addPage();syncY=startY;}
-    colY=[syncY,syncY];curCol=0;
-    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,syncY,sw,hdrHs,2,2,'F');
-    doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
-    doc.text(title+' — '+sorted.length+' staff',mg+4,syncY+7);
-    colY=[syncY+hdrHs+1,syncY+hdrHs+1];curCol=0;
+    // Use whichever column has more space — prefer left on tie
+    if(colY[0]<=colY[1])curCol=0;else curCol=1;
+    // If not enough space, try other col, else new page
+    if(colY[curCol]+hdrHs+srH>pageH){
+      var other=curCol===0?1:0;
+      if(colY[other]+hdrHs+srH<=pageH){curCol=other;}
+      else{doc.addPage();colY=[startY,startY];curCol=0;}
+    }
+    // Draw header in current column only (same width as venue)
+    var hx=colX[curCol];var hy=colY[curCol];
+    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(hx,hy,colW,hdrHs,2,2,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
+    var htitle=title+' — '+sorted.length;
+    doc.text(htitle,hx+3,hy+6.5);
+    colY[curCol]+=hdrHs+1;
+    // Fill rows — same column first, then other column, then new page
     for(var i=0;i<sorted.length;i++){
       if(colY[curCol]+srH>pageH){
-        if(curCol===0){curCol=1;}
-        else{doc.addPage();colY=[startY,startY];curCol=0;}
+        if(curCol===0&&colY[1]+srH<=pageH){curCol=1;}
+        else if(curCol===1&&colY[0]+srH<=pageH){curCol=0;}
+        else{
+          doc.addPage();colY=[startY,startY];curCol=0;
+          // Continuation header
+          doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(colX[0],startY,colW,hdrHs,2,2,'F');
+          doc.setTextColor(255,255,255);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
+          doc.text(title+' (cont.)',colX[0]+3,startY+6.5);
+          colY[0]+=hdrHs+1;
+        }
       }
       var a=sorted[i];var x3=colX[curCol];var yy3=colY[curCol];
       var rb=i%2===0?[250,245,255]:[255,255,255];

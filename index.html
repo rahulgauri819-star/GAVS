@@ -6391,8 +6391,13 @@ function makeEventSheetPDF(){
       // Large venues always get a fresh page, left col
       doc.addPage();colY=[startY,startY];curCol=0;
     } else {
-      // For new venue: pick column with more space (prefer left on tie)
-      if(colY[0]<=colY[1]){curCol=0;}else{curCol=1;}
+      // Always stay in current column until it can't fit header+1 row
+      // This ensures venues fill left col completely before using right col
+      var _needed=hdrH+rowH;
+      if(colY[curCol]+_needed>pageH){
+        if(curCol===0){curCol=1;}
+        else{doc.addPage();colY=[startY,startY];curCol=0;}
+      }
     }
     // Render all blocks — continuation flows naturally left->right->new page
     var _safeIter=0;

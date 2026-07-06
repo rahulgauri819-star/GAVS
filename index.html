@@ -6286,32 +6286,7 @@ function makeEventSheetPDF(){
     var rendered=0;
     for(var i=si;i<entries.length;i++){
       var a=entries[i];var isMgr=a.emp.role==='Manager';var rh=isMgr?mgrH:rowH;
-      if(colY[curCol]+rh>pageH){
-        if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}
-        // cont header
-        var ci2=curCol;var x2=colX[ci2];var yy2=colY[ci2];
-        if(_vipPDF){doc.setFillColor(180,130,0);}else{doc.setFillColor(21,101,192);}
-        doc.roundedRect(x2,yy2,colW,hdrH,2,2,'F');
-        doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
-        var vn2=v.name.length>mc?v.name.slice(0,mc-1)+'...':v.name;
-        doc.text(vn2+' (cont.)',x2+3,yy2+6.8);
-        doc.setFontSize(7.5);doc.setFont('helvetica','normal');
-        doc.text(entries.length+' staff',x2+colW-2,yy2+6.8,{align:'right'});
-        colY[curCol]+=hdrH+1;
-        // Repeat comment pink box on cont. blocks
-        var _pdfCmtC=(_dateComments&&_dateComments[v.id]||'').trim();
-        if(_pdfCmtC){
-          doc.setFontSize(7.5);doc.setFont('helvetica','bold');
-          var _cmtLinesC=doc.splitTextToSize(_pdfCmtC,colW-8);
-          var cmtHC=_cmtLinesC.length*4.5+3;
-          var _ccc=curCol;var _cxc=colX[_ccc];var _cyc=colY[_ccc];
-          doc.setFillColor(252,228,236);doc.roundedRect(_cxc,_cyc,colW,cmtHC,1.5,1.5,'F');
-          doc.setDrawColor(244,143,177);doc.roundedRect(_cxc,_cyc,colW,cmtHC,1.5,1.5,'S');
-          doc.setTextColor(136,14,79);
-          _cmtLinesC.forEach(function(l,li){doc.text(l,_cxc+4,_cyc+4+li*4.5);});
-          colY[_ccc]+=cmtHC+1;
-        }
-      }
+      if(colY[curCol]+rh>pageH){break;}
       var ci3=curCol;var x3=colX[ci3];var yy3=colY[ci3];
       var idx2=rendered;
       var bg=isMgr?[255,253,225]:idx2%2===0?[240,245,255]:[255,255,255];
@@ -6339,7 +6314,7 @@ function makeEventSheetPDF(){
       colY[curCol]+=rh;rendered++;
     }
     colY[curCol]+=3;
-    return entries.length - si; // signal that ALL remaining entries were rendered
+    return rendered; // return count rendered in this column block
   }
 
   // Vendor rows renderer — brown background, below staff
@@ -6423,6 +6398,23 @@ function makeEventSheetPDF(){
     var _safeIter=0;
     while(idx<entries.length&&_safeIter<500){
       _safeIter++;
+      // For cont. blocks: STRICTLY advance to next column before rendering
+      if(isCont){
+        if(curCol===0){curCol=1;}
+        else{doc.addPage();colY=[startY,startY];curCol=0;}
+        // Draw cont. header in the new column
+        var _ci=curCol;var _cx=colX[_ci];var _cy=colY[_ci];
+        var _vipH=(_dateVip&&_dateVip[v.id]!==undefined)?_dateVip[v.id]:v.vip;
+        if(_vipH){doc.setFillColor(180,130,0);}else{doc.setFillColor(21,101,192);}
+        doc.roundedRect(_cx,_cy,colW,hdrH,2,2,'F');
+        doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
+        var _mc2=Math.floor((colW-timeW-4)/2.2);
+        var _vn2=v.name.length>_mc2?v.name.slice(0,_mc2-1)+'...':v.name;
+        doc.text(_vn2+' (cont.)',_cx+3,_cy+6.8);
+        doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+        doc.text(entries.length+' staff',_cx+colW-2,_cy+6.8,{align:'right'});
+        colY[_ci]+=hdrH+1;
+      }
       var done=renderBlock(v,entries,idx,isCont);
       idx+=Math.max(1,done);
       isCont=true;

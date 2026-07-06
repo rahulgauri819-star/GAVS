@@ -6105,7 +6105,7 @@ function loadFromCloud(callback){
         // Update CREDS array from portal accounts
         CREDS=[{u:'admin',p:PORTAL_ACCOUNTS.find(function(a){return a.id==='admin';}).password},{u:'grover',p:PORTAL_ACCOUNTS.find(function(a){return a.id==='grover';}).password}];
       }
-      if(d.portalAccess)PORTAL_ACCESS=d.portalAccess;
+      if(d.portalAccess){PORTAL_ACCESS=d.portalAccess;portalAccess=d.portalAccess;}
       if(d.ihcHalls)ihcHalls=d.ihcHalls;
       if(d.jaipurHalls)jaipurHalls=d.jaipurHalls;
       if(d.ihcAsgn)ihcAsgn=d.ihcAsgn;

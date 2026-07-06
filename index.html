@@ -6404,6 +6404,12 @@ function makeEventSheetPDF(){
     var mc=Math.floor((colW-timeW-4)/2.2);
 
     if(entries.length>30){doc.addPage();colY=[startY,startY];curCol=0;}
+    else{
+      // For new venue start: pick column with more space (prefer left on tie)
+      // This ensures left col fills before right col for new venues
+      if(colY[0]<=colY[1])curCol=0;else curCol=1;
+      if(colY[curCol]+thisHdrH+rowH>pageH)nextColumn();
+    }
 
     var firstBlock=true;
     var i=0;
@@ -6482,8 +6488,7 @@ function makeEventSheetPDF(){
         i++;
       }
       colY[curCol]+=2;
-      // If more rows remain, move to next column for cont.
-      if(i<entries.length)nextColumn();
+      // If more rows remain, outer while will draw cont. header in next column
     }
     renderVendorRowsPDF(v.id);
     colY[curCol]+=1;

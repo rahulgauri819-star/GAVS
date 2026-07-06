@@ -6421,11 +6421,11 @@ function makeEventSheetPDF(){
     }
     // Render all blocks — continuation flows naturally left->right->new page
     var _safeIter=0;
-    while(idx<entries.length&&_safeIter<1000){
+    while(idx<entries.length&&_safeIter<500){
       _safeIter++;
+      var _prevIdx=idx;
       var done=renderBlock(v,entries,idx,isCont);
-      if(done===0){idx++;} // safety: never get stuck on one entry
-      else idx+=done;
+      idx+=Math.max(1,done); // always advance at least 1
       isCont=true;
     }
     // Render vendor rows below staff
@@ -6433,46 +6433,31 @@ function makeEventSheetPDF(){
     colY[curCol]+=1; // small gap between venues
   });
 
-  // OFFICE DUTY + GODOWN TEAM + ON LEAVE — rendered exactly like venue blocks
-  function renderSectionBlock(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
+  // OFFICE DUTY + GODOWN TEAM + ON LEAVE — simple new page each, 2-col staff list
+  function renderSectionSimple(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
     if(!list.length)return;
-    var srH=rowH;var hdrH=8;var isCont=false;
+    var srH=rowH;var sw=pw-mg*2;
     var sorted=list.slice().sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
-    var idx=0;
-    var _secSafe=0;
-    while(idx<sorted.length&&_secSafe<2000){
-      _secSafe++;
-      if(colY[0]<=colY[1])curCol=0;else curCol=1;
-      addLineIfNeeded(hdrH+srH);
-      var ci=curCol;var x=colX[ci];var yy=colY[ci];
-      // Header
-      doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(x,yy,colW,hdrH,2,2,'F');
-      doc.setTextColor(255,255,255);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
-      var hTitle=isCont?(title+' (cont.)'):title+' — '+sorted.length+' staff';
-      doc.text(hTitle,x+3,yy+5.5);
-      colY[ci]+=hdrH+1;
-      // Fill this column with rows — safety: must render at least 1 row per iteration
-      var rendered=0;var _innerSafe=0;
-      while(idx<sorted.length&&_innerSafe<500){
-        _innerSafe++;
-        if(colY[curCol]+srH>pageH)break;
-        var a=sorted[idx];
-        var ry=colY[curCol];
-        var rb=idx%2===0?[250,245,255]:[255,255,255];
-        doc.setFillColor(rb[0],rb[1],rb[2]);doc.rect(colX[curCol],ry,colW,srH,'F');
-        doc.setFillColor(acR,acG,acB);doc.rect(colX[curCol],ry,2,srH,'F');
-        var nmw=Math.floor((colW-(showTime?timeW+2:4))/1.85);
-        var sn=a.emp.name.length>nmw?a.emp.name.slice(0,nmw-1)+'...':a.emp.name;
-        doc.setTextColor(tcR,tcG,tcB);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
-        doc.text(sn,colX[curCol]+4,ry+srH-2);
-        if(showTime){doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(shortTime(a.duty),colX[curCol]+colW-1,ry+srH-2,{align:'right'});}
-        colY[curCol]+=srH;
-        idx++;rendered++;
+    doc.addPage();colY=[startY,startY];curCol=0;
+    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,startY-6,sw,10,2,2,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
+    doc.text(title+' — '+sorted.length+' staff',mg+4,startY+1);
+    colY=[startY+5,startY+5];curCol=0;
+    for(var i=0;i<sorted.length;i++){
+      if(colY[curCol]+srH>pageH){
+        if(curCol===0){curCol=1;}
+        else{doc.addPage();colY=[startY,startY];curCol=0;}
       }
-      // Safety: if nothing rendered (tiny page edge case), force advance
-      if(rendered===0){idx++;doc.addPage();colY=[startY,startY];curCol=0;}
-      isCont=true;
-      colY[ci]+=2;
+      var a=sorted[i];var x3=colX[curCol];var yy3=colY[curCol];
+      var rb=i%2===0?[250,245,255]:[255,255,255];
+      doc.setFillColor(rb[0],rb[1],rb[2]);doc.rect(x3,yy3,colW,srH,'F');
+      doc.setFillColor(acR,acG,acB);doc.rect(x3,yy3,2,srH,'F');
+      var nmw=Math.floor((colW-(showTime?timeW+2:4))/1.85);
+      var sn=a.emp.name.length>nmw?a.emp.name.slice(0,nmw-1)+'...':a.emp.name;
+      doc.setTextColor(tcR,tcG,tcB);doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+      doc.text(sn,x3+4,yy3+srH-2);
+      if(showTime){doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(shortTime(a.duty),x3+colW-1,yy3+srH-2,{align:'right'});}
+      colY[curCol]+=srH;
     }
   }
 
@@ -6480,9 +6465,9 @@ function makeEventSheetPDF(){
   var gdnList2=Object.values(gdnMap);
   var lvList2=Object.values(lvMap);
 
-  if(offList2.length)renderSectionBlock('OFFICE DUTY',offList2,180,80,20,230,100,20,80,40,0,true);
-  if(gdnList2.length)renderSectionBlock('GODOWN TEAM',gdnList2,180,140,0,220,170,0,80,60,0,true);
-  if(lvList2.length)renderSectionBlock('ON LEAVE',lvList2,160,30,30,200,50,50,80,0,0,false);
+  if(offList2.length)renderSectionSimple('OFFICE DUTY',offList2,180,80,20,230,100,20,80,40,0,true);
+  if(gdnList2.length)renderSectionSimple('GODOWN TEAM',gdnList2,180,140,0,220,170,0,80,60,0,true);
+  if(lvList2.length)renderSectionSimple('ON LEAVE',lvList2,160,30,30,200,50,50,80,0,0,false);
 
   doc.save('GAVS_EventSheet_'+d+'.pdf');toast('Event Sheet downloaded!');
 }

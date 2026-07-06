@@ -6339,7 +6339,7 @@ function makeEventSheetPDF(){
       colY[curCol]+=rh;rendered++;
     }
     colY[curCol]+=3;
-    return rendered;
+    return entries.length - si; // signal that ALL remaining entries were rendered
   }
 
   // Vendor rows renderer — brown background, below staff
@@ -6423,12 +6423,6 @@ function makeEventSheetPDF(){
     var _safeIter=0;
     while(idx<entries.length&&_safeIter<500){
       _safeIter++;
-      // For cont. blocks: strictly advance column (left→right→new page)
-      // Don't re-pick based on space — maintain strict flow order
-      if(isCont){
-        if(curCol===0){curCol=1;}
-        else{doc.addPage();colY=[startY,startY];curCol=0;}
-      }
       var done=renderBlock(v,entries,idx,isCont);
       idx+=Math.max(1,done);
       isCont=true;

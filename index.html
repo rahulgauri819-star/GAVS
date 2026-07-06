@@ -6423,9 +6423,14 @@ function makeEventSheetPDF(){
     var _safeIter=0;
     while(idx<entries.length&&_safeIter<500){
       _safeIter++;
-      var _prevIdx=idx;
+      // For cont. blocks: strictly advance column (left→right→new page)
+      // Don't re-pick based on space — maintain strict flow order
+      if(isCont){
+        if(curCol===0){curCol=1;}
+        else{doc.addPage();colY=[startY,startY];curCol=0;}
+      }
       var done=renderBlock(v,entries,idx,isCont);
-      idx+=Math.max(1,done); // always advance at least 1
+      idx+=Math.max(1,done);
       isCont=true;
     }
     // Render vendor rows below staff

@@ -6401,15 +6401,15 @@ function makeEventSheetPDF(){
     }
     // Render all blocks — continuation flows naturally left->right->new page
     var _safeIter=0;
+    var _needContHeader=false;
     while(idx<entries.length&&_safeIter<500){
       _safeIter++;
-      // For cont. blocks: STRICTLY advance to next column before rendering
       if(isCont){
+        // Advance to next column strictly
         if(curCol===0){curCol=1;}
         else{doc.addPage();colY=[startY,startY];curCol=0;}
-        // Check space — need header + at least 1 row
-        if(colY[curCol]+hdrH+rowH>pageH){
-          // Not enough space even for 1 row — try next col or new page
+        // Ensure enough space for header+1 row
+        while(colY[curCol]+hdrH+rowH>pageH){
           if(curCol===0){curCol=1;}
           else{doc.addPage();colY=[startY,startY];curCol=0;}
         }
@@ -6427,11 +6427,10 @@ function makeEventSheetPDF(){
         colY[_ci]+=hdrH+1;
       }
       var done=renderBlock(v,entries,idx,isCont);
-      if(done>0){
-        idx+=done;
-        isCont=true;
-      }
-      // if done=0, isCont stays true and next iteration will try new column/page
+      idx+=done>0?done:0;
+      if(done>0)isCont=true;
+      // Safety: if still no progress after cont. header, force advance
+      if(done===0){idx=Math.min(idx+1,entries.length);}
     }
     // Render vendor rows below staff
     renderVendorRowsPDF(v.id);

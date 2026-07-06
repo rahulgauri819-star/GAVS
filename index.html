@@ -6405,10 +6405,24 @@ function makeEventSheetPDF(){
 
     if(entries.length>30){doc.addPage();colY=[startY,startY];curCol=0;}
     else{
-      // For new venue start: pick column with more space (prefer left on tie)
-      // This ensures left col fills before right col for new venues
+      // Pick column with more space
       if(colY[0]<=colY[1])curCol=0;else curCol=1;
-      if(colY[curCol]+thisHdrH+rowH>pageH)nextColumn();
+      // Check if venue needs continuation (won't fit in one column)
+      var _estRows=Math.floor((pageH-colY[curCol]-thisHdrH)/rowH);
+      var _needsCont=(_estRows<entries.length);
+      if(_needsCont){
+        // If venue needs continuation, ensure OTHER column has space too
+        var _otherCol=curCol===0?1:0;
+        var _otherHasSpace=(colY[_otherCol]+thisHdrH+rowH<=pageH);
+        if(!_otherHasSpace){
+          // Other col has no space for cont. — start fresh page
+          doc.addPage();colY=[startY,startY];curCol=0;
+        } else if(colY[curCol]+thisHdrH+rowH>pageH){
+          nextColumn();
+        }
+      } else {
+        if(colY[curCol]+thisHdrH+rowH>pageH)nextColumn();
+      }
     }
 
     var firstBlock=true;

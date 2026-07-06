@@ -6437,24 +6437,31 @@ function makeEventSheetPDF(){
   function renderSectionPDF(title,list,hdrR,hdrG,hdrB,acR,acG,acB,tcR,tcG,tcB,showTime){
     if(!list.length)return;
     var srH2=7;var sw2=pw-mg*2;var hdrH2=11;
-    // Find the column with more space
-    if(colY[0]<=colY[1])curCol=0;else curCol=1;
-    // If not enough space for header+1 row in best column, new page
-    if(colY[curCol]+hdrH2+srH2>pageH){
-      doc.addPage();colY=[startY,startY];curCol=0;
-    }
-    // Draw full-width section header at bottom of the shorter column
-    var hdrY=colY[curCol];
-    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,hdrY,sw2,hdrH2,2,2,'F');
+    // Sync columns to same height before drawing header
+    var maxY=Math.max(colY[0],colY[1]);
+    if(maxY+hdrH2+srH2>pageH){doc.addPage();maxY=startY;}
+    colY=[maxY,maxY];curCol=0;
+    // Full-width header
+    doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,maxY,sw2,hdrH2,2,2,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
-    doc.text(title+' — '+list.length+' staff',mg+4,hdrY+7.5);
-    // Both columns start below the header
-    colY=[hdrY+hdrH2+1,hdrY+hdrH2+1];curCol=0;
+    doc.text(title+' — '+list.length+' staff',mg+4,maxY+7.5);
+    colY=[maxY+hdrH2+1,maxY+hdrH2+1];curCol=0;
+    // Fill exactly like venue renderBlock — left col first then right
     for(var i=0;i<list.length;i++){
       var a=list[i];
+      // Try left col first
+      if(colY[0]<=colY[1]){curCol=0;}else{curCol=1;}
       if(colY[curCol]+srH2>pageH){
-        if(curCol===0){curCol=1;}
-        else{doc.addPage();colY=[startY,startY];curCol=0;}
+        if(curCol===0&&colY[1]+srH2<=pageH){curCol=1;}
+        else{
+          // New page — draw header again as continuation
+          doc.addPage();
+          var newMaxY=startY;
+          doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(mg,newMaxY,sw2,hdrH2,2,2,'F');
+          doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
+          doc.text(title+' (cont.) — '+list.length+' staff',mg+4,newMaxY+7.5);
+          colY=[newMaxY+hdrH2+1,newMaxY+hdrH2+1];curCol=0;
+        }
       }
       var ci3=curCol;var x3=colX[ci3];var yy3=colY[ci3];
       var rb2=i%2===0?[250,245,255]:[255,255,255];

@@ -6385,56 +6385,108 @@ function makeEventSheetPDF(){
     });
   }
 
+  // Clean venue renderer - strict left→right, venue completes before next starts
+  function nextColumn(){
+    if(curCol===0){curCol=1;}
+    else{doc.addPage();colY=[startY,startY];curCol=0;}
+  }
+  function ensureColSpace(needed){
+    if(colY[curCol]+needed>pageH)nextColumn();
+  }
+
   vList.forEach(function(v){
-    var entries=pdfData[v.id];var idx=0;var isCont=false;
-    if(entries.length>30){
-      // Large venues always get a fresh page, left col
-      doc.addPage();colY=[startY,startY];curCol=0;
-    } else {
-      // Always stay in current column until it can't fit header+1 row
-      // This ensures venues fill left col completely before using right col
-      var _needed=hdrH+rowH;
-      if(colY[curCol]+_needed>pageH){
-        if(curCol===0){curCol=1;}
-        else{doc.addPage();colY=[startY,startY];curCol=0;}
+    var entries=pdfData[v.id];
+    var _vipPDF=(_dateVip&&_dateVip[v.id]!==undefined)?_dateVip[v.id]:v.vip;
+    var hasAddr=!!(v.address&&v.address.trim());
+    var hasUrl=!!(v.locUrl&&v.locUrl.trim());
+    var extraH=(hasAddr?5.5:0)+(hasUrl?5.5:0);
+    var thisHdrH=hdrH+extraH;
+    var mc=Math.floor((colW-timeW-4)/2.2);
+
+    if(entries.length>30){doc.addPage();colY=[startY,startY];curCol=0;}
+
+    var firstBlock=true;
+    var i=0;
+    while(i<entries.length){
+      // Ensure space for header + at least 1 row
+      ensureColSpace(thisHdrH+rowH);
+      var ci=curCol;var x=colX[ci];var y=colY[ci];
+
+      // Draw header
+      if(_vipPDF){doc.setFillColor(180,130,0);}else{doc.setFillColor(21,101,192);}
+      doc.roundedRect(x,y,colW,thisHdrH,2,2,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
+      var vn=(!firstBlock?v.name+' (cont.)':v.name);
+      if(vn.length>mc)vn=vn.slice(0,mc-1)+'...';
+      doc.text(vn,x+3,y+6.8);
+      doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+      doc.text(entries.length+' staff',x+colW-2,y+6.8,{align:'right'});
+      var infoY=y+thisHdrH;
+      if(hasAddr&&firstBlock){
+        doc.setTextColor(220,240,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+        var atr=Math.floor((colW-6)/1.5);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
+        doc.text('Addr: '+at,x+3,infoY+4);infoY+=5.5;
       }
-    }
-    // Render all blocks — continuation flows naturally left->right->new page
-    var _safeIter=0;
-    var _needContHeader=false;
-    while(idx<entries.length&&_safeIter<500){
-      _safeIter++;
-      if(isCont){
-        // Advance to next column strictly
-        if(curCol===0){curCol=1;}
-        else{doc.addPage();colY=[startY,startY];curCol=0;}
-        // Ensure enough space for header+1 row
-        while(colY[curCol]+hdrH+rowH>pageH){
-          if(curCol===0){curCol=1;}
-          else{doc.addPage();colY=[startY,startY];curCol=0;}
+      if(hasUrl&&firstBlock){
+        var mapBW=colW-6;
+        doc.setFillColor(255,235,59);doc.roundedRect(x+3,infoY+0.5,mapBW,5,1.5,1.5,'F');
+        doc.setTextColor(0,0,180);doc.setFontSize(8);doc.setFont('helvetica','bold');
+        doc.link(x+3,infoY+0.5,mapBW,5,{url:v.locUrl});
+        doc.text('View Map',x+3+mapBW/2,infoY+4,{align:'center'});infoY+=5.5;
+      }
+      colY[ci]+=thisHdrH+1;
+
+      // Comment pink box
+      var cmt=(_dateComments&&_dateComments[v.id]||'').trim();
+      if(cmt){
+        doc.setFontSize(7.5);doc.setFont('helvetica','bold');
+        var cl=doc.splitTextToSize(cmt,colW-8);
+        var cmH=cl.length*4.5+3;
+        doc.setFillColor(252,228,236);doc.roundedRect(colX[curCol],colY[curCol],colW,cmH,1.5,1.5,'F');
+        doc.setDrawColor(244,143,177);doc.roundedRect(colX[curCol],colY[curCol],colW,cmH,1.5,1.5,'S');
+        doc.setTextColor(136,14,79);
+        cl.forEach(function(l,li){doc.text(l,colX[curCol]+4,colY[curCol]+4+li*4.5);});
+        colY[curCol]+=cmH+1;
+      }
+      firstBlock=false;
+
+      // Draw rows until column full
+      while(i<entries.length){
+        var a=entries[i];var isMgr=a.emp.role==='Manager';var rh=isMgr?mgrH:rowH;
+        if(colY[curCol]+rh>pageH)break; // column full — next iteration draws cont. header
+        var cx=colX[curCol];var cy=colY[curCol];
+        var bg=isMgr?[255,253,225]:i%2===0?[240,245,255]:[255,255,255];
+        doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(cx,cy,colW,rh,'F');
+        var ac=isMgr?[230,165,0]:[21,101,192];
+        doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(cx,cy,2,rh,'F');
+        var ts=shortTime(a.duty);
+        var isCam=a.emp.role==='Cameraman';
+        var _camType=a.camType||(isCam?'Video':'');
+        var camTag=isCam?' ['+_camType+']':'';
+        var lkX=a._isPinned?4.5:0;
+        var nm=Math.floor((colW-timeW-7-lkX)/2.1);
+        if(isMgr){
+          var ph2=a.emp.phone?' - '+a.emp.phone:'';var ml=a.emp.name+ph2;
+          var mm=Math.floor((colW-timeW-7-lkX)/1.9);if(ml.length>mm)ml=ml.slice(0,mm-1)+'...';
+          if(a._isPinned){drawLock(doc,cx+4,cy+(rh-4)/2,[180,130,0]);}
+          doc.setTextColor(100,65,0);doc.setFontSize(8.5);doc.setFont('helvetica','bold');doc.text(ml,cx+4+lkX,cy+rh/2+1.5);
+          doc.setTextColor(21,101,192);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(ts,cx+colW-1,cy+rh/2+1.5,{align:'right'});
+        } else {
+          if(a._isPinned){drawLock(doc,cx+4,cy+(rh-4)/2,[50,80,200]);}
+          var fullName=a.emp.name+camTag;
+          var sn=fullName.length>nm?fullName.slice(0,nm-1)+'...':fullName;
+          doc.setTextColor(20,20,20);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(sn,cx+4+lkX,cy+rh-2);
+          doc.setTextColor(21,101,192);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(ts,cx+colW-1,cy+rh-2,{align:'right'});
         }
-        // Draw cont. header
-        var _ci=curCol;var _cx=colX[_ci];var _cy=colY[_ci];
-        var _vipH=(_dateVip&&_dateVip[v.id]!==undefined)?_dateVip[v.id]:v.vip;
-        if(_vipH){doc.setFillColor(180,130,0);}else{doc.setFillColor(21,101,192);}
-        doc.roundedRect(_cx,_cy,colW,hdrH,2,2,'F');
-        doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
-        var _mc2=Math.floor((colW-timeW-4)/2.2);
-        var _vn2=v.name.length>_mc2?v.name.slice(0,_mc2-1)+'...':v.name;
-        doc.text(_vn2+' (cont.)',_cx+3,_cy+6.8);
-        doc.setFontSize(7.5);doc.setFont('helvetica','normal');
-        doc.text(entries.length+' staff',_cx+colW-2,_cy+6.8,{align:'right'});
-        colY[_ci]+=hdrH+1;
+        colY[curCol]+=rh;
+        i++;
       }
-      var done=renderBlock(v,entries,idx,isCont);
-      idx+=done>0?done:0;
-      if(done>0)isCont=true;
-      // Safety: if still no progress after cont. header, force advance
-      if(done===0){idx=Math.min(idx+1,entries.length);}
+      colY[curCol]+=2;
+      // If more rows remain, move to next column for cont.
+      if(i<entries.length)nextColumn();
     }
-    // Render vendor rows below staff
     renderVendorRowsPDF(v.id);
-    colY[curCol]+=1; // small gap between venues
+    colY[curCol]+=1;
   });
 
   // OFFICE DUTY + GODOWN TEAM + ON LEAVE — simple new page each, 2-col staff list

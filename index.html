@@ -6421,8 +6421,13 @@ function makeEventSheetPDF(){
         colY[_ci]+=hdrH+1;
       }
       var done=renderBlock(v,entries,idx,isCont);
-      idx+=Math.max(1,done);
-      isCont=true;
+      if(done===0){
+        // No rows fit — force new page and retry
+        doc.addPage();colY=[startY,startY];curCol=0;
+      } else {
+        idx+=done;
+        isCont=true;
+      }
     }
     // Render vendor rows below staff
     renderVendorRowsPDF(v.id);

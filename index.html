@@ -6420,11 +6420,12 @@ function makeEventSheetPDF(){
       if(colY[0]<=colY[1]){curCol=0;}else{curCol=1;}
     }
     // Render all blocks — continuation flows naturally left->right->new page
-    while(idx<entries.length){
+    var _safeIter=0;
+    while(idx<entries.length&&_safeIter<1000){
+      _safeIter++;
       var done=renderBlock(v,entries,idx,isCont);
-      idx+=done;
-      // After first block: cont. goes to SAME column if space, otherwise next col
-      // Don't switch to left col mid-venue — finish in current flow
+      if(done===0){idx++;} // safety: never get stuck on one entry
+      else idx+=done;
       isCont=true;
     }
     // Render vendor rows below staff
@@ -6438,8 +6439,9 @@ function makeEventSheetPDF(){
     var srH=rowH;var hdrH=8;var isCont=false;
     var sorted=list.slice().sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
     var idx=0;
-    while(idx<sorted.length){
-      // Pick best column (most space, prefer left on tie)
+    var _secSafe=0;
+    while(idx<sorted.length&&_secSafe<2000){
+      _secSafe++;
       if(colY[0]<=colY[1])curCol=0;else curCol=1;
       addLineIfNeeded(hdrH+srH);
       var ci=curCol;var x=colX[ci];var yy=colY[ci];
@@ -6450,8 +6452,9 @@ function makeEventSheetPDF(){
       doc.text(hTitle,x+3,yy+5.5);
       colY[ci]+=hdrH+1;
       // Fill this column with rows — safety: must render at least 1 row per iteration
-      var rendered=0;
-      while(idx<sorted.length){
+      var rendered=0;var _innerSafe=0;
+      while(idx<sorted.length&&_innerSafe<500){
+        _innerSafe++;
         if(colY[curCol]+srH>pageH)break;
         var a=sorted[idx];
         var ry=colY[curCol];

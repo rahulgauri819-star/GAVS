@@ -6224,8 +6224,6 @@ function makeEventSheetPDF(){
   var curCol=0;var colY=[startY,startY];
 
   function addLineIfNeeded(needed){
-    // Always try left col first if it has space
-    if(curCol===1&&colY[0]+needed<=pageH){curCol=0;return;}
     if(colY[curCol]+needed>pageH){
       if(curCol===0){curCol=1;}
       else{doc.addPage();colY=[startY,startY];curCol=0;}
@@ -6418,10 +6416,10 @@ function makeEventSheetPDF(){
       // Large venues always get a fresh page, left col
       doc.addPage();colY=[startY,startY];curCol=0;
     } else {
-      // Always use whichever column has more space (prefer left on tie)
+      // For new venue: pick column with more space (prefer left on tie)
       if(colY[0]<=colY[1]){curCol=0;}else{curCol=1;}
     }
-    // Render all blocks of this venue together before moving to next
+    // Render all blocks — continuation flows naturally left->right->new page
     while(idx<entries.length){
       var done=renderBlock(v,entries,idx,isCont);
       idx+=done;

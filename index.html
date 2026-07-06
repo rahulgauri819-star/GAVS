@@ -6499,34 +6499,24 @@ function makeEventSheetPDF(){
     if(!list.length)return;
     var srH=rowH;var hdrHs=9;
     var sorted=list.slice().sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
-    // Use whichever column has more space — prefer left on tie
-    if(colY[0]<=colY[1])curCol=0;else curCol=1;
-    // If not enough space, try other col, else new page
-    if(colY[curCol]+hdrHs+srH>pageH){
-      var other=curCol===0?1:0;
-      if(colY[other]+hdrHs+srH<=pageH){curCol=other;}
-      else{doc.addPage();colY=[startY,startY];curCol=0;}
-    }
-    // Draw header in current column only (same width as venue)
+    // Simple: move to next col if no space, just like venues
+    if(colY[curCol]+hdrHs+srH>pageH)nextColumn();
+    // Draw header in current column
     var hx=colX[curCol];var hy=colY[curCol];
     doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(hx,hy,colW,hdrHs,2,2,'F');
     doc.setTextColor(255,255,255);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
-    var htitle=title+' — '+sorted.length;
-    doc.text(htitle,hx+3,hy+6.5);
+    doc.text(title+' — '+sorted.length,hx+3,hy+6.5);
     colY[curCol]+=hdrHs+1;
-    // Fill rows — same column first, then other column, then new page
+    // Fill rows strictly left→right→new page
     for(var i=0;i<sorted.length;i++){
       if(colY[curCol]+srH>pageH){
-        if(curCol===0&&colY[1]+srH<=pageH){curCol=1;}
-        else if(curCol===1&&colY[0]+srH<=pageH){curCol=0;}
-        else{
-          doc.addPage();colY=[startY,startY];curCol=0;
-          // Continuation header
-          doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(colX[0],startY,colW,hdrHs,2,2,'F');
-          doc.setTextColor(255,255,255);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
-          doc.text(title+' (cont.)',colX[0]+3,startY+6.5);
-          colY[0]+=hdrHs+1;
-        }
+        nextColumn();
+        // Continuation header
+        var hx2=colX[curCol];var hy2=colY[curCol];
+        doc.setFillColor(hdrR,hdrG,hdrB);doc.roundedRect(hx2,hy2,colW,hdrHs,2,2,'F');
+        doc.setTextColor(255,255,255);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
+        doc.text(title+' (cont.)',hx2+3,hy2+6.5);
+        colY[curCol]+=hdrHs+1;
       }
       var a=sorted[i];var x3=colX[curCol];var yy3=colY[curCol];
       var rb=i%2===0?[250,245,255]:[255,255,255];

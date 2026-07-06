@@ -6217,7 +6217,7 @@ function makeEventSheetPDF(){
 
   // Alphabetical venues
   var vList=venues.filter(function(v){return pdfData[v.id]&&pdfData[v.id].length>0;});
-  vList.sort(function(a,b){return a.name.localeCompare(b.name);});
+  // vList keeps natural venue order (no alphabetical sort)
   if(!vList.length){doc.setTextColor(150,150,150);doc.setFontSize(12);doc.text('No staff assigned.',pw/2,ph/2,{align:'center'});doc.save('GAVS_EventSheet_'+d+'.pdf');toast('Event Sheet downloaded!');return;}
 
   // Strict left-first column tracking
@@ -6756,7 +6756,7 @@ function makeDailySummaryPDF(){
     var hv=vendorAsgn[v.id]&&Object.keys(vendorAsgn[v.id]).some(function(tid){return Array.isArray(vendorAsgn[v.id][tid])&&vendorAsgn[v.id][tid].length>0;});
     if(hs||hv)vList.push(v);
   });
-  vList.sort(function(a,b){return a.name.localeCompare(b.name);});
+  // vList keeps natural venue order (no alphabetical sort)
 
   if(!vList.length){
     doc.setTextColor(150,150,150);doc.setFontSize(12);doc.text('No assignments for this date.',pw/2,ph/2,{align:'center'});

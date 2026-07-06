@@ -103,6 +103,9 @@ var TMS=['6:00 AM','7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM','12:00 PM
 var DBL=false,ST=null,curTab='staff',myAccess={roles:[],vendors:[]};
 function g(id){return document.getElementById(id);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function nowIST(){var d=new Date();var ist=new Date(d.getTime()+5.5*3600000);return ist;}
+function todayIST(){return nowIST().toISOString().slice(0,10);}
+function nd(d){var dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()+1);return dt.toISOString().slice(0,10);}
 function getD(){return g('DP').value||todayIST();}
 function fd(d){if(!d)return '';var x=new Date(d+'T00:00:00');return x.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][x.getMonth()]+' '+x.getFullYear();}
 function mkId(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}

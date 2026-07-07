@@ -145,6 +145,16 @@ g('MO').addEventListener('click',function(ev){if(ev.target===this)cm();});
 g('LBTN').addEventListener('click',doLogin);
 g('LP').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 
+// Pre-load portal credentials from Firebase before login
+db.collection('gavs_data').doc('main').get().then(function(doc){
+  if(!doc.exists)return;
+  var d=doc.data();
+  if(d.portalPasswords&&d.portalPasswords[PID]){
+    APASS=d.portalPasswords[PID].password||DPASS;
+    AUSER=d.portalPasswords[PID].username||DUSER;
+  }
+}).catch(function(){});
+
 function doLogin(){
   var u=(g('LU').value||'').trim().toLowerCase(),p=(g('LP').value||'').trim();
   var ok=(u===DUSER&&p===DPASS)||(AUSER&&u===AUSER&&p===APASS);
@@ -202,10 +212,13 @@ function loadDateData(date){
     (log.godown||[]).forEach(function(g2){var emp=gS(g2.id);if(emp&&msids.has(g2.id))gdnMap[g2.id]={emp:emp,duty:g2.duty||'6:00 AM'};});
     if(log.dateComments)_dateComments=JSON.parse(JSON.stringify(log.dateComments));
     if(log.dateVip)_dateVip=JSON.parse(JSON.stringify(log.dateVip));
-    // Only add manualVids if they have portal staff
+    // Also show venues that have ANY assignments today (from any team)
+    // so portal users can see the full picture and add their staff
+    Object.keys(log.venues||{}).forEach(function(vid){
+      if(activeVids.indexOf(vid)<0)activeVids.push(vid);
+    });
     if(log.manualVids)log.manualVids.forEach(function(vid){
-      var hasMyStaff=Object.keys(asgn[vid]||{}).length>0;
-      if(hasMyStaff&&activeVids.indexOf(vid)<0)activeVids.push(vid);
+      if(activeVids.indexOf(vid)<0)activeVids.push(vid);
     });
   }
   // Apply annual leave
@@ -362,12 +375,14 @@ function drawDZ(){
   function makeDZ(bg,borderC,hdrBg,title,map,col){
     var list=Object.values(map).filter(function(a){return msids.has(a.emp.id);});
     var box=document.createElement('div');
-    box.style.cssText='background:'+bg+';border:2px dashed '+borderC+';border-radius:12px;overflow:hidden;margin-bottom:8px;';
-    var hdr=document.createElement('div');hdr.className='dz-hdr';hdr.style.background=hdrBg;
-    hdr.innerHTML='<span>'+title+'</span><span style="margin-left:auto;font-size:11px;">'+list.length+' staff</span>';
+    // Compact venue-box style
+    box.style.cssText='background:#fff;border:2px solid '+borderC+';border-radius:14px;overflow:hidden;margin-bottom:8px;';
+    var hdr=document.createElement('div');
+    hdr.style.cssText='background:'+hdrBg+';color:#fff;padding:6px 10px;display:flex;align-items:center;gap:6px;border-radius:12px 12px 0 0;';
+    hdr.innerHTML='<span style="font-size:11px;font-weight:800;flex:1;">'+title+'</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;">'+list.length+' staff</span>';
     box.appendChild(hdr);
-    var body=document.createElement('div');body.className='dz-body';
-    if(!list.length){body.innerHTML='<div class="dz-empty">Drag staff here</div>';}
+    var body=document.createElement('div');body.style.cssText='padding:6px;min-height:36px;';
+    if(!list.length){body.innerHTML='<div style="text-align:center;font-size:10px;color:#bbb;padding:6px;">Drag staff here</div>';}
     else{
       var grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px;';
       list.forEach(function(a){
@@ -506,7 +521,7 @@ function drawGrid(){
   if(!rel.length){
     var hint=document.createElement('div');
     hint.style.cssText='text-align:center;color:#bbb;padding:60px 20px;font-size:13px;grid-column:1/-1;';
-    hint.innerHTML='<div style="font-size:36px;margin-bottom:12px;">🏨</div>Search venue above to add, or assignments will appear here.';
+    hint.innerHTML='<div style="font-size:36px;margin-bottom:12px;">🏨</div><div style="font-weight:700;margin-bottom:8px;">No venues yet</div><div style="font-size:12px;">Use the search bar above to find and add venues.<br>Type a venue name to get started.</div>';
     el.appendChild(hint);return;
   }
   rel.forEach(function(v){el.appendChild(makeBox(v,msids,mvtids));});
@@ -659,12 +674,15 @@ g('BPDF').addEventListener('click',function(){
     var img=g('logoImg');
     if(img&&img.complete&&img.naturalWidth>0){
       var cv=document.createElement('canvas');
-      var scale=Math.min(140/img.naturalWidth,140/img.naturalHeight);
-      cv.width=Math.round(img.naturalWidth*scale);cv.height=Math.round(img.naturalHeight*scale);
-      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
       var lh=20,lw=Math.round(lh*(img.naturalWidth/img.naturalHeight));
-      if(lw>30){lw=30;lh=Math.round(lw*(img.naturalHeight/img.naturalWidth));}
-      doc.addImage(cv.toDataURL('image/jpeg',0.7),'JPEG',mg,2+Math.round((20-lh)/2),lw,lh);
+      if(lw>32){lw=32;lh=Math.round(lw*(img.naturalHeight/img.naturalWidth));}
+      var scale=lw/img.naturalWidth;
+      cv.width=Math.round(img.naturalWidth*scale*2);
+      cv.height=Math.round(img.naturalHeight*scale*2);
+      var ctx=cv.getContext('2d');
+      ctx.clearRect(0,0,cv.width,cv.height); // preserve transparency
+      ctx.drawImage(img,0,0,cv.width,cv.height);
+      doc.addImage(cv.toDataURL('image/png'),'PNG',mg,2+Math.round((20-lh)/2),lw,lh);
     }
   }catch(e){}
   doc.setTextColor(255,255,255);doc.setFontSize(12);doc.setFont('helvetica','bold');

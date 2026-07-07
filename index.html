@@ -1166,8 +1166,9 @@ function applyPinned(){
     if(!e.pv)return;
     if(lids.indexOf(e.id)>=0||oids.indexOf(e.id)>=0||gids2.indexOf(e.id)>=0)return;
     var v=getV(e.pv);if(!v)return;
-    // Remove from other venues
-    Object.keys(asgn).forEach(function(vid){if(vid!==e.pv&&asgn[vid]&&asgn[vid][e.id])delete asgn[vid][e.id];});
+    // If staff already assigned to ANY venue (manually moved), skip pinning
+    var alreadyAssigned=Object.keys(asgn).some(function(vid){return asgn[vid]&&asgn[vid][e.id];});
+    if(alreadyAssigned)return;
     if(!asgn[e.pv])asgn[e.pv]={};
     if(!asgn[e.pv][e.id]){asgn[e.pv][e.id]={emp:e,duty:e.fixedDuty||'6:00 AM',pinned:true,isFixed:true};}
     // Only add to activeVids if NOT contracted-hidden

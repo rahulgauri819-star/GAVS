@@ -6447,6 +6447,17 @@ function makeEventSheetPDF(){
       if(colY[curCol]+thisHdrH+rowH>pageH)nextColumn();
       var ci=curCol;var x=colX[ci];var y=colY[ci];
 
+      // VIP EVENT banner above header (first block only)
+      if(_vipPDF&&firstBlock){
+        var vipBannerH=7;
+        if(colY[curCol]+vipBannerH+thisHdrH+rowH>pageH)nextColumn();
+        var bx=colX[curCol];var by=colY[curCol];
+        doc.setFillColor(255,215,0);doc.roundedRect(bx,by,colW,vipBannerH,1.5,1.5,'F');
+        doc.setTextColor(120,70,0);doc.setFontSize(10);doc.setFont('helvetica','bold');
+        doc.text('⭐ VIP EVENT ⭐',bx+colW/2,by+5.2,{align:'center'});
+        colY[curCol]+=vipBannerH+1;
+        x=colX[curCol];y=colY[curCol];
+      }
       // Draw header
       if(_vipPDF){doc.setFillColor(180,130,0);}else{doc.setFillColor(21,101,192);}
       doc.roundedRect(x,y,colW,thisHdrH,2,2,'F');
@@ -6568,8 +6579,8 @@ function makeEventSheetPDF(){
   var gdnList2=Object.values(gdnMap);
   var lvList2=Object.values(lvMap);
 
-  if(offList2.length)renderSectionSimple('OFFICE DUTY',offList2,180,80,20,230,100,20,80,40,0,true);
-  if(gdnList2.length)renderSectionSimple('GODOWN TEAM',gdnList2,180,140,0,220,170,0,80,60,0,true);
+  if(offList2.length)renderSectionSimple('OFFICE DUTY',offList2,123,31,162,156,39,176,60,0,80,true);
+  if(gdnList2.length)renderSectionSimple('GODOWN TEAM',gdnList2,233,30,140,240,98,146,80,0,60,true);
   if(lvList2.length)renderSectionSimple('ON LEAVE',lvList2,160,30,30,200,50,50,80,0,0,false);
 
   doc.save('GAVS_EventSheet_'+d+'.pdf');toast('Event Sheet downloaded!');
@@ -7073,8 +7084,8 @@ function makeDailySummaryPDF(){
       // NO column alternation — stay in left col until full
     }
   }
-  if(offListDS.length)renderSecDS('OFFICE DUTY',offListDS,180,80,20,230,100,20,80,40,0,true);
-  if(gdnListDS.length)renderSecDS('GODOWN TEAM',gdnListDS,180,140,0,220,170,0,80,60,0,true);
+  if(offListDS.length)renderSecDS('OFFICE DUTY',offListDS,123,31,162,156,39,176,60,0,80,true);
+  if(gdnListDS.length)renderSecDS('GODOWN TEAM',gdnListDS,233,30,140,240,98,146,80,0,60,true);
   if(lvListDS.length)renderSecDS('ON LEAVE',lvListDS,160,30,30,200,50,50,80,0,0,false);
   doc.save('GAVS_DailySummary_'+d+'.pdf');toast('Daily Summary downloaded!');
 }

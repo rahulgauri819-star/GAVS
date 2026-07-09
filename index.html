@@ -925,6 +925,31 @@ g('LU').addEventListener('keydown',function(e){if(e.key==='Enter')g('LP').focus(
 
 // ── NAVIGATION ────────────────────────────────────────────────
 var curScreen='assign';
+// Password check for protected areas
+function checkAdminPass(onSuccess){
+  var _pass='';
+  showModal(
+    '<div class="mt" style="color:#c62828;">🔒 Admin Password Required</div>'+
+    '<div style="text-align:center;font-size:13px;color:#555;margin-bottom:14px;">Enter admin password to continue.</div>'+
+    '<input type="password" id="ADMIN_PASS_IN" class="inp" placeholder="Password..." autocomplete="current-password" style="text-align:center;"/>'+
+    '<button class="mbtn red" id="m-yes">Confirm</button>'+
+    '<button class="mcancel" id="m-no">Cancel</button>'
+  );
+  g('m-no').onclick=closeModal;
+  g('ADMIN_PASS_IN').addEventListener('keydown',function(e){if(e.key==='Enter')g('m-yes').click();});
+  g('m-yes').onclick=function(){
+    var val=(g('ADMIN_PASS_IN').value||'').trim();
+    var ok=CREDS.some(function(c){return c.p===val;});
+    if(!ok){
+      g('ADMIN_PASS_IN').style.borderColor='#c62828';g('ADMIN_PASS_IN').style.background='#ffebee';
+      g('ADMIN_PASS_IN').value='';g('ADMIN_PASS_IN').focus();
+      toast('Wrong password','e');return;
+    }
+    closeModal();onSuccess();
+  };
+  setTimeout(function(){if(g('ADMIN_PASS_IN'))g('ADMIN_PASS_IN').focus();},100);
+}
+
 function go(s){
   curScreen=s;
   document.querySelectorAll('.screen').forEach(function(x){x.classList.remove('active');});
@@ -948,8 +973,12 @@ function go(s){
     if(s==='manage')drawManage();
     else if(s==='leave')drawLeave();
     else if(s==='office'){drawOffice();drawGodownTeam();}
-    else if(s==='report'){drawReport();populateVHVenue();refreshSREmp();}
-    else if(s==='vendorreport'){initVendorReportDates();populateVRVVenue();populateVRCCompany();}
+    else if(s==='report'){
+      checkAdminPass(function(){drawReport();populateVHVenue();refreshSREmp();});return;
+    }
+    else if(s==='vendorreport'){
+      checkAdminPass(function(){initVendorReportDates();populateVRVVenue();populateVRCCompany();});return;
+    }
     else if(s==='drafts')showDraftList();
     else if(s==='settings'){/* settings screen is static, nothing to init */}
   }
@@ -1147,8 +1176,8 @@ function drawStats(){
     chip(staff.length,'Staff','#fff')+
     chip(a,'Out','#90ef90')+
     chip(l,'Leave','#ff8a80')+
-    (o>0?chip(o,'Office','#ffcc80'):'')+
-    (gd>0?chip(gd,'Godown','#ffd54f'):'')+
+    (o>0?chip(o,'Office','#ce93d8'):'')+
+    (gd>0?chip(gd,'Godown','#f48fb1'):'')+
     chip(f,'Free','#ce93d8');
 }
 function chip(v,l,c){return '<div class="sc"><div class="sc-v" style="color:'+c+';">'+v+'</div><div class="sc-l">'+l+'</div></div>';}
@@ -1487,10 +1516,10 @@ function drawVenueGrid(){
   // ── Office Duty drop zone ───────────────────────────────────
   var offBox=document.createElement('div');
   var offCount=Object.keys(offMap).length;
-  offBox.style.cssText='background:#fff8f0;border:2px dashed #ffcc80;border-radius:14px;overflow:hidden;min-height:100px;';
+  offBox.style.cssText='background:#f3e5f5;border:2px dashed #ce93d8;border-radius:14px;overflow:hidden;min-height:100px;';
   offBox.id='drop-office';
   var offHdr=document.createElement('div');
-  offHdr.style.cssText='background:#e65100;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
+  offHdr.style.cssText='background:#7b1fa2;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
   offHdr.innerHTML='<span style="font-size:16px;">🏢</span><span style="font-size:13px;font-weight:700;flex:1;">Office Duty</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+offCount+' staff</span>';
   // Collapse toggle
   var offColBtn=document.createElement('button');
@@ -1504,7 +1533,7 @@ function drawVenueGrid(){
     var offBody=document.createElement('div');offBody.style.cssText='padding:10px;min-height:60px;';
     var offList=Object.values(offMap);
     if(!offList.length){
-      offBody.innerHTML='<div style="text-align:center;color:#ffcc80;font-size:12px;padding:12px;">Drag staff here for Office Duty</div>';
+      offBody.innerHTML='<div style="text-align:center;color:#ce93d8;font-size:12px;padding:12px;">Drag staff here for Office Duty</div>';
     } else {
       var offGrid=document.createElement('div');
       offGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px;';
@@ -1519,14 +1548,14 @@ function drawVenueGrid(){
         rm.textContent='✕';rm.title='Remove from Office Duty';
         rm.style.cssText='background:none;border:none;color:#e65100;font-size:10px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
         rm.addEventListener('click',(function(eid,ename){return function(){
-          showModal('<div class="mt" style="color:#e65100;">Remove from Office Duty?</div>'+
+          showModal('<div class="mt" style="color:#7b1fa2;">Remove from Office Duty?</div>'+
             '<div style="text-align:center;font-size:14px;color:#333;margin-bottom:18px;">Remove <strong>'+esc(ename)+'</strong>?</div>'+
             '<button class="mbtn red" id="m-yes">Yes, Remove</button><button class="mcancel" id="m-no">Cancel</button>');
           g('m-yes').onclick=function(){unGodown(eid);closeModal();};
           g('m-no').onclick=closeModal;
         };})(a.emp.id,a.emp.name));
         var tSel=document.createElement('select');
-        tSel.style.cssText='flex-shrink:0;background:#fff8f0;border:1px solid #ffcc80;border-radius:4px;color:#e65100;padding:1px;font-size:7.5px;cursor:pointer;width:36px;max-width:36px;';
+        tSel.style.cssText='flex-shrink:0;background:#f3e5f5;border:1px solid #ce93d8;border-radius:4px;color:#7b1fa2;padding:1px;font-size:7.5px;cursor:pointer;width:36px;max-width:36px;';
         TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;tSel.appendChild(o);});
         (function(eid){tSel.addEventListener('change',function(){if(offMap[eid]){offMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
         cell.appendChild(nm);cell.appendChild(tSel);cell.appendChild(rm);
@@ -1536,8 +1565,8 @@ function drawVenueGrid(){
     }
     offBox.appendChild(offBody);
   }
-  offBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#e65100';this.style.background='#fff3e0';});
-  offBox.addEventListener('dragleave',function(){this.style.borderColor='#ffcc80';this.style.background='#fff8f0';});
+  offBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#7b1fa2';this.style.background='#ede7f6';});
+  offBox.addEventListener('dragleave',function(){this.style.borderColor='#ce93d8';this.style.background='#f3e5f5';});
   offBox.addEventListener('drop',function(ev){
     ev.preventDefault();this.style.borderColor='#ffcc80';this.style.background='#fff8f0';
     var eid=ev.dataTransfer.getData('text/plain')||touchDragEid;
@@ -1548,10 +1577,10 @@ function drawVenueGrid(){
   // ── Godown Team drop zone ─────────────────────────────────────────
   var gdnBox=document.createElement('div');
   var gdnCount=Object.keys(gdnMap).length;
-  gdnBox.style.cssText='background:#fffde7;border:2px dashed #ffd54f;border-radius:14px;overflow:hidden;min-height:100px;margin-top:10px;break-inside:avoid;';
+  gdnBox.style.cssText='background:#fce4ec;border:2px dashed #f48fb1;border-radius:14px;overflow:hidden;min-height:100px;margin-top:10px;break-inside:avoid;';
   gdnBox.id='drop-godown';
   var gdnHdr=document.createElement('div');
-  gdnHdr.style.cssText='background:#f57f17;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
+  gdnHdr.style.cssText='background:#e91e8c;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
   gdnHdr.innerHTML='<span style="font-size:16px;">🏗️</span><span style="font-size:13px;font-weight:700;flex:1;">Godown Team</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+gdnCount+' staff</span>';
   var gdnColBtn=document.createElement('button');
   gdnColBtn.style.cssText='background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:5px;cursor:pointer;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;';
@@ -1591,12 +1620,12 @@ function drawVenueGrid(){
         nm.style.cssText='font-size:8.5px;font-weight:700;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
         nm.textContent=(isPinned?'🔒 ':'')+a.emp.name;nm.title=a.emp.name;
         var gdtSel=document.createElement('select');
-        gdtSel.style.cssText='flex-shrink:0;background:#fffde7;border:1px solid #ffd54f;border-radius:4px;color:#f57f17;padding:1px;font-size:7.5px;cursor:pointer;width:36px;max-width:36px;';
+        gdtSel.style.cssText='flex-shrink:0;background:#fce4ec;border:1px solid #f48fb1;border-radius:4px;color:#e91e8c;padding:1px;font-size:7.5px;cursor:pointer;width:36px;max-width:36px;';
         TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;gdtSel.appendChild(o);});
         (function(eid){gdtSel.addEventListener('change',function(){if(gdnMap[eid]){gdnMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
         var rm=document.createElement('button');
         rm.textContent='✕';rm.title='Remove from Godown Team';
-        rm.style.cssText='background:none;border:none;color:#f57f17;font-size:10px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
+        rm.style.cssText='background:none;border:none;color:#e91e8c;font-size:10px;cursor:pointer;padding:0;flex-shrink:0;line-height:1;';
         rm.addEventListener('click',(function(eid,ename,isPinned2){return function(){
           if(isPinned2){
             showModal(
@@ -1624,8 +1653,8 @@ function drawVenueGrid(){
     }
     gdnBox.appendChild(gdnBody);
   }
-  gdnBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#f57f17';this.style.background='#fff9c4';});
-  gdnBox.addEventListener('dragleave',function(){this.style.borderColor='#ffd54f';this.style.background='#fffde7';});
+  gdnBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#e91e8c';this.style.background='#fce4ec';});
+  gdnBox.addEventListener('dragleave',function(){this.style.borderColor='#f48fb1';this.style.background='#fce4ec';});
   gdnBox.addEventListener('drop',function(ev){
     ev.preventDefault();this.style.borderColor='#ffd54f';this.style.background='#fffde7';
     var eid=ev.dataTransfer.getData('text/plain')||touchDragEid;
@@ -2671,24 +2700,15 @@ document.getElementById('mbtnContracted').addEventListener('click',function(){sh
 
 // ── RESET DUTIES ─────────────────────────────────────────────
 function showResetDuties(){
-  showModal(
-    '<div class="mt" style="color:#c62828;">⚠️ Reset All Duties</div>'+
-    '<div style="text-align:center;font-size:13px;color:#555;margin-bottom:14px;">This will clear <strong>all staff assignments, vendors, leave, and godown duty</strong> for today.<br><br>Pinned staff will remain in their fixed venues.</div>'+
-    '<div style="font-size:12px;font-weight:700;color:#c62828;text-align:center;margin-bottom:8px;">Type <strong>reset</strong> to confirm:</div>'+
-    '<input id="RESET_CONFIRM" class="inp" placeholder="Type reset here..." autocomplete="off" style="text-align:center;border-color:#ffcdd2;"/>'+
-    '<button class="mbtn red" id="m-yes">🔄 Reset All Duties</button>'+
-    '<button class="mcancel" id="m-no">Cancel</button>'
-  );
-  g('m-no').onclick=closeModal;
-  g('m-yes').onclick=function(){
-    var val=(g('RESET_CONFIRM').value||'').trim().toLowerCase();
-    if(val!=='reset'){
-      g('RESET_CONFIRM').style.borderColor='#c62828';
-      g('RESET_CONFIRM').style.background='#ffebee';
-      g('RESET_CONFIRM').focus();
-      toast('Type "reset" to confirm','w');
-      return;
-    }
+  checkAdminPass(function(){
+    showModal(
+      '<div class="mt" style="color:#c62828;">⚠️ Reset All Duties</div>'+
+      '<div style="text-align:center;font-size:13px;color:#555;margin-bottom:14px;">This will clear <strong>all staff assignments, vendors, leave, and godown duty</strong> for today.<br><br>Pinned staff will remain in their fixed venues.</div>'+
+      '<button class="mbtn red" id="m-yes">🔄 Reset All Duties</button>'+
+      '<button class="mcancel" id="m-no">Cancel</button>'
+    );
+    g('m-no').onclick=closeModal;
+    g('m-yes').onclick=function(){
     // Clear only current date's data
     var currentDate=getD();
     asgn={};lvMap={};offMap={};gdnMap={};vendorAsgn={};
@@ -2704,8 +2724,8 @@ function showResetDuties(){
     closeModal();
     drawStaffPanel();drawVenueGrid();drawStats();saveCloud();
     toast('Duties reset for '+fd(currentDate)+'. Pinned staff restored.');
-  };
-  setTimeout(function(){if(g('RESET_CONFIRM'))g('RESET_CONFIRM').focus();},100);
+    };
+  });
 }
 document.getElementById('btnResetDuties').addEventListener('click',showResetDuties);
 document.getElementById('mbtnResetDuties').addEventListener('click',showResetDuties);
@@ -4382,10 +4402,22 @@ g('btnLogout').addEventListener('click',doLogout);
 
 // ── DATE CHANGE ───────────────────────────────────────────────
 g('DP').addEventListener('change',function(){
-  var dp2=document.getElementById('DP2');if(dp2)dp2.value=this.value;
-  updateADate();
-  switchToDate(this.value);
-  drawStats();updateATBStats();
+  var newVal=this.value;
+  var prevVal=_lastLoadedDate||todayIST();
+  // Require password for past dates
+  if(newVal<todayIST()){
+    var _dp=this;
+    checkAdminPass(function(){
+      var dp2=document.getElementById('DP2');if(dp2)dp2.value=newVal;
+      updateADate();switchToDate(newVal);drawStats();updateATBStats();
+      if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
+    });
+    // Revert date picker if user cancels (modal cancel restores)
+    _dp.value=prevVal;
+    return;
+  }
+  var dp2=document.getElementById('DP2');if(dp2)dp2.value=newVal;
+  updateADate();switchToDate(newVal);drawStats();updateATBStats();
   if(curScreen==='assign'){drawStaffPanel();drawVenueGrid();}
 });
 
@@ -4398,8 +4430,8 @@ function updateATBStats(){
     '<div class="atb-stat"><div class="atb-stat-v">'+staff.length+'</div><div class="atb-stat-l">Staff</div></div>'+
     '<div class="atb-stat"><div class="atb-stat-v" style="color:#90ef90;">'+a+'</div><div class="atb-stat-l">Out</div></div>'+
     '<div class="atb-stat"><div class="atb-stat-v" style="color:#ff8a80;">'+l+'</div><div class="atb-stat-l">Leave</div></div>'+
-    (o>0?'<div class="atb-stat"><div class="atb-stat-v" style="color:#ffcc80;">'+o+'</div><div class="atb-stat-l">Office</div></div>':'')+
-    (gd>0?'<div class="atb-stat"><div class="atb-stat-v" style="color:#ffd54f;">'+gd+'</div><div class="atb-stat-l">Godown</div></div>':'')+
+    (o>0?'<div class="atb-stat"><div class="atb-stat-v" style="color:#ce93d8;">'+o+'</div><div class="atb-stat-l">Office</div></div>':'')+
+    (gd>0?'<div class="atb-stat"><div class="atb-stat-v" style="color:#f48fb1;">'+gd+'</div><div class="atb-stat-l">Godown</div></div>':'')+
     '<div class="atb-stat"><div class="atb-stat-v" style="color:#ce93d8;">'+f+'</div><div class="atb-stat-l">Free</div></div>';
 }
 

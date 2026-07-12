@@ -6269,7 +6269,7 @@ function makeEventSheetPDF(){
     // Venue header — grows if address/url present
     var hasAddr=!!(v.address&&v.address.trim());
     var hasUrl=!!(v.locUrl&&v.locUrl.trim());
-    var extraH=(hasAddr?6:0)+(hasUrl?6:0);
+    var extraH=0;// addr/url drawn separately below header
     var thisHdrH=hdrH+extraH;
     addLineIfNeeded(thisHdrH+rowH);
     ci=curCol;x=colX[ci];yy=colY[ci];
@@ -6287,20 +6287,20 @@ function makeEventSheetPDF(){
     doc.setFontSize(7.5);doc.setFont('helvetica','normal');
     doc.text(entries.length+' staff',x+colW-2,yy+6.8,{align:'right'});
     var infoY=yy+hdrH;
+    colY[ci]+=hdrH+1;yy=colY[ci];
     if(hasAddr){
-      doc.setFillColor(30,50,120);doc.rect(x,infoY,colW,6,'F');
+      doc.setFillColor(30,50,120);doc.rect(x,colY[ci],colW,6,'F');
       var atr=Math.floor((colW-8)/1.6);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
       doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
-      doc.text(at,x+4,infoY+4.2);infoY+=6;
+      doc.text(at,x+4,colY[ci]+4.2);colY[ci]+=6;
     }
     if(hasUrl){
-      var mapBoxW=colW;var mapBoxH=6;
-      doc.setFillColor(255,210,0);doc.rect(x,infoY,mapBoxW,mapBoxH,'F');
+      doc.setFillColor(255,210,0);doc.rect(x,colY[ci],colW,6,'F');
       doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont('helvetica','bold');
-      doc.text('>> Click here for Navigation',x+mapBoxW/2,infoY+4.2,{align:'center'});
-      doc.link(x,infoY,mapBoxW,mapBoxH,{url:v.locUrl});infoY+=6;
+      doc.text('>> Click here for Navigation',x+colW/2,colY[ci]+4.2,{align:'center'});
+      doc.link(x,colY[ci],colW,6,{url:v.locUrl});colY[ci]+=6;
     }
-    colY[ci]+=thisHdrH+1;yy=colY[ci];
+    colY[ci]+=1;yy=colY[ci];
     // Comment pink box in PDF — multi-line, shown on first block AND cont. blocks
     var _pdfCmt=(_dateComments&&_dateComments[v.id]||'').trim();
     if(_pdfCmt){
@@ -6431,7 +6431,7 @@ function makeEventSheetPDF(){
     var _vipPDF=(_dateVip&&_dateVip[v.id]!==undefined)?_dateVip[v.id]:v.vip;
     var hasAddr=!!(v.address&&v.address.trim());
     var hasUrl=!!(v.locUrl&&v.locUrl.trim());
-    var extraH=(hasAddr?6:0)+(hasUrl?6:0);
+    var extraH=0;// addr/url drawn separately below header
     var thisHdrH=hdrH+extraH;
     var mc=Math.floor((colW-timeW-4)/2.2);
 
@@ -6466,20 +6466,20 @@ function makeEventSheetPDF(){
       doc.text(vn,x+3,y+6.8);
       doc.setFontSize(7.5);doc.setFont('helvetica','normal');
       doc.text(entries.length+' staff',x+colW-2,y+6.8,{align:'right'});
-      var infoY=y+thisHdrH;
+      colY[ci]+=hdrH+1;
       if(hasAddr&&firstBlock){
-        doc.setFillColor(30,50,120);doc.rect(x,infoY,colW,6,'F');
+        doc.setFillColor(30,50,120);doc.rect(x,colY[ci],colW,6,'F');
         var atr2=Math.floor((colW-8)/1.6);var at2=v.address.length>atr2?v.address.slice(0,atr2-1)+'...':v.address;
         doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
-        doc.text(at2,x+4,infoY+4.2);infoY+=6;
+        doc.text(at2,x+4,colY[ci]+4.2);colY[ci]+=6;
       }
       if(hasUrl&&firstBlock){
-        doc.setFillColor(255,210,0);doc.rect(x,infoY,colW,6,'F');
+        doc.setFillColor(255,210,0);doc.rect(x,colY[ci],colW,6,'F');
         doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont('helvetica','bold');
-        doc.text('>> Click here for Navigation',x+colW/2,infoY+4.2,{align:'center'});
-        doc.link(x,infoY,colW,6,{url:v.locUrl});infoY+=6;
+        doc.text('>> Click here for Navigation',x+colW/2,colY[ci]+4.2,{align:'center'});
+        doc.link(x,colY[ci],colW,6,{url:v.locUrl});colY[ci]+=6;
       }
-      colY[ci]+=thisHdrH+1;
+      colY[ci]+=1;
 
       // Comment pink box
       var cmt=(_dateComments&&_dateComments[v.id]||'').trim();

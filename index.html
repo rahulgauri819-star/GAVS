@@ -6955,10 +6955,10 @@ function makeDailySummaryPDF(){
     if(hasUrl){
       var mapLabel2='View Map';
       var mapBoxW2=colW-6;var mapBoxH2=5.5;
-      doc.setFillColor(255,235,59);doc.roundedRect(x+3,infoY+0.5,mapBoxW2,mapBoxH2-0.5,1.5,1.5,'F');
-      doc.setTextColor(0,0,180);doc.setFontSize(8);doc.setFont('helvetica','bold');
-      doc.link(x+3,infoY+0.5,mapBoxW2,mapBoxH2-0.5,{url:v.locUrl});
-      doc.text(mapLabel2,x+3+mapBoxW2/2,infoY+4,{align:'center'});infoY+=5.5;
+      doc.setFillColor(255,210,0);doc.rect(x,infoY,colW,6,'F');
+      doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      doc.text('>> Click here for Navigation',x+colW/2,infoY+4.2,{align:'center'});
+      doc.link(x,infoY,colW,6,{url:v.locUrl});infoY+=6;
     }
     // Comment pink box in Daily Summary PDF
     var _pdfCmt2=(_dateComments&&_dateComments[v.id]||'').trim();

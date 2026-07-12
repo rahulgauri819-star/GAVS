@@ -6269,7 +6269,7 @@ function makeEventSheetPDF(){
     // Venue header — grows if address/url present
     var hasAddr=!!(v.address&&v.address.trim());
     var hasUrl=!!(v.locUrl&&v.locUrl.trim());
-    var extraH=(hasAddr?5.5:0)+(hasUrl?5.5:0);
+    var extraH=(hasAddr?6:0)+(hasUrl?6:0);
     var thisHdrH=hdrH+extraH;
     addLineIfNeeded(thisHdrH+rowH);
     ci=curCol;x=colX[ci];yy=colY[ci];
@@ -6288,18 +6288,17 @@ function makeEventSheetPDF(){
     doc.text(entries.length+' staff',x+colW-2,yy+6.8,{align:'right'});
     var infoY=yy+hdrH;
     if(hasAddr){
-      doc.setTextColor(220,240,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
-      var atr=Math.floor((colW-6)/1.5);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
-      doc.text('Addr: '+at,x+3,infoY+4);infoY+=5.5;
+      doc.setFillColor(30,50,120);doc.rect(x,infoY,colW,6,'F');
+      var atr=Math.floor((colW-8)/1.6);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
+      doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      doc.text(at,x+4,infoY+4.2);infoY+=6;
     }
     if(hasUrl){
-      // Full yellow box is the clickable URL link
-      var mapLabel='View Map';
-      var mapBoxW=colW-6;var mapBoxH=5.5;
-      doc.setFillColor(255,235,59);doc.roundedRect(x+3,infoY+0.5,mapBoxW,mapBoxH-0.5,1.5,1.5,'F');
-      doc.setTextColor(0,0,180);doc.setFontSize(8);doc.setFont('helvetica','bold');
-      doc.link(x+3,infoY+0.5,mapBoxW,mapBoxH-0.5,{url:v.locUrl});
-      doc.text(mapLabel,x+3+mapBoxW/2,infoY+4,{align:'center'});infoY+=5.5;
+      var mapBoxW=colW;var mapBoxH=6;
+      doc.setFillColor(255,210,0);doc.rect(x,infoY,mapBoxW,mapBoxH,'F');
+      doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      doc.text('>> Click here for Navigation',x+mapBoxW/2,infoY+4.2,{align:'center'});
+      doc.link(x,infoY,mapBoxW,mapBoxH,{url:v.locUrl});infoY+=6;
     }
     colY[ci]+=thisHdrH+1;yy=colY[ci];
     // Comment pink box in PDF — multi-line, shown on first block AND cont. blocks
@@ -6432,7 +6431,7 @@ function makeEventSheetPDF(){
     var _vipPDF=(_dateVip&&_dateVip[v.id]!==undefined)?_dateVip[v.id]:v.vip;
     var hasAddr=!!(v.address&&v.address.trim());
     var hasUrl=!!(v.locUrl&&v.locUrl.trim());
-    var extraH=(hasAddr?5.5:0)+(hasUrl?5.5:0);
+    var extraH=(hasAddr?6:0)+(hasUrl?6:0);
     var thisHdrH=hdrH+extraH;
     var mc=Math.floor((colW-timeW-4)/2.2);
 
@@ -6469,16 +6468,16 @@ function makeEventSheetPDF(){
       doc.text(entries.length+' staff',x+colW-2,y+6.8,{align:'right'});
       var infoY=y+thisHdrH;
       if(hasAddr&&firstBlock){
-        doc.setTextColor(220,240,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
-        var atr=Math.floor((colW-6)/1.5);var at=v.address.length>atr?v.address.slice(0,atr-1)+'...':v.address;
-        doc.text('Addr: '+at,x+3,infoY+4);infoY+=5.5;
+        doc.setFillColor(30,50,120);doc.rect(x,infoY,colW,6,'F');
+        var atr2=Math.floor((colW-8)/1.6);var at2=v.address.length>atr2?v.address.slice(0,atr2-1)+'...':v.address;
+        doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+        doc.text(at2,x+4,infoY+4.2);infoY+=6;
       }
       if(hasUrl&&firstBlock){
-        var mapBW=colW-6;
-        doc.setFillColor(255,235,59);doc.roundedRect(x+3,infoY+0.5,mapBW,5,1.5,1.5,'F');
-        doc.setTextColor(0,0,180);doc.setFontSize(8);doc.setFont('helvetica','bold');
-        doc.text('View Map',x+3+mapBW/2,infoY+4,{align:'center'});
-        doc.link(x+3,infoY+0.5,mapBW,5,{url:v.locUrl});infoY+=5.5;
+        doc.setFillColor(255,210,0);doc.rect(x,infoY,colW,6,'F');
+        doc.setTextColor(0,0,0);doc.setFontSize(8);doc.setFont('helvetica','bold');
+        doc.text('>> Click here for Navigation',x+colW/2,infoY+4.2,{align:'center'});
+        doc.link(x,infoY,colW,6,{url:v.locUrl});infoY+=6;
       }
       colY[ci]+=thisHdrH+1;
 

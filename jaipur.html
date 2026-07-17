@@ -243,7 +243,15 @@ function loadFromCloud(){
       asgn=d[ASGN_KEY]||{};
       // Load log
       dlog=d[LOG_KEY]||{};
-      // Load shared lvMap (same as admin)
+      // Load dlog_main for leave data
+      var dlog_main_data=d.dlog||{};
+      if(typeof dlog_main!=='undefined')dlog_main=dlog_main_data;
+      else window.dlog_main=dlog_main_data;
+      // Load shared lvMap from today's dlog
+      var todayLog=dlog_main_data[getD()]||{};
+      lvMap={};
+      if(todayLog.leave){todayLog.leave.forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});}
+      // Also load from legacy lvMap
       if(d.lvMap){
         Object.keys(d.lvMap).forEach(function(eid){
           var emp=getS(eid);
@@ -251,6 +259,7 @@ function loadFromCloud(){
         });
       }
       DB_LOADED=true;
+      loadDateData(getD());
       drawStaffPanel();
       drawHalls();
       drawLeaveZone();
@@ -308,6 +317,34 @@ function saveDayLog(){
 }
 
 // ── STAFF PANEL ───────────────────────────────────────────────
+
+function loadDateData(date){
+  // Load assignments from dlog for this specific date
+  var log=dlog[date];
+  asgn={};
+  if(log&&log.halls){
+    Object.keys(log.halls).forEach(function(hid){
+      asgn[hid]={};
+      var hlog=log.halls[hid];
+      if(hlog&&hlog.staff){
+        Object.keys(hlog.staff).forEach(function(eid){
+          var emp=getS(eid);
+          if(emp)asgn[hid][eid]={emp:emp,duty:hlog.staff[eid]||'6:00 AM',isFixed:false};
+        });
+      }
+    });
+  }
+  // Load lvMap for this date from main dlog (IHC staff on leave only)
+  lvMap={};
+  var _ml=(window.dlog_main||{})[date];
+  if(_ml&&_ml.leave){
+    _ml.leave.forEach(function(l){
+      var emp=getS(l.id);
+      if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};
+    });
+  }
+}
+
 function getDeployedEids(){
   var deps={};
   Object.keys(asgn).forEach(function(hid){Object.keys(asgn[hid]||{}).forEach(function(eid){deps[eid]=hid;});});
@@ -645,7 +682,7 @@ function makePDF(){
   });
 
   // On Leave section
-  var lvList=Object.values(lvMap).filter(function(a){return !!getS(a.emp?a.emp.id:a.id);});
+  var lvList=Object.values(lvMap).filter(function(a){var e=a.emp||getS(a.id);return e&&e.pv===jaipurVenueId;});
   if(lvList.length){
     lvList.sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
     var srH=rowH;var hdrHs=9;
@@ -726,7 +763,10 @@ document.addEventListener('touchend',function(ev){
 },{passive:true});
 
 // Date change
-g('DP').addEventListener('change',function(){drawHalls();drawStaffPanel();});
+g('DP').addEventListener('change',function(){
+  loadDateData(getD());
+  drawHalls();drawStaffPanel();drawLeaveZone();
+});
 </script>
 </body>
 </html>

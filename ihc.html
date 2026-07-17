@@ -429,7 +429,7 @@ function makeHallBox(h){
         row.style.setProperty('--rb',c+'12');
         var nm2=document.createElement('div');nm2.className='hr-name';nm2.textContent=a.emp.name;
         // No lock icon in IHC — staff are not pinned to sub-halls
-        else{row.appendChild(nm2);}
+        row.appendChild(nm2);
         var sel=document.createElement('select');sel.className='hr-time';
         TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===a.duty)o.selected=true;sel.appendChild(o);});
         sel.addEventListener('change',(function(hid,eid){return function(){if(asgn[hid]&&asgn[hid][eid]){asgn[hid][eid].duty=this.value;saveCloud();}};})(h.id,a.emp.id));

@@ -678,8 +678,7 @@ function makePDF(){
           doc.setTextColor(160,140,100);doc.setFontSize(6);doc.setFont('helvetica','italic');doc.text('Manager',cx+4+doc.getTextWidth(nm)+1.5,cy+rh/2+1.5);
         }else{
           doc.setTextColor(20,20,20);doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.text(nm,cx+4,cy+rh-2);
-          var roleStr=a.emp.role||'';var snW=doc.getTextWidth(nm);
-          doc.setTextColor(170,170,170);doc.setFontSize(6);doc.setFont('helvetica','italic');doc.text(roleStr,cx+4+snW+1.5,cy+rh-2);
+          // Role label omitted in IHC PDF to prevent overlap
         }
         doc.setTextColor(ac[0],ac[1],ac[2]);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(st2(a.duty),cx+colW-1,cy+rh-2,{align:'right'});
         colY[curCol]+=rh;i++;

@@ -1502,6 +1502,11 @@ function drawVenueGrid(){
       lvBody.appendChild(lvGrid);
     }
     lvBox.appendChild(lvBody);
+    // Quick-add search for On Leave
+    var _qaLv=makeQuickAddDZ('+ Quick mark on leave...',Object.keys(lvMap),function(e){
+      markLeave(e.id);drawLeave();drawStats();drawStaffPanel();drawVenueGrid();
+    });
+    lvBox.appendChild(_qaLv);
   }
   // Drag over
   lvBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#c62828';this.style.background='#ffebee';});
@@ -1564,6 +1569,14 @@ function drawVenueGrid(){
       offBody.appendChild(offGrid);
     }
     offBox.appendChild(offBody);
+    // Quick-add search for Office Duty
+    var _qaOff=makeQuickAddDZ('+ Quick add to office duty...',Object.keys(offMap).concat(Object.keys(lvMap)),function(e){
+      Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][e.id];});
+      delete gdnMap[e.id];delete lvMap[e.id];
+      offMap[e.id]={emp:e,duty:'6:00 AM'};
+      drawLeave();drawStats();drawStaffPanel();drawVenueGrid();saveCloud();
+    });
+    offBox.appendChild(_qaOff);
   }
   offBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#7b1fa2';this.style.background='#ede7f6';});
   offBox.addEventListener('dragleave',function(){this.style.borderColor='#ce93d8';this.style.background='#f3e5f5';});
@@ -1652,6 +1665,14 @@ function drawVenueGrid(){
       gdnBody.appendChild(gdnGrid);
     }
     gdnBox.appendChild(gdnBody);
+    // Quick-add search for Godown Team
+    var _qaGdn=makeQuickAddDZ('+ Quick add to godown...',Object.keys(gdnMap).concat(Object.keys(lvMap)),function(e){
+      Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][e.id];});
+      delete offMap[e.id];delete lvMap[e.id];
+      gdnMap[e.id]={emp:e,duty:'6:00 AM'};
+      drawLeave();drawStats();drawStaffPanel();drawVenueGrid();saveCloud();
+    });
+    gdnBox.appendChild(_qaGdn);
   }
   gdnBox.addEventListener('dragover',function(ev){ev.preventDefault();this.style.borderColor='#e91e8c';this.style.background='#fce4ec';});
   gdnBox.addEventListener('dragleave',function(){this.style.borderColor='#f48fb1';this.style.background='#fce4ec';});

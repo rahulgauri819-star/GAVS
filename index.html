@@ -1952,6 +1952,66 @@ function makeVenueBox(v,hasPinned,viewData){
   }
 
   // Body
+  // Quick-add search bar
+  var qaWrap=document.createElement('div');qaWrap.style.cssText='position:relative;padding:4px 6px;border-bottom:1px solid #e3eaff;background:#f8f9ff;';
+  var qaInp=document.createElement('input');qaInp.placeholder='+ Quick add staff...';
+  qaInp.style.cssText='width:100%;padding:4px 8px;border:1px solid #c5cae9;border-radius:6px;font-size:11px;outline:none;background:#fff;color:#333;box-sizing:border-box;';
+  var qaDD=document.createElement('div');
+  qaDD.style.cssText='position:absolute;left:6px;right:6px;top:100%;background:#fff;border:1.5px solid #3f51b5;border-radius:0 0 8px 8px;z-index:200;max-height:200px;overflow-y:auto;display:none;box-shadow:0 4px 16px rgba(0,0,0,0.12);';
+  qaInp.addEventListener('input',(function(vid2){return function(){
+    var q=this.value.toLowerCase();qaDD.innerHTML='';
+    if(!q){qaDD.style.display='none';return;}
+    var lvIds=Object.keys(lvMap),ofIds=Object.keys(offMap),gdIds=Object.keys(gdnMap);
+    var matches=staff.filter(function(e){
+      if(lvIds.indexOf(e.id)>=0)return false; // exclude leave
+      if(!e.name.toLowerCase().startsWith(q)&&e.name.toLowerCase().indexOf(q)<0)return false;
+      return true;
+    }).slice(0,10);
+    if(!matches.length){qaDD.style.display='none';return;}
+    matches.forEach(function(e){
+      var isHere=!!(asgn[vid2]&&asgn[vid2][e.id]);
+      var otherVid=null;
+      Object.keys(asgn).forEach(function(avid){if(avid!==vid2&&asgn[avid]&&asgn[avid][e.id])otherVid=avid;});
+      var inOff=!!offMap[e.id],inGdn=!!gdnMap[e.id];
+      var greyOut=!!otherVid||inOff||inGdn||isHere;
+      var label=e.name;
+      if(isHere)label+=' (already here)';
+      else if(otherVid){var ov=getV(otherVid);label+=' ('+(ov?ov.name:'other venue')+')';}
+      else if(inOff)label+=' (Office Duty)';
+      else if(inGdn)label+=' (Godown Team)';
+      var item=document.createElement('div');
+      item.style.cssText='padding:7px 10px;cursor:pointer;font-size:11px;border-bottom:1px solid #f0f0f0;'+(greyOut?'opacity:0.55;color:#888;':'color:#1a237e;font-weight:600;');
+      item.textContent=label;
+      if(!isHere){
+        item.addEventListener('mousedown',function(ev){
+          ev.preventDefault();
+          if(otherVid||inOff||inGdn){
+            var fromStr=otherVid?(getV(otherVid)?getV(otherVid).name:'another venue'):inOff?'Office Duty':'Godown Team';
+            showModal('<div class="mt">Move Staff?</div><p style="text-align:center;margin-bottom:16px;">Move <strong>'+esc(e.name)+'</strong> from <strong>'+esc(fromStr)+'</strong> to <strong>'+esc(getV(vid2)?getV(vid2).name:vid2)+'</strong>?</p><button class="mbtn blue" id="m-yes">Yes, Move</button><button class="mcancel" id="m-no">Cancel</button>');
+            g('m-yes').onclick=function(){
+              if(otherVid&&asgn[otherVid])delete asgn[otherVid][e.id];
+              delete offMap[e.id];delete gdnMap[e.id];
+              if(!asgn[vid2])asgn[vid2]={};
+              asgn[vid2][e.id]={emp:e,duty:e.fixedDuty||'6:00 AM'};
+              closeModal();qaInp.value='';qaDD.style.display='none';
+              drawVenueGrid();drawStaffPanel();drawStats();saveCloud();
+            };g('m-no').onclick=closeModal;
+          } else {
+            if(!asgn[vid2])asgn[vid2]={};
+            asgn[vid2][e.id]={emp:e,duty:e.fixedDuty||'6:00 AM'};
+            qaInp.value='';qaDD.style.display='none';
+            drawVenueGrid();drawStaffPanel();drawStats();saveCloud();
+          }
+        });
+      }
+      qaDD.appendChild(item);
+    });
+    qaDD.style.display='block';
+  };})(v.id));
+  qaInp.addEventListener('blur',function(){setTimeout(function(){qaDD.style.display='none';},150);});
+  qaWrap.appendChild(qaInp);qaWrap.appendChild(qaDD);
+  box.appendChild(qaWrap);
+
   var body=document.createElement('div');body.className='vbox-body';
 
   // Multi-View: show BOTH staff and vendor sections together, regardless of the left panel toggle
@@ -2340,17 +2400,19 @@ function showCopyPrevDay(vid){
       '</div>';
     }).join('');
     // Vendor rows
+    var _vsel={};vendorEntries.forEach(function(ve,vi){_vsel['v'+vi]=true;});
     var vrows='';
     if(vendorEntries.length){
       vrows='<div style="font-size:11px;color:#888;margin:10px 0 6px 0;">Vendors to copy:</div>'+
         '<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:8px;padding:6px;margin-bottom:14px;">';
-      vendorEntries.forEach(function(ve){
+      vendorEntries.forEach(function(ve,vi){
         var lbl=ve.en.company+(ve.en.serviceLabel?' — '+ve.en.serviceLabel:'');
-        var qty=ve.en.qty?'x'+ve.en.qty:'';var tm=ve.en.time?shortTime(ve.en.time):'';
-        vrows+='<div style="padding:5px 4px;border-bottom:1px solid #ffe0e0;font-size:12px;color:#c62828;display:flex;gap:6px;align-items:center;">'+
+        var tm=ve.en.time?shortTime(ve.en.time):'';
+        vrows+='<div style="padding:5px 4px;border-bottom:1px solid #ffe0e0;font-size:12px;display:flex;gap:6px;align-items:center;">'+
+          '<input type="checkbox" id="cpd-vchk-'+vi+'" checked style="width:14px;height:14px;cursor:pointer;accent-color:#c62828;">'+
           '<span style="font-size:9px;font-weight:700;color:#888;">'+esc(ve.vt.name)+'</span>'+
-          '<span style="flex:1;font-weight:600;">'+esc(lbl)+'</span>'+
-          (qty?'<span style="font-size:11px;color:#555;">'+qty+'</span>':'')+
+          '<span style="flex:1;font-weight:600;color:#c62828;">'+esc(lbl)+'</span>'+
+          '<input type="number" id="cpd-vqty-'+vi+'" value="'+(ve.en.qty||1)+'" min="1" style="width:38px;border:1px solid #ffcdd2;border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;">'+
           (tm?'<span style="font-size:11px;color:#555;">'+tm+'</span>':'')+
         '</div>';
       });
@@ -2369,7 +2431,19 @@ function showCopyPrevDay(vid){
       var chk=document.getElementById('cpd-chk-'+e.eid);
       if(chk)chk.addEventListener('change',function(){_sel[e.eid]=chk.checked;});
     });
-    g('m-cpd-confirm').onclick=function(){_doCopyPrevDay(vid,entries,_sel,curDate,prevDate,vendorEntries);};
+    vendorEntries.forEach(function(ve,vi){
+      var vchk=document.getElementById('cpd-vchk-'+vi);
+      if(vchk)vchk.addEventListener('change',function(){_vsel['v'+vi]=vchk.checked;});
+    });
+    g('m-cpd-confirm').onclick=function(){
+      // Read qty edits
+      var vEntsToPass=vendorEntries.filter(function(ve,vi){return _vsel['v'+vi];}).map(function(ve,vi){
+        var qEl=document.getElementById('cpd-vqty-'+vi);
+        var newQty=qEl?parseInt(qEl.value)||1:ve.en.qty||1;
+        return {vt:ve.vt,en:Object.assign({},ve.en,{qty:newQty})};
+      });
+      _doCopyPrevDay(vid,entries,_sel,curDate,prevDate,vEntsToPass);
+    };
     g('m-no').onclick=closeModal;
   }
   renderCPDModal();
@@ -6241,6 +6315,7 @@ function loadFromCloud(callback){
 
 // ── EVENT SHEET PDF ───────────────────────────────────────────
 // ── EVENT SHEET PDF ───────────────────────────────────────────
+var TMS_PDF=['5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM'];
 function makeEventSheetPDF(){
   if(!window.jspdf){toast('PDF library loading...','w');return;}
   var d=getD();
@@ -6698,13 +6773,18 @@ function makeVendorCardZip(){
         if(!en.company)return;
         var co=en.company.trim();
         if(!byCompany[co])byCompany[co]=[];
+        // Find manager for this venue
+        var mgr=null;
+        if(asgn[vid]){Object.keys(asgn[vid]).forEach(function(eid){var e=getS(eid);if(e&&e.role==='Manager'&&!mgr)mgr=e;});}
         byCompany[co].push({
           venueName:v.name,
           vendorType:vt.name,
           serviceLabel:en.serviceLabel||'',
           qty:en.qty||'',
           time:en.time||'',
-          notes:en.notes||''
+          notes:en.notes||'',
+          managerName:mgr?mgr.name:'',
+          managerPhone:mgr?mgr.phone:''
         });
       });
     });
@@ -6744,6 +6824,8 @@ function makeVendorCardZip(){
       // Venue name
       tmpCtx.font='bold 38px Arial';
       h+=getLines(tmpCtx,duty.venueName,INNER-20).length*46+8;
+      // Manager line
+      if(duty.managerName)h+=34;
       // Service/type label
       var svcLabel=duty.serviceLabel||(duty.vendorType.replace(' Vendor',''));
       tmpCtx.font='28px Arial';
@@ -6825,6 +6907,14 @@ function makeVendorCardZip(){
       ctx.fillStyle='#111';ctx.font='bold 38px Arial';
       drawLines(ctx,vnLines,PAD+24,iy,46);
       iy+=vnLines.length*46+8;
+
+      // Manager name & phone (no time)
+      if(duty.managerName){
+        ctx.fillStyle='#555';ctx.font='italic 26px Arial';
+        var mgrStr='Manager: '+duty.managerName+(duty.managerPhone?' - '+duty.managerPhone:'');
+        var mgrMaxW=INNER-20;if(ctx.measureText(mgrStr).width>mgrMaxW)mgrStr=mgrStr.slice(0,Math.floor(mgrStr.length*mgrMaxW/ctx.measureText(mgrStr).width)-2)+'...';
+        ctx.fillText(mgrStr,PAD+24,iy);iy+=34;
+      }
 
       // Service/type label
       ctx.fillStyle=tc;ctx.font='600 28px Arial';

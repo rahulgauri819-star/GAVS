@@ -169,7 +169,7 @@ var asgn={};        // hallId -> {eid: {emp, duty, isFixed}}
 var dlog={};        // daily log
 var lvMap={};       // shared with admin - eid -> {emp, duty} for On Leave
 var lvCollapsed=false; // On Leave box collapsed state
-var TIMES=['6:00 AM','7:00 AM','8:00 AM','9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM','7:00 PM','8:00 PM','9:00 PM','10:00 PM','11:00 PM'];
+var TIMES=['5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM'];
 var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e','#37474f','#6a1b9a','#bf360c','#1565c0','#2e7d32'];
 var ROLES_LIST=[];
 var DB_LOADED=false;
@@ -572,46 +572,111 @@ function makePDF(){
   if(!window.jspdf){alert('PDF library loading...');return;}
   saveDayLog();
   var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  var pw=210,mg=12,y=mg;
-  function cp(n){if(y+n>283){doc.addPage();y=mg;}}
-  doc.setFillColor(21,101,192);doc.rect(0,0,pw,36,'F');
-  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv=document.createElement('canvas');cv.width=img.naturalWidth;cv.height=img.naturalHeight;cv.getContext('2d').drawImage(img,0,0);var lw=28,lh=Math.round(28*(img.naturalHeight/img.naturalWidth));if(lh>28){lh=28;lw=Math.round(28*(img.naturalWidth/img.naturalHeight));}doc.addImage(cv.toDataURL('image/png'),'PNG',mg,4+Math.round((28-lh)/2),lw,lh);}}catch(er){}
-  doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont('helvetica','bold');
-  doc.text('GROVER AUDIO VISUAL SERVICES',pw/2+10,14,{align:'center'});
-  doc.setFontSize(8);doc.setFont('helvetica','normal');
-  doc.text('Jaipur — Staff Deployment',pw/2+10,22,{align:'center'});
-  y=42;
-  doc.setTextColor(13,71,161);doc.setFontSize(11);doc.setFont('helvetica','bold');
-  doc.text('Date: '+fd(getD()),mg,y);y+=12;
+  var pw=210,ph=297,mg=10,gap=6;
+  var colW=(pw-mg*2-gap)/2;
+  var rowH=7,mgrH=8.5,hdrH=10,timeW=11;
+  var startY=28,pageH=ph-mg;
+  var colX=[mg,mg+colW+gap];
+  var curCol=0,colY=[startY,startY];
+  var ac=[21,101,192];
+
+  // Header
+  doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(0,0,pw,24,'F');
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv2=document.createElement('canvas');var sc=Math.min(140/img.naturalWidth,140/img.naturalHeight);cv2.width=Math.round(img.naturalWidth*sc*2);cv2.height=Math.round(img.naturalHeight*sc*2);var ct2=cv2.getContext('2d');ct2.clearRect(0,0,cv2.width,cv2.height);ct2.drawImage(img,0,0,cv2.width,cv2.height);var lh2=18,lw2=Math.round(lh2*(img.naturalWidth/img.naturalHeight));doc.addImage(cv2.toDataURL('image/png'),'PNG',mg,3,lw2,lh2);}}catch(e){}
+  doc.setTextColor(255,255,255);doc.setFontSize(12);doc.setFont('helvetica','bold');
+  doc.text('JAIPUR — EVENT SHEET',pw/2,11,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(fd(getD()),pw/2,19,{align:'center'});
+
+  function nextCol(){if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}}
+  function ensureSpace(n){if(colY[curCol]+n>pageH)nextCol();}
+  function cc2(r){var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e'];var i=roles.indexOf(r);var h=(CLRS[i>=0?i%CLRS.length:0]||'#1565c0').replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+  function st2(t){return (t||'').replace(':00 ',' ');}
+  function tMin(t){if(!t)return 999;var p=t.match(/([0-9]+):([0-9]+) *(AM|PM)/i);if(!p)return 999;var h=parseInt(p[1]),mn=parseInt(p[2]),ap=p[3].toUpperCase();if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h!==12)h+=12;return h*60+mn;}
+
   var hasData=false;
   halls.forEach(function(h){
     var ha=asgn[h.id]||{};
     var entries=Object.keys(ha).map(function(eid){var e=getS(eid);return e?{emp:e,duty:ha[eid].duty}:null;}).filter(Boolean);
     if(!entries.length)return;
     hasData=true;
-    cp(16+entries.length*7);
-    doc.setFillColor(21,101,192);doc.roundedRect(mg,y,pw-mg*2,12,2,2,'F');
-    doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
-    doc.text(h.name,pw/2,y+8,{align:'center'});
-    doc.setFontSize(8);doc.text(entries.length+' staff',pw-mg-3,y+8,{align:'right'});y+=13;
-    entries.forEach(function(a,i){
-      cp(7);
-      var c=hexToRgb(cc(a.emp.role));
-      doc.setFillColor(c[0]+Math.round((255-c[0])*0.88),c[1]+Math.round((255-c[1])*0.88),c[2]+Math.round((255-c[2])*0.88));
-      doc.rect(mg,y,pw-mg*2,6.5,'F');
-      doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(7);
-      doc.text(a.emp.name,mg+5,y+4.5);
-      doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(6);
-      doc.text(a.emp.role,mg+90,y+4.5);
-      doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);
-      doc.text(a.duty,pw-mg-3,y+4.5,{align:'right'});y+=6.5;
-    });y+=4;
+    // Sort: manager first, then by time, then alpha
+    entries.sort(function(a,b){
+      var am=a.emp.role==='Manager'?0:1,bm=b.emp.role==='Manager'?0:1;
+      if(am!==bm)return am-bm;
+      var ta=tMin(a.duty),tb=tMin(b.duty);if(ta!==tb)return ta-tb;
+      return a.emp.name.localeCompare(b.emp.name);
+    });
+    if(entries.length>15){doc.addPage();colY=[startY,startY];curCol=0;}
+    var firstBlock=true;var i=0;
+    while(i<entries.length){
+      ensureSpace(hdrH+rowH);
+      var ci=curCol;var x=colX[ci];var y=colY[ci];
+      doc.setFillColor(ac[0],ac[1],ac[2]);doc.roundedRect(x,y,colW,hdrH,2,2,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
+      var mc=Math.floor((colW-timeW-4)/2.2);
+      var hn=(!firstBlock?h.name+' (cont.)':h.name);if(hn.length>mc)hn=hn.slice(0,mc-1)+'...';
+      doc.text(hn,x+3,y+6.8);
+      doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(entries.length+' staff',x+colW-2,y+6.8,{align:'right'});
+      colY[ci]+=hdrH+1;firstBlock=false;
+      while(i<entries.length){
+        var a=entries[i];var isMgr=a.emp.role==='Manager';var rh=isMgr?mgrH:rowH;
+        if(colY[curCol]+rh>pageH){nextCol();break;}
+        var cx=colX[curCol];var cy=colY[curCol];
+        var c=cc2(a.emp.role);
+        var bg=isMgr?[255,253,225]:i%2===0?[240,245,255]:[255,255,255];
+        doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(cx,cy,colW,rh,'F');
+        doc.setFillColor(c[0],c[1],c[2]);doc.rect(cx,cy,2,rh,'F');
+        var nm=a.emp.name;var nmw=Math.floor((colW-timeW-8)/2.1);if(nm.length>nmw)nm=nm.slice(0,nmw-1)+'...';
+        if(isMgr){
+          doc.setTextColor(100,65,0);doc.setFontSize(8.5);doc.setFont('helvetica','bold');doc.text(nm,cx+4,cy+rh/2+1.5);
+          doc.setTextColor(160,140,100);doc.setFontSize(6);doc.setFont('helvetica','italic');doc.text('Manager',cx+4+doc.getTextWidth(nm)+1.5,cy+rh/2+1.5);
+        }else{
+          doc.setTextColor(20,20,20);doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.text(nm,cx+4,cy+rh-2);
+          var roleStr=a.emp.role||'';var snW=doc.getTextWidth(nm);
+          doc.setTextColor(170,170,170);doc.setFontSize(6);doc.setFont('helvetica','italic');doc.text(roleStr,cx+4+snW+1.5,cy+rh-2);
+        }
+        doc.setTextColor(ac[0],ac[1],ac[2]);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(st2(a.duty),cx+colW-1,cy+rh-2,{align:'right'});
+        colY[curCol]+=rh;i++;
+      }
+      colY[curCol]+=2;
+      if(i<entries.length)nextCol();
+    }
+    colY[curCol]+=1;
   });
-  if(!hasData){doc.setTextColor(150,150,150);doc.setFontSize(11);doc.setFont('helvetica','italic');doc.text('No staff assigned yet.',pw/2,y+10,{align:'center'});}
+
+  // On Leave section
+  var lvList=Object.values(lvMap).filter(function(a){return !!getS(a.emp?a.emp.id:a.id);});
+  if(lvList.length){
+    lvList.sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
+    var srH=rowH;var hdrHs=9;
+    if(colY[curCol]+hdrHs+srH>pageH)nextCol();
+    var hx=colX[curCol];var hy=colY[curCol];
+    doc.setFillColor(160,30,30);doc.roundedRect(hx,hy,colW,hdrHs,2,2,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+    doc.text('ON LEAVE — '+lvList.length,hx+3,hy+6.5);colY[curCol]+=hdrHs+1;
+    lvList.forEach(function(a,i3){
+      if(colY[curCol]+srH>pageH){nextCol();
+        doc.setFillColor(160,30,30);doc.roundedRect(colX[curCol],colY[curCol],colW,hdrHs,2,2,'F');
+        doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+        doc.text('ON LEAVE (cont.)',colX[curCol]+3,colY[curCol]+6.5);colY[curCol]+=hdrHs+1;
+      }
+      var x3=colX[curCol];var y3=colY[curCol];
+      var rb=i3%2===0?[255,235,235]:[255,245,245];
+      doc.setFillColor(rb[0],rb[1],rb[2]);doc.rect(x3,y3,colW,srH,'F');
+      doc.setFillColor(200,50,50);doc.rect(x3,y3,2,srH,'F');
+      var sn2=a.emp.name;if(sn2.length>30)sn2=sn2.slice(0,29)+'...';
+      doc.setTextColor(20,20,20);doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.text(sn2,x3+4,y3+srH-2);
+      colY[curCol]+=srH;
+    });
+  }
+
+  if(!hasData&&!lvList.length){doc.setTextColor(150,150,150);doc.setFontSize(11);doc.setFont('helvetica','italic');doc.text('No staff assigned.',pw/2,startY+20,{align:'center'});}
+
   var pc=doc.internal.getNumberOfPages();
-  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('GAVS | Jaipur | '+fd(getD()),mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
-  doc.save('Jaipur_Duties_'+getD()+'.pdf');
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(0,ph-8,pw,8,'F');doc.setFontSize(6.5);doc.setTextColor(255,255,255);doc.setFont('helvetica','normal');doc.text('GAVS | Jaipur | '+fd(getD()),mg,ph-3);doc.text('Page '+p+' of '+pc,pw-mg,ph-3,{align:'right'});}
+  doc.save('Jaipur_EventSheet_'+getD()+'.pdf');
 }
+
 
 function hexToRgb(hex){hex=hex.replace('#','');return[parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)];}
 

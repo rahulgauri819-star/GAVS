@@ -419,11 +419,11 @@ function makeHallBox(h){
         row.style.setProperty('--rc',c);
         row.style.setProperty('--rb',c+'12');
         var nm2=document.createElement('div');nm2.className='hr-name';nm2.textContent=a.emp.name;
-        if(a.isFixed){var lk=document.createElement('span');lk.style.cssText='font-size:7px;flex-shrink:0;';lk.textContent='🔒';row.appendChild(nm2);row.appendChild(lk);}
+        // No lock icon in Jaipur portal
         else{row.appendChild(nm2);}
         var sel=document.createElement('select');sel.className='hr-time';
         TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===a.duty)o.selected=true;sel.appendChild(o);});
-        sel.addEventListener('change',(function(hid,eid){return function(){if(asgn[hid]&&asgn[hid][eid]){asgn[hid][eid].duty=this.value;asgn[hid][eid].isFixed=false;saveCloud();}};})(h.id,a.emp.id));
+        sel.addEventListener('change',(function(hid,eid){return function(){if(asgn[hid]&&asgn[hid][eid]){asgn[hid][eid].duty=this.value;saveCloud();}};})(h.id,a.emp.id));
         row.appendChild(sel);
         var rm=document.createElement('button');rm.className='hr-rm';rm.textContent='✕';
         rm.addEventListener('click',(function(hid,eid,ename){return function(){
@@ -452,7 +452,7 @@ function makeHallBox(h){
     // Remove from any other hall first
     Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
     if(!asgn[h.id])asgn[h.id]={};
-    asgn[h.id][eid]={duty:emp.fixedDuty||'6:00 AM',isFixed:!!emp.fixedDuty};
+    asgn[h.id][eid]={duty:emp.fixedDuty||'6:00 AM',isFixed:false};
     if(navigator.vibrate)navigator.vibrate([20,10,20]);
     drawHalls();drawStaffPanel();saveCloud();
   });
@@ -589,7 +589,7 @@ function makePDF(){
 
   function nextCol(){if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}}
   function ensureSpace(n){if(colY[curCol]+n>pageH)nextCol();}
-  function cc2(r){var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e'];var i=roles.indexOf(r);var h=(CLRS[i>=0?i%CLRS.length:0]||'#1565c0').replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+  function cc2(r){var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e'];var i=ROLES_LIST.indexOf(r);var h=(CLRS[i>=0?i%CLRS.length:0]||'#1565c0').replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
   function st2(t){return (t||'').replace(':00 ',' ');}
   function tMin(t){if(!t)return 999;var p=t.match(/([0-9]+):([0-9]+) *(AM|PM)/i);if(!p)return 999;var h=parseInt(p[1]),mn=parseInt(p[2]),ap=p[3].toUpperCase();if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h!==12)h+=12;return h*60+mn;}
 
@@ -716,7 +716,7 @@ document.addEventListener('touchend',function(ev){
       if(emp){
         Object.keys(asgn).forEach(function(id){if(asgn[id]&&asgn[id][tEid])delete asgn[id][tEid];});
         if(!asgn[hid])asgn[hid]={};
-        asgn[hid][tEid]={duty:emp.fixedDuty||'6:00 AM',isFixed:!!emp.fixedDuty};
+        asgn[hid][tEid]={duty:emp.fixedDuty||'6:00 AM',isFixed:false};
         if(navigator.vibrate)navigator.vibrate([20,10,20]);
         drawHalls();drawStaffPanel();saveCloud();
       }

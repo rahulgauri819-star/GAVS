@@ -575,7 +575,7 @@ document.addEventListener('touchend',function(ev){
   var t=ev.changedTouches[0];
   var el=document.elementFromPoint(t.clientX,t.clientY);
   if(el){
-    var lz=el.closest('.lv-zone');
+    var lz=el.closest('.lv-zone')||el.closest('[class*="lv-zone"]');
     if(lz){
       var emp=getS(tEid);
       if(emp){
@@ -583,9 +583,11 @@ document.addEventListener('touchend',function(ev){
         lvMap[tEid]={emp:emp,duty:'6:00 AM'};
         drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();
         if(tGhost){try{document.body.removeChild(tGhost);}catch(x){}tGhost=null;}
+        document.querySelectorAll('.lv-zone').forEach(function(b){b.classList.remove('drag-over');});
         var card=document.querySelector('.staff-card[data-eid="'+tEid+'"]');
         if(card)card.style.opacity='';
         tEid=null;
+        return;
       }
     }
   }
@@ -728,7 +730,7 @@ function hexToRgb(hex){hex=hex.replace('#','');return[parseInt(hex.slice(0,2),16
 var tEid=null,tGhost=null;
 document.addEventListener('touchstart',function(ev){
   var card=ev.target.closest('.staff-card[data-eid]');
-  if(!card||card.draggable===false)return;
+  if(!card||card.getAttribute('draggable')==='false')return;
   tEid=card.getAttribute('data-eid');
   var e=getS(tEid);if(!e)return;
   var t=ev.touches[0];
@@ -740,9 +742,12 @@ document.addEventListener('touchstart',function(ev){
 document.addEventListener('touchmove',function(ev){
   if(!tEid)return;
   var t=ev.touches[0];if(tGhost){tGhost.style.left=(t.clientX-50)+'px';tGhost.style.top=(t.clientY-30)+'px';}
-  document.querySelectorAll('.hall-box').forEach(function(b){b.classList.remove('drag-over');});
+  document.querySelectorAll('.hall-box,.lv-zone').forEach(function(b){b.classList.remove('drag-over');});
   var el=document.elementFromPoint(t.clientX,t.clientY);
-  if(el){var hb=el.closest('.hall-box');if(hb)hb.classList.add('drag-over');}
+  if(el){
+    var hb=el.closest('.hall-box');if(hb)hb.classList.add('drag-over');
+    var lz=el.closest('.lv-zone');if(lz)lz.classList.add('drag-over');
+  }
 },{passive:true});
 document.addEventListener('touchend',function(ev){
   if(!tEid)return;

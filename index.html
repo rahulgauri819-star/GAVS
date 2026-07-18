@@ -2004,7 +2004,7 @@ function makeVenueBox(v,hasPinned,viewData){
       item.style.cssText='padding:7px 10px;cursor:pointer;font-size:11px;border-bottom:1px solid #f0f0f0;'+(greyOut?'opacity:0.55;color:#888;':'color:#1a237e;font-weight:600;');
       item.textContent=label;
       if(!isHere){
-        item.addEventListener('mousedown',function(ev){
+        var _venueItemFn=function(ev){
           ev.preventDefault();
           if(otherVid||inOff||inGdn){
             var fromStr=otherVid?(getV(otherVid)?getV(otherVid).name:'another venue'):inOff?'Office Duty':'Godown Team';
@@ -2023,7 +2023,9 @@ function makeVenueBox(v,hasPinned,viewData){
             qaInp.value='';qaDD.style.display='none';
             drawVenueGrid();drawStaffPanel();drawStats();saveCloud();
           }
-        });
+        };
+        item.addEventListener('mousedown',_venueItemFn);
+        item.addEventListener('touchend',_venueItemFn);
       }
       qaDD.appendChild(item);
     });
@@ -3671,20 +3673,22 @@ function makeQuickAddDZ(placeholder,excludeIds,onSelect){
       var nm=document.createElement('span');nm.style.cssText='font-weight:700;color:'+(greyOut?'#888':'#1a237e')+';flex:1;';nm.textContent=e.name;
       var sfx=document.createElement('span');sfx.style.cssText='font-size:10px;color:#aaa;flex-shrink:0;';sfx.textContent=suffix||('('+e.role+')');
       item.appendChild(nm);item.appendChild(sfx);
-      item.addEventListener('mousedown',function(ev){
+      var _fn=(function(e2,greyOut2,otherVid2,inOff2,inGdn2,inLeave2){return function(ev){
         ev.preventDefault();
-        if(greyOut&&(otherVid||inOff||inGdn)){
-          var fromStr=inOff?'Office Duty':inGdn?'Godown Team':inLeave?'On Leave':(getV(otherVid)?getV(otherVid).name:'another venue');
-          showModal('<div class="mt">Move Staff?</div><p style="text-align:center;margin-bottom:16px;">Move <strong>'+esc(e.name)+'</strong> from <strong>'+esc(fromStr)+'</strong>?</p><button class="mbtn blue" id="m-yes">Yes, Move</button><button class="mcancel" id="m-no">Cancel</button>');
+        if(greyOut2&&(otherVid2||inOff2||inGdn2)){
+          var fromStr=inOff2?'Office Duty':inGdn2?'Godown Team':inLeave2?'On Leave':(getV(otherVid2)?getV(otherVid2).name:'another venue');
+          showModal('<div class="mt">Move Staff?</div><p style="text-align:center;margin-bottom:16px;">Move <strong>'+esc(e2.name)+'</strong> from <strong>'+esc(fromStr)+'</strong>?</p><button class="mbtn blue" id="m-yes">Yes, Move</button><button class="mcancel" id="m-no">Cancel</button>');
           g('m-yes').onclick=function(){
-            if(otherVid&&asgn[otherVid])delete asgn[otherVid][e.id];
-            delete lvMap[e.id];delete offMap[e.id];delete gdnMap[e.id];
-            closeModal();onSelect(e);inp.value='';dd.style.display='none';
+            if(otherVid2&&asgn[otherVid2])delete asgn[otherVid2][e2.id];
+            delete lvMap[e2.id];delete offMap[e2.id];delete gdnMap[e2.id];
+            closeModal();onSelect(e2);inp.value='';dd.style.display='none';
           };g('m-no').onclick=closeModal;
-        } else if(!greyOut){
-          onSelect(e);inp.value='';dd.style.display='none';
+        } else if(!greyOut2){
+          onSelect(e2);inp.value='';dd.style.display='none';
         }
-      });
+      };})(e,greyOut,otherVid,inOff,inGdn,inLeave);
+      item.addEventListener('mousedown',_fn);
+      item.addEventListener('touchend',_fn);
       dd.appendChild(item);
     });
     dd.style.display='block';

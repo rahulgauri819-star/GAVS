@@ -131,7 +131,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="lp-list" id="LP_LIST"></div>
     </div>
     <div class="rp" id="RP">
-      <div id="LEAVE_ZONE_WRAP"></div>
+      <div id="LEAVE_ZONE_WRAP" style="min-height:60px;margin-bottom:10px;"></div>
       <div class="halls-grid" id="HALLS_GRID"></div>
     </div>
   </div>
@@ -507,21 +507,28 @@ function makeHallBox(h){
 }
 
 // ── ON LEAVE ZONE ────────────────────────────────────────────
-// Permanent drop handler on the wrap element
-(function(){
+// Permanent drop handler - attached once at page load, survives DOM rebuilds
+document.addEventListener('DOMContentLoaded',function(){
   var _lzw=document.getElementById('LEAVE_ZONE_WRAP');
   if(!_lzw)return;
-  _lzw.addEventListener('dragover',function(ev){ev.preventDefault();});
+  _lzw.addEventListener('dragover',function(ev){
+    ev.preventDefault();ev.dataTransfer.dropEffect='move';
+    _lzw.style.outline='2px solid #c62828';
+  });
+  _lzw.addEventListener('dragleave',function(ev){
+    if(!_lzw.contains(ev.relatedTarget))_lzw.style.outline='';
+  });
   _lzw.addEventListener('drop',function(ev){
-    ev.preventDefault();
+    ev.preventDefault();_lzw.style.outline='';
     var eid=ev.dataTransfer.getData('text/plain');
-    if(!eid||lvMap[eid])return;
+    if(!eid)return;
     var emp=getS(eid);if(!emp)return;
+    if(lvMap[eid])return; // already on leave
     Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
     lvMap[eid]={emp:emp,duty:'6:00 AM'};
     drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();
   });
-})();
+});
 
 function drawLeaveZone(){
   var wrap=g('LEAVE_ZONE_WRAP');if(!wrap)return;

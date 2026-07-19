@@ -507,6 +507,22 @@ function makeHallBox(h){
 }
 
 // ── ON LEAVE ZONE ────────────────────────────────────────────
+// Permanent drop handler on the wrap element
+(function(){
+  var _lzw=document.getElementById('LEAVE_ZONE_WRAP');
+  if(!_lzw)return;
+  _lzw.addEventListener('dragover',function(ev){ev.preventDefault();});
+  _lzw.addEventListener('drop',function(ev){
+    ev.preventDefault();
+    var eid=ev.dataTransfer.getData('text/plain');
+    if(!eid||lvMap[eid])return;
+    var emp=getS(eid);if(!emp)return;
+    Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
+    lvMap[eid]={emp:emp,duty:'6:00 AM'};
+    drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();
+  });
+})();
+
 function drawLeaveZone(){
   var wrap=g('LEAVE_ZONE_WRAP');if(!wrap)return;
   wrap.innerHTML='';
@@ -554,13 +570,28 @@ function drawLeaveZone(){
 
   // Drop zone for marking leave
   zone.addEventListener('dragover',function(ev){ev.preventDefault();zone.classList.add('drag-over');});
-  zone.addEventListener('dragleave',function(){zone.classList.remove('drag-over');});
+  zone.addEventListener('dragleave',function(ev){
+    // Only remove if truly leaving the zone (not entering a child)
+    if(!zone.contains(ev.relatedTarget))zone.classList.remove('drag-over');
+  });
   zone.addEventListener('drop',function(ev){
     ev.preventDefault();zone.classList.remove('drag-over');
     var eid=ev.dataTransfer.getData('text/plain');
-    if(!eid)return;
+    if(!eid){console.log('IHC leave drop: no eid');return;}
+    var emp=getS(eid);if(!emp){console.log('IHC leave drop: no emp for',eid);return;}
+    Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
+    lvMap[eid]={emp:emp,duty:'6:00 AM'};
+    drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();
+    console.log('IHC leave drop: added',eid);
+  });
+
+  // Also add drop handler to wrap for wider target
+  wrap.addEventListener('dragover',function(ev){ev.preventDefault();});
+  wrap.addEventListener('drop',function(ev){
+    ev.preventDefault();
+    var eid=ev.dataTransfer.getData('text/plain');
+    if(!eid||lvMap[eid])return;
     var emp=getS(eid);if(!emp)return;
-    // Remove from any hall first
     Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
     lvMap[eid]={emp:emp,duty:'6:00 AM'};
     drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();

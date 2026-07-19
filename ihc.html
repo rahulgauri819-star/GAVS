@@ -389,7 +389,7 @@ function drawStaffPanel(){
         card.className='staff-card';
         card.setAttribute('data-eid',e.id);
         var onLeave=isOnLeave(e.id);
-        card.style.cssText='background:'+(onLeave?'#ffebee':c+'12')+';border-left:3px solid '+(onLeave?'#ef9a9a':c)+';border-bottom:1px solid '+(onLeave?'#ffcdd2':c+'22')+';padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:'+(isDeployed||onLeave?'default':'grab')+';margin-bottom:2px;opacity:'+(isDeployed||onLeave?'0.45':'1')+';';
+        card.style.cssText='background:'+(onLeave?'#ffebee':c+'12')+';border-left:3px solid '+(onLeave?'#ef9a9a':c)+';border-bottom:1px solid '+(onLeave?'#ffcdd2':c+'22')+';padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:'+(onLeave?'default':'grab')+';margin-bottom:2px;opacity:'+(onLeave?'0.45':isDeployed?'0.6':'1')+';';
         card.draggable=!onLeave; // deployed staff still draggable to leave
         var nm=document.createElement('div');nm.className='sc-name';nm.textContent=e.name;
         card.appendChild(nm);

@@ -329,10 +329,11 @@ input,select,button{font-family:inherit;}
     <button class="atb-btn" id="btnResetDuties" style="border-color:#ef9a9a;color:#ffcdd2;" title="Reset all duties">🔄 Reset</button>
     <div class="atb-flex"></div>
     <div class="atb-sep"></div>
-    <button class="atb-nb atb-on" data-atb-screen="assign" title="Assign Duties">🏨</button>
+    <button class="atb-nb" data-atb-screen="assign" title="Assign Duties">🏨</button>
     <button class="atb-nb" data-atb-screen="manage" title="Manage">⚙️</button>
     <button class="atb-nb" data-atb-screen="report" title="Report">📄</button>
     <button class="atb-nb" data-atb-screen="vendorreport" title="Vendor Report">📋</button>
+    <button class="atb-nb" data-atb-screen="attendance" title="Attendance">📊</button>
     <button class="atb-nb" data-atb-screen="drafts" title="Drafts">📂</button>
     <button class="atb-nb" data-atb-screen="settings" title="Settings">🔧</button>
   </div>
@@ -1501,28 +1502,19 @@ function drawVenueGrid(){
     if(!lvList.length){
       lvBody.innerHTML='<div style="text-align:center;color:#ef9a9a;font-size:12px;padding:12px;">Drag staff here to mark On Leave</div>';
     } else {
-      var lvGrid=document.createElement('div');
-      lvGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px;';
-      lvList.forEach(function(a){
-        var c=cc(a.emp.role);
+      var lvGrid=renderRoleGroupedDZ(lvList,function(a,c){
         var _alE=annualLeave.find(function(x){return x.id===a.emp.id;});
         var cell=document.createElement('div');
-        // Annual leave staff spans full width
-        if(_alE){
-          cell.style.cssText='grid-column:1/-1;background:'+c+'20;border-left:3px solid '+c+';padding:3px 6px;display:flex;align-items:center;gap:4px;min-width:0;';
-        } else {
-          cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;';
-        }
+        cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;border-radius:3px;';
         var nm=document.createElement('div');
         nm.style.cssText='font-size:8.5px;font-weight:700;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
         nm.textContent=a.emp.name;
         nm.title=_alE?'Period leave until '+fd(_alE.endDate):a.emp.name;
         cell.appendChild(nm);
-        // Annual leave badge — shown in right area
         if(_alE){
           var alBadge=document.createElement('span');
-          alBadge.style.cssText='font-size:8px;color:#1565c0;font-weight:700;background:#e3f2fd;border-radius:4px;padding:1px 5px;flex-shrink:0;white-space:nowrap;';
-          alBadge.textContent='(On leave till '+fd(_alE.endDate)+')';
+          alBadge.style.cssText='font-size:7px;color:#1565c0;font-weight:700;background:#e3f2fd;border-radius:4px;padding:1px 4px;flex-shrink:0;white-space:nowrap;';
+          alBadge.textContent='till '+fd(_alE.endDate);
           cell.appendChild(alBadge);
         }
         var calBtn=document.createElement('button');
@@ -1540,7 +1532,7 @@ function drawVenueGrid(){
           g('m-no').onclick=closeModal;
         };})(a.emp.id,a.emp.name));
         cell.appendChild(calBtn);cell.appendChild(rm);
-        lvGrid.appendChild(cell);
+        return cell;
       });
       lvBody.appendChild(lvGrid);
     }
@@ -1583,12 +1575,9 @@ function drawVenueGrid(){
     if(!offList.length){
       offBody.innerHTML='<div style="text-align:center;color:#ce93d8;font-size:12px;padding:12px;">Drag staff here for Office Duty</div>';
     } else {
-      var offGrid=document.createElement('div');
-      offGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px;';
-      offList.forEach(function(a){
-        var c=cc(a.emp.role);
+      var offGrid=renderRoleGroupedDZ(offList,function(a,c){
         var cell=document.createElement('div');
-        cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;';
+        cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;border-radius:3px;';
         var nm=document.createElement('div');
         nm.style.cssText='font-size:8.5px;font-weight:700;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
         nm.textContent=a.emp.name;nm.title=a.emp.name;
@@ -1607,7 +1596,7 @@ function drawVenueGrid(){
         TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(a.duty||'6:00 AM'))o.selected=true;tSel.appendChild(o);});
         (function(eid){tSel.addEventListener('change',function(){if(offMap[eid]){offMap[eid].duty=this.value;saveCloud();}});})(a.emp.id);
         cell.appendChild(nm);cell.appendChild(tSel);cell.appendChild(rm);
-        offGrid.appendChild(cell);
+        return cell;
       });
       offBody.appendChild(offGrid);
     }
@@ -1661,17 +1650,11 @@ function drawVenueGrid(){
     if(!gdnList.length){
       gdnBody.innerHTML='<div style="text-align:center;color:#ffd54f;font-size:12px;padding:12px;">Drag staff here for Godown Team</div>';
     } else {
-      var gdnGrid=document.createElement('div');
-      gdnGrid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:2px;';
-      var _gdnDisplay=gdnList.filter(function(a){
-        if(a.emp.pgdn&&!gdnPinnedVisible)return false;
-        return true;
-      });
-      _gdnDisplay.forEach(function(a){
+      var _gdnDisplay=gdnList.filter(function(a){if(a.emp.pgdn&&!gdnPinnedVisible)return false;return true;});
+      var gdnGrid=renderRoleGroupedDZ(_gdnDisplay,function(a,c){
         var isPinned=!!(a.emp.pgdn);
-        var c=cc(a.emp.role);
         var cell=document.createElement('div');
-        cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;';
+        cell.style.cssText='background:'+c+'15;border-left:3px solid '+c+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;border-radius:3px;';
         var nm=document.createElement('div');
         nm.style.cssText='font-size:8.5px;font-weight:700;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
         nm.textContent=(isPinned?'🔒 ':'')+a.emp.name;nm.title=a.emp.name;
@@ -1703,7 +1686,7 @@ function drawVenueGrid(){
           }
         };})(a.emp.id,a.emp.name,isPinned));
         cell.appendChild(nm);cell.appendChild(gdtSel);cell.appendChild(rm);
-        gdnGrid.appendChild(cell);
+        return cell;
       });
       gdnBody.appendChild(gdnGrid);
     }
@@ -2112,6 +2095,32 @@ function makeVenueBox(v,hasPinned,viewData){
 
 function _venueTimeMin(t){if(!t)return 9999;var p=t.match(/([0-9]+):([0-9]+) *(AM|PM)/i);if(!p)return 9999;var h=parseInt(p[1]),mn=parseInt(p[2]),ap=p[3].toUpperCase();if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h!==12)h+=12;return h*60+mn;}
 function _venueSort(arr){return arr.slice().sort(function(a,b){var ta=_venueTimeMin(a.duty),tb=_venueTimeMin(b.duty);if(ta!==tb)return ta-tb;return a.emp.name.localeCompare(b.emp.name);});}
+
+// Renders a role-grouped mini layout for Leave / Office / Godown boxes
+// makeCard(a, roleColor) → DOM element
+function renderRoleGroupedDZ(list, makeCard){
+  var roleGroups={};
+  ROLES.forEach(function(r){roleGroups[r]=[];});
+  list.forEach(function(a){
+    if(!roleGroups[a.emp.role])roleGroups[a.emp.role]=[];
+    roleGroups[a.emp.role].push(a);
+  });
+  ROLES.forEach(function(r){if(roleGroups[r]&&roleGroups[r].length>1)roleGroups[r]=_venueSort(roleGroups[r]);});
+  var activeRoles=ROLES.filter(function(r){return roleGroups[r]&&roleGroups[r].length;});
+  var wrap=document.createElement('div');
+  activeRoles.forEach(function(r){
+    var c=cc(r);
+    var rh=document.createElement('div');
+    rh.style.cssText='font-size:8px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+c+';padding:5px 2px 3px;border-bottom:1px solid '+c+'22;margin-bottom:3px;margin-top:4px;';
+    rh.textContent=r;
+    wrap.appendChild(rh);
+    var grid=document.createElement('div');
+    grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:3px;';
+    roleGroups[r].forEach(function(a){grid.appendChild(makeCard(a,c));});
+    wrap.appendChild(grid);
+  });
+  return wrap;
+}
 
 function renderStaffBody(body,v,t){
   if(!t.length){
@@ -3936,13 +3945,7 @@ function drawAttendance(){
   // Update role dropdown counts
   populateATNRole();
 
-  // Past date warning
-  if(!isToday){
-    var roWarn=document.createElement('div');
-    roWarn.style.cssText='background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#e65100;font-weight:700;';
-    roWarn.textContent='⚠️ Past date — Attendance is read-only.';
-    el.appendChild(roWarn);
-  }
+  // Past date warning removed — all dates are fully editable
 
   // Filter staff by selected role
   var grpStaff=staff.filter(function(e){return e.role===_atnRole;});
@@ -3972,7 +3975,7 @@ function drawAttendance(){
 
     var btns=document.createElement('div');btns.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
 
-    if(isToday){
+    if(true){
       [{s:'present',l:'✅ Present',bg:'#e8f5e9',ac:'#2e7d32',brd:'#a5d6a7'},
        {s:'absent',l:'❌ Absent',bg:'#ffebee',ac:'#c62828',brd:'#ef9a9a'},
        {s:'uninformed',l:'⚠️ Uninformed',bg:'#fff3e0',ac:'#e65100',brd:'#ffcc80'}
@@ -4001,14 +4004,6 @@ function drawAttendance(){
         at[eid].notes=this.value;saveAttendance();
       };})(e.id));
       btns.appendChild(ni);
-    } else {
-      var badge=document.createElement('span');
-      var bmap={present:{t:'✅ Present',c:'#2e7d32'},absent:{t:'❌ Absent',c:'#c62828'},uninformed:{t:'⚠️ Uninformed',c:'#e65100'}};
-      var binfo=bmap[a.status];
-      badge.style.cssText='font-size:12px;font-weight:700;color:'+(binfo?binfo.c:'#aaa')+';';
-      badge.textContent=binfo?binfo.t:'Not marked';
-      btns.appendChild(badge);
-      if(a.notes){var nt=document.createElement('span');nt.style.cssText='font-size:11px;color:#888;margin-left:8px;';nt.textContent=a.notes;btns.appendChild(nt);}
     }
     row.appendChild(btns);
     el.appendChild(row);

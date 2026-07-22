@@ -751,7 +751,6 @@ input,select,button{font-family:inherit;}
         <h2 style="font-size:18px;font-weight:800;color:#1a237e;margin-bottom:4px;">📊 Attendance</h2>
       </div>
       <input type="date" id="ATN_DATE" style="padding:7px 12px;border:1.5px solid #e3eaff;border-radius:10px;font-size:13px;font-weight:700;color:#1a237e;outline:none;"/>
-      <select id="ATN_ROLE" style="padding:7px 12px;border:1.5px solid #e3eaff;border-radius:10px;font-size:13px;font-weight:700;color:#1a237e;outline:none;background:#fff;min-width:160px;cursor:pointer;"></select>
       <button id="ATN_EXPORT" style="background:#1a237e;color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">📄 PDF</button>
     </div>
     <div id="ATN_SUMMARY" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;"></div>
@@ -1019,7 +1018,6 @@ function go(s){
         if(!_atnDate)_atnDate=todayIST();
         var atnDateEl=g('ATN_DATE');
         if(atnDateEl&&!atnDateEl.value){atnDateEl.value=_atnDate;}
-        populateATNRole();
         drawAttendance();
       });return;
     }
@@ -3847,23 +3845,9 @@ function saveAttendance(){
   saveCloud();
 }
 
-var _atnRole='Manager'; // selected role category
+var _atnRole='Manager'; // kept for PDF compat
 var _atnDate='';  // attendance date picker — independent of main app _lastLoadedDate
-
-function populateATNRole(){
-  var sel=g('ATN_ROLE');if(!sel)return;
-  var attn=getAttendance();
-  sel.innerHTML='';
-  ROLES.forEach(function(r){
-    var cnt=staff.filter(function(e){return e.role===r;}).length;
-    var marked=staff.filter(function(e){return e.role===r&&attn[e.id]&&attn[e.id].status;}).length;
-    var o=document.createElement('option');
-    o.value=r;o.textContent=r+' ('+marked+'/'+cnt+')';
-    sel.appendChild(o);
-  });
-  sel.value=_atnRole||'Manager';
-  _atnRole=sel.value;
-}
+var _atnCollapsed={}; // role→false means expanded, anything else=collapsed
 
 function atnBuildDutyMaps(d){
   // Returns {staffVenue, staffTime, isLeaveMap, isOffMap, isGdnMap} for any date
@@ -3913,112 +3897,87 @@ function atnAutoMark(d,attn,maps){
   }
 }
 
+function makeAtnRow(e,attn,maps,d,saveFn,redrawFn){
+  var a=attn[e.id]||{};
+  var vid=maps.staffVenue[e.id];var vname=vid?(getV(vid)?getV(vid).name:''):'';
+  var where=maps.isLeaveMap[e.id]?'On Leave':maps.isOffMap[e.id]?'Office Duty':maps.isGdnMap[e.id]?'Godown Team':(vname||'—');
+  var time=maps.staffTime[e.id]||'';var isAuto=!!(a.auto&&!a.manual);
+  var statusBg=a.status==='present'?'#f1f8e9':a.status==='absent'?'#fff5f5':a.status==='uninformed'?'#fffde7':'#fff';
+  var row=document.createElement('div');
+  row.style.cssText='background:'+statusBg+';border:1px solid #e8eaf6;border-radius:10px;padding:9px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+  var info=document.createElement('div');info.style.cssText='flex:1;min-width:130px;';
+  info.innerHTML='<div style="font-size:12px;font-weight:700;color:#1a237e;">'+esc(e.name)+'</div>'+
+    '<div style="font-size:10px;color:#888;margin-top:1px;">'+esc(where)+(time?' · '+shortTime(time):'')+(isAuto?' · auto':'')+'</div>';
+  row.appendChild(info);
+  var btns=document.createElement('div');btns.style.cssText='display:flex;gap:5px;align-items:center;flex-wrap:wrap;';
+  [{s:'present',l:'✅ P',bg:'#e8f5e9',ac:'#2e7d32',brd:'#a5d6a7'},
+   {s:'absent',l:'❌ A',bg:'#ffebee',ac:'#c62828',brd:'#ef9a9a'},
+   {s:'uninformed',l:'⚠️ U',bg:'#fff3e0',ac:'#e65100',brd:'#ffcc80'}
+  ].forEach(function(opt){
+    var btn=document.createElement('button');var isActive=a.status===opt.s;
+    btn.style.cssText='padding:4px 9px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid '+(isActive?opt.brd:'#e0e0e0')+';background:'+(isActive?opt.bg:'#fafafa')+';color:'+(isActive?opt.ac:'#999')+';';
+    btn.textContent=opt.l;
+    btn.addEventListener('click',(function(eid,s){return function(){
+      var at=getAttendance();if(!at[eid])at[eid]={};
+      if(at[eid].status===s){at[eid].status='';at[eid].manual=false;at[eid].auto=false;}
+      else{at[eid].status=s;at[eid].manual=true;at[eid].auto=false;}
+      saveFn();redrawFn();
+    };})(e.id,opt.s));
+    btns.appendChild(btn);
+  });
+  var ni=document.createElement('input');ni.placeholder='Notes...';ni.value=a.notes||'';
+  ni.style.cssText='border:1px solid #e0e0e0;border-radius:7px;padding:4px 8px;font-size:10px;width:110px;outline:none;';
+  ni.addEventListener('change',(function(eid){return function(){
+    var at=getAttendance();if(!at[eid])at[eid]={};at[eid].notes=this.value;saveFn();
+  };})(e.id));
+  btns.appendChild(ni);row.appendChild(btns);
+  return row;
+}
+
 function drawAttendance(){
   var el=g('ATN_LIST');if(!el)return;
   var d=_atnDate||todayIST();
-  var isToday=d===todayIST();
-
-  // Sync date picker
   var dpEl=g('ATN_DATE');if(dpEl&&dpEl.value!==d)dpEl.value=d;
-
   var attn=getAttendance();
   var maps=atnBuildDutyMaps(d);
-
-  // Auto-mark (respects manual flags, never touches duty assignments)
   atnAutoMark(d,attn,maps);
-
   el.innerHTML='';
 
-  // Summary counts
+  // Summary
   var counts={present:0,absent:0,uninformed:0,unmarked:0};
   staff.forEach(function(e){var a=attn[e.id];if(!a||!a.status)counts.unmarked++;else counts[a.status]=(counts[a.status]||0)+1;});
   var sm=g('ATN_SUMMARY');
-  if(sm){
-    sm.innerHTML=[
-      {l:'Present',c:counts.present,bg:'#e8f5e9',col:'#2e7d32'},
-      {l:'Absent',c:counts.absent,bg:'#ffebee',col:'#c62828'},
-      {l:'Uninformed',c:counts.uninformed,bg:'#fff3e0',col:'#e65100'},
-      {l:'Unmarked',c:counts.unmarked,bg:'#f3f4f6',col:'#555'}
-    ].map(function(x){return '<div style="background:'+x.bg+';border-radius:10px;padding:8px 16px;text-align:center;min-width:90px;"><div style="font-size:22px;font-weight:800;color:'+x.col+';">'+x.c+'</div><div style="font-size:11px;color:'+x.col+';font-weight:600;">'+x.l+'</div></div>';}).join('');
-  }
+  if(sm){sm.innerHTML=[{l:'Present',c:counts.present,bg:'#e8f5e9',col:'#2e7d32'},{l:'Absent',c:counts.absent,bg:'#ffebee',col:'#c62828'},{l:'Uninformed',c:counts.uninformed,bg:'#fff3e0',col:'#e65100'},{l:'Unmarked',c:counts.unmarked,bg:'#f3f4f6',col:'#555'}].map(function(x){return '<div style="background:'+x.bg+';border-radius:10px;padding:8px 16px;text-align:center;min-width:90px;"><div style="font-size:22px;font-weight:800;color:'+x.col+';">'+x.c+'</div><div style="font-size:11px;color:'+x.col+';font-weight:600;">'+x.l+'</div></div>';}).join('');}
 
-  // Update role dropdown counts
-  populateATNRole();
-
-  // Past date warning removed — all dates are fully editable
-
-  // Filter staff by selected role
-  var grpStaff=staff.filter(function(e){return e.role===_atnRole;});
-  if(!grpStaff.length){
-    var hint=document.createElement('div');hint.style.cssText='text-align:center;color:#aaa;padding:40px 20px;font-size:14px;';
-    hint.innerHTML='<div style="font-size:36px;margin-bottom:12px;">📊</div>No staff in this role';
-    el.appendChild(hint);return;
-  }
-
-  grpStaff.forEach(function(e){
-    var a=attn[e.id]||{status:'',notes:''};
-    var vid=maps.staffVenue[e.id];var vname=vid?(getV(vid)?getV(vid).name:''):'';
-    var where=maps.isLeaveMap[e.id]?'On Leave':maps.isOffMap[e.id]?'Office Duty':maps.isGdnMap[e.id]?'Godown Team':(vname||'—');
-    var time=maps.staffTime[e.id]||'';
-    var isAuto=!!(a.auto&&!a.manual);
-
-    var row=document.createElement('div');
-    var statusBg=a.status==='present'?'#f1f8e9':a.status==='absent'?'#fff5f5':a.status==='uninformed'?'#fffde7':'#fff';
-    row.style.cssText='background:'+statusBg+';border:1px solid #e8eaf6;border-radius:12px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;';
-
-    var info=document.createElement('div');info.style.cssText='flex:1;min-width:140px;';
-    var nm=document.createElement('div');nm.style.cssText='font-size:13px;font-weight:700;color:#1a237e;';nm.textContent=e.name;
-    var loc=document.createElement('div');loc.style.cssText='font-size:11px;color:#888;margin-top:2px;';
-    loc.textContent=where+(time?' · '+shortTime(time):'')+(isAuto?' · auto':'');
-    info.appendChild(nm);info.appendChild(loc);
-    row.appendChild(info);
-
-    var btns=document.createElement('div');btns.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
-
-    if(true){
-      [{s:'present',l:'✅ Present',bg:'#e8f5e9',ac:'#2e7d32',brd:'#a5d6a7'},
-       {s:'absent',l:'❌ Absent',bg:'#ffebee',ac:'#c62828',brd:'#ef9a9a'},
-       {s:'uninformed',l:'⚠️ Uninformed',bg:'#fff3e0',ac:'#e65100',brd:'#ffcc80'}
-      ].forEach(function(opt){
-        var btn=document.createElement('button');
-        var isActive=a.status===opt.s;
-        btn.style.cssText='padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid '+(isActive?opt.brd:'#e0e0e0')+';background:'+(isActive?opt.bg:'#fafafa')+';color:'+(isActive?opt.ac:'#999')+';';
-        btn.textContent=opt.l;
-        btn.addEventListener('click',(function(eid,s){return function(){
-          var at=getAttendance();if(!at[eid])at[eid]={};
-          if(at[eid].status===s){
-            // Toggle off → clear manual, allow auto to re-apply
-            at[eid].status='';at[eid].manual=false;at[eid].auto=false;
-          } else {
-            at[eid].status=s;at[eid].manual=true;at[eid].auto=false;
-          }
-          saveAttendance();drawAttendance();
-        };})(e.id,opt.s));
-        btns.appendChild(btn);
-      });
-      var ni=document.createElement('input');
-      ni.placeholder='Notes...';ni.value=a.notes||'';
-      ni.style.cssText='border:1px solid #e0e0e0;border-radius:8px;padding:5px 10px;font-size:11px;width:130px;outline:none;';
-      ni.addEventListener('change',(function(eid){return function(){
-        var at=getAttendance();if(!at[eid])at[eid]={};
-        at[eid].notes=this.value;saveAttendance();
-      };})(e.id));
-      btns.appendChild(ni);
-    }
-    row.appendChild(btns);
-    el.appendChild(row);
+  // Collapsible role sections
+  ROLES.forEach(function(r){
+    var rStaff=staff.filter(function(e){return e.role===r;});
+    if(!rStaff.length)return;
+    var c=cc(r);
+    var marked=rStaff.filter(function(e){return attn[e.id]&&attn[e.id].status;}).length;
+    var isCollapsed=(_atnCollapsed[r]!==false);
+    var sec=document.createElement('div');sec.style.cssText='margin-bottom:6px;border-radius:12px;overflow:hidden;border:1.5px solid #e3eaff;';
+    var hd=document.createElement('div');
+    hd.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;background:'+c+'10;border-left:4px solid '+c+';user-select:none;';
+    var hLabel=document.createElement('span');hLabel.style.cssText='font-size:12px;font-weight:800;color:'+c+';flex:1;text-transform:uppercase;letter-spacing:0.05em;';hLabel.textContent=r;
+    var hCnt=document.createElement('span');hCnt.style.cssText='font-size:11px;font-weight:700;color:'+c+';background:'+c+'20;border-radius:6px;padding:2px 8px;';hCnt.textContent=marked+'/'+rStaff.length;
+    var hArr=document.createElement('span');hArr.style.cssText='font-size:13px;color:'+c+';';hArr.textContent=isCollapsed?'▶':'▼';
+    hd.appendChild(hLabel);hd.appendChild(hCnt);hd.appendChild(hArr);
+    var body=document.createElement('div');body.style.cssText='display:'+(isCollapsed?'none':'block')+';padding:8px;background:#fafbff;';
+    rStaff.forEach(function(e){body.appendChild(makeAtnRow(e,attn,maps,d,saveAttendance,drawAttendance));});
+    hd.addEventListener('click',(function(role,bodyEl,arrEl){return function(){
+      var nowExp=(_atnCollapsed[role]===false);
+      _atnCollapsed[role]=nowExp?true:false;
+      bodyEl.style.display=nowExp?'none':'block';
+      arrEl.textContent=nowExp?'▶':'▼';
+    };})(r,body,hArr));
+    sec.appendChild(hd);sec.appendChild(body);el.appendChild(sec);
   });
 }
 
 // Attendance date picker
 g('ATN_DATE')&&g('ATN_DATE').addEventListener('change',function(){
   _atnDate=this.value||todayIST();
-  drawAttendance();
-});
-
-// Attendance role dropdown
-g('ATN_ROLE')&&g('ATN_ROLE').addEventListener('change',function(){
-  _atnRole=this.value;
   drawAttendance();
 });
 

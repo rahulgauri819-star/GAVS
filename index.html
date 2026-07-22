@@ -565,6 +565,7 @@ input,select,button{font-family:inherit;}
     <button class="rtab" data-rtab="venue">🏨 Venue History</button>
     <button class="rtab" data-rtab="staff">📊 Staff Report</button>
     <button class="rtab" data-rtab="lohistory">🌴 Leave & Office</button>
+    <button class="rtab" data-rtab="monthleatn">📊 Monthly Attendance</button>
   </div>
   <!-- Daily Report -->
   <div id="rp-daily">
@@ -622,6 +623,23 @@ input,select,button{font-family:inherit;}
     <div id="SRS"></div>
     <div id="SRB"></div>
     <button class="pdfbtn hide" id="SRPB">⬇ Download Staff PDF</button>
+  </div>
+
+  <!-- Monthly Attendance panel -->
+  <div id="rp-monthleatn" class="hide">
+    <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Month</label>
+          <select class="sel" id="MAR_MON" style="margin-bottom:0;"></select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Role</label>
+          <select class="sel" id="MAR_ROLE" style="margin-bottom:0;"></select>
+        </div>
+        <button class="bigbtn" id="btnMAR" style="width:auto;padding:10px 20px;white-space:nowrap;">⬇ Download PDF</button>
+      </div>
+    </div>
   </div>
 
   <!-- Leave & Office History panel -->
@@ -727,13 +745,13 @@ input,select,button{font-family:inherit;}
 <!-- DRAFTS -->
 <div class="screen" id="screen-attendance">
   <div style="padding:16px;max-width:1200px;margin:0 auto;">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:200px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:160px;">
         <h2 style="font-size:18px;font-weight:800;color:#1a237e;margin-bottom:4px;">📊 Attendance</h2>
-        <div id="ATN_DATE_LABEL" style="font-size:12px;color:#888;"></div>
       </div>
-      <input id="ATN_SRCH" placeholder="🔍 Search staff..." style="padding:8px 14px;border:1.5px solid #e3eaff;border-radius:10px;font-size:13px;outline:none;min-width:200px;"/>
-      <button id="ATN_EXPORT" style="background:#1a237e;color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">⬇️ Export</button>
+      <input type="date" id="ATN_DATE" style="padding:7px 12px;border:1.5px solid #e3eaff;border-radius:10px;font-size:13px;font-weight:700;color:#1a237e;outline:none;"/>
+      <select id="ATN_ROLE" style="padding:7px 12px;border:1.5px solid #e3eaff;border-radius:10px;font-size:13px;font-weight:700;color:#1a237e;outline:none;background:#fff;min-width:160px;cursor:pointer;"></select>
+      <button id="ATN_EXPORT" style="background:#1a237e;color:#fff;border:none;border-radius:10px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;">📄 PDF</button>
     </div>
     <div id="ATN_SUMMARY" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;"></div>
     <div id="ATN_LIST"></div>
@@ -996,7 +1014,13 @@ function go(s){
       checkAdminPass(function(){initVendorReportDates();populateVRVVenue();populateVRCCompany();});return;
     }
     else if(s==='attendance'){
-      checkAdminPass(function(){drawAttendance();});return;
+      checkAdminPass(function(){
+        if(!_atnDate)_atnDate=todayIST();
+        var atnDateEl=g('ATN_DATE');
+        if(atnDateEl&&!atnDateEl.value){atnDateEl.value=_atnDate;}
+        populateATNRole();
+        drawAttendance();
+      });return;
     }
     else if(s==='drafts')showDraftList();
     else if(s==='settings'){/* settings screen is static, nothing to init */}
@@ -2086,19 +2110,24 @@ function makeVenueBox(v,hasPinned,viewData){
   return box;
 }
 
+function _venueTimeMin(t){if(!t)return 9999;var p=t.match(/([0-9]+):([0-9]+) *(AM|PM)/i);if(!p)return 9999;var h=parseInt(p[1]),mn=parseInt(p[2]),ap=p[3].toUpperCase();if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h!==12)h+=12;return h*60+mn;}
+function _venueSort(arr){return arr.slice().sort(function(a,b){var ta=_venueTimeMin(a.duty),tb=_venueTimeMin(b.duty);if(ta!==tb)return ta-tb;return a.emp.name.localeCompare(b.emp.name);});}
+
 function renderStaffBody(body,v,t){
   if(!t.length){
     var hint=document.createElement('div');hint.className='drop-hint';hint.textContent='⬇ Drop staff here';
     body.appendChild(hint);
   } else {
     // Group by role
-    var mgrs=t.filter(function(a){return isMgr(a.emp);});
+    var mgrs=_venueSort(t.filter(function(a){return isMgr(a.emp);}));
     var roleGroups={};
     ROLES.forEach(function(r){roleGroups[r]=[];});
     t.filter(function(a){return !isMgr(a.emp);}).forEach(function(a){
       if(!roleGroups[a.emp.role])roleGroups[a.emp.role]=[];
       roleGroups[a.emp.role].push(a);
     });
+    // Sort each role group
+    ROLES.forEach(function(r){if(roleGroups[r]&&roleGroups[r].length>1)roleGroups[r]=_venueSort(roleGroups[r]);});
 
     // Managers - full width
     if(mgrs.length){
@@ -3797,38 +3826,103 @@ function buildLoMarkPanel(el,list,type){
 
 // ── ATTENDANCE ─────────────────────────────────────────────────
 function getAttendance(){
-  var d=_lastLoadedDate||getD();
+  var d=_atnDate||todayIST();
   if(!dlog[d])dlog[d]={};
   if(!dlog[d].attendance)dlog[d].attendance={};
   return dlog[d].attendance;
 }
 function saveAttendance(){
-  var d=_lastLoadedDate||getD();
-  saveLog(d);saveCloud();
+  var d=_atnDate||todayIST();
+  // Only save attendance key — never touch venues/leave/office/godown of that date
+  if(!dlog[d])dlog[d]={};
+  saveCloud();
+}
+
+var _atnRole='Manager'; // selected role category
+var _atnDate='';  // attendance date picker — independent of main app _lastLoadedDate
+
+function populateATNRole(){
+  var sel=g('ATN_ROLE');if(!sel)return;
+  var attn=getAttendance();
+  sel.innerHTML='';
+  ROLES.forEach(function(r){
+    var cnt=staff.filter(function(e){return e.role===r;}).length;
+    var marked=staff.filter(function(e){return e.role===r&&attn[e.id]&&attn[e.id].status;}).length;
+    var o=document.createElement('option');
+    o.value=r;o.textContent=r+' ('+marked+'/'+cnt+')';
+    sel.appendChild(o);
+  });
+  sel.value=_atnRole||'Manager';
+  _atnRole=sel.value;
+}
+
+function atnBuildDutyMaps(d){
+  // Returns {staffVenue, staffTime, isLeaveMap, isOffMap, isGdnMap} for any date
+  var staffVenue={},staffTime={},isLeaveMap={},isOffMap={},isGdnMap={};
+  var curDate=_lastLoadedDate||getD();
+  if(d===curDate){
+    // Use live working set
+    Object.keys(asgn).forEach(function(vid){Object.keys(asgn[vid]||{}).forEach(function(eid){staffVenue[eid]=vid;staffTime[eid]=(asgn[vid][eid]&&asgn[vid][eid].duty)||'';});});
+    Object.keys(lvMap).forEach(function(eid){isLeaveMap[eid]=true;});
+    Object.keys(offMap).forEach(function(eid){isOffMap[eid]=true;});
+    Object.keys(gdnMap).forEach(function(eid){isGdnMap[eid]=true;});
+  } else {
+    var log=dlog[d]||{};
+    Object.keys(log.venues||{}).forEach(function(vid){Object.keys(log.venues[vid]||{}).forEach(function(eid){staffVenue[eid]=vid;staffTime[eid]=log.venues[vid][eid]||'';});});
+    (log.leave||[]).forEach(function(x){isLeaveMap[x.id]=true;});
+    (log.office||[]).forEach(function(x){isOffMap[x.id]=true;});
+    (log.godown||[]).forEach(function(x){isGdnMap[x.id]=true;});
+  }
+  return {staffVenue:staffVenue,staffTime:staffTime,isLeaveMap:isLeaveMap,isOffMap:isOffMap,isGdnMap:isGdnMap};
+}
+
+function atnAutoMark(d,attn,maps){
+  // Apply auto-mark for all staff that don't have manual=true
+  var changed=false;
+  staff.forEach(function(e){
+    var a=attn[e.id]||{};
+    if(a.manual)return; // manual override — never touch
+    var newStatus='';
+    if(maps.isLeaveMap[e.id])newStatus='absent';
+    else if(maps.isOffMap[e.id]||maps.isGdnMap[e.id]||maps.staffVenue[e.id])newStatus='present';
+    // else: unassigned → leave unmarked
+    if(newStatus&&a.status!==newStatus){
+      if(!attn[e.id])attn[e.id]={};
+      attn[e.id].status=newStatus;
+      attn[e.id].auto=true;
+      changed=true;
+    } else if(!newStatus&&a.auto&&a.status){
+      // Was auto-marked but now nothing assigned — clear it
+      attn[e.id].status='';attn[e.id].auto=false;
+      changed=true;
+    }
+  });
+  if(changed){
+    if(!dlog[d])dlog[d]={};
+    dlog[d].attendance=attn;
+    saveCloud();
+  }
 }
 
 function drawAttendance(){
   var el=g('ATN_LIST');if(!el)return;
-  var dl=g('ATN_DATE_LABEL');if(dl)dl.textContent=fd(_lastLoadedDate||getD());
-  var attn=getAttendance();
-  var q=(g('ATN_SRCH')||{}).value||''.toLowerCase();
-  el.innerHTML='';
+  var d=_atnDate||todayIST();
+  var isToday=d===todayIST();
 
-  // Build venue lookup for each staff
-  var staffVenue={},staffTime={};
-  Object.keys(asgn).forEach(function(vid){
-    Object.keys(asgn[vid]||{}).forEach(function(eid){
-      staffVenue[eid]=vid;staffTime[eid]=(asgn[vid][eid]&&asgn[vid][eid].duty)||'';
-    });
-  });
+  // Sync date picker
+  var dpEl=g('ATN_DATE');if(dpEl&&dpEl.value!==d)dpEl.value=d;
+
+  var attn=getAttendance();
+  var maps=atnBuildDutyMaps(d);
+
+  // Auto-mark (respects manual flags, never touches duty assignments)
+  atnAutoMark(d,attn,maps);
+
+  el.innerHTML='';
 
   // Summary counts
   var counts={present:0,absent:0,uninformed:0,unmarked:0};
-  staff.forEach(function(e){
-    var a=attn[e.id];
-    if(!a||!a.status)counts.unmarked++;
-    else counts[a.status]=(counts[a.status]||0)+1;
-  });
+  staff.forEach(function(e){var a=attn[e.id];if(!a||!a.status)counts.unmarked++;else counts[a.status]=(counts[a.status]||0)+1;});
   var sm=g('ATN_SUMMARY');
   if(sm){
     sm.innerHTML=[
@@ -3836,114 +3930,192 @@ function drawAttendance(){
       {l:'Absent',c:counts.absent,bg:'#ffebee',col:'#c62828'},
       {l:'Uninformed',c:counts.uninformed,bg:'#fff3e0',col:'#e65100'},
       {l:'Unmarked',c:counts.unmarked,bg:'#f3f4f6',col:'#555'}
-    ].map(function(x){
-      return '<div style="background:'+x.bg+';border-radius:10px;padding:8px 16px;text-align:center;min-width:90px;">'+
-        '<div style="font-size:22px;font-weight:800;color:'+x.col+';">'+x.c+'</div>'+
-        '<div style="font-size:11px;color:'+x.col+';font-weight:600;">'+x.l+'</div></div>';
-    }).join('');
+    ].map(function(x){return '<div style="background:'+x.bg+';border-radius:10px;padding:8px 16px;text-align:center;min-width:90px;"><div style="font-size:22px;font-weight:800;color:'+x.col+';">'+x.c+'</div><div style="font-size:11px;color:'+x.col+';font-weight:600;">'+x.l+'</div></div>';}).join('');
   }
 
-  // Group by role
-  var groups={};
-  staff.forEach(function(e){
-    if(q&&e.name.toLowerCase().indexOf(q)<0)return;
-    if(!groups[e.role])groups[e.role]=[];
-    groups[e.role].push(e);
-  });
+  // Update role dropdown counts
+  populateATNRole();
 
-  ROLES.forEach(function(r){
-    var grp=groups[r];if(!grp||!grp.length)return;
-    var ghdr=document.createElement('div');
-    ghdr.style.cssText='font-size:11px;font-weight:800;text-transform:uppercase;color:'+cc(r)+';padding:10px 4px 5px;border-bottom:2px solid '+cc(r)+'44;margin-bottom:6px;letter-spacing:0.05em;';
-    ghdr.textContent=r+' ('+grp.length+')';
-    el.appendChild(ghdr);
+  // Past date warning
+  if(!isToday){
+    var roWarn=document.createElement('div');
+    roWarn.style.cssText='background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#e65100;font-weight:700;';
+    roWarn.textContent='⚠️ Past date — Attendance is read-only.';
+    el.appendChild(roWarn);
+  }
 
-    grp.forEach(function(e){
-      var a=attn[e.id]||{status:'',notes:''};
-      var vid=staffVenue[e.id];var vname=vid?(getV(vid)?getV(vid).name:''):'';
-      var isLeave=!!lvMap[e.id],isOff=!!offMap[e.id],isGdn=!!gdnMap[e.id];
-      var where=isLeave?'On Leave':isOff?'Office Duty':isGdn?'Godown Team':(vname||'—');
-      var time=staffTime[e.id]||'';
+  // Filter staff by selected role
+  var grpStaff=staff.filter(function(e){return e.role===_atnRole;});
+  if(!grpStaff.length){
+    var hint=document.createElement('div');hint.style.cssText='text-align:center;color:#aaa;padding:40px 20px;font-size:14px;';
+    hint.innerHTML='<div style="font-size:36px;margin-bottom:12px;">📊</div>No staff in this role';
+    el.appendChild(hint);return;
+  }
 
-      var row=document.createElement('div');
-      row.style.cssText='background:#fff;border:1px solid #e8eaf6;border-radius:12px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;';
+  grpStaff.forEach(function(e){
+    var a=attn[e.id]||{status:'',notes:''};
+    var vid=maps.staffVenue[e.id];var vname=vid?(getV(vid)?getV(vid).name:''):'';
+    var where=maps.isLeaveMap[e.id]?'On Leave':maps.isOffMap[e.id]?'Office Duty':maps.isGdnMap[e.id]?'Godown Team':(vname||'—');
+    var time=maps.staffTime[e.id]||'';
+    var isAuto=!!(a.auto&&!a.manual);
 
-      // Left: name + location + time
-      var info=document.createElement('div');info.style.cssText='flex:1;min-width:160px;';
-      var nm=document.createElement('div');nm.style.cssText='font-size:13px;font-weight:700;color:#1a237e;';nm.textContent=e.name;
-      var loc=document.createElement('div');loc.style.cssText='font-size:11px;color:#888;margin-top:2px;';
-      loc.textContent=where+(time?' · '+shortTime(time):'');
-      info.appendChild(nm);info.appendChild(loc);
-      row.appendChild(info);
+    var row=document.createElement('div');
+    var statusBg=a.status==='present'?'#f1f8e9':a.status==='absent'?'#fff5f5':a.status==='uninformed'?'#fffde7':'#fff';
+    row.style.cssText='background:'+statusBg+';border:1px solid #e8eaf6;border-radius:12px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;';
 
-      // Status buttons
-      var btns=document.createElement('div');btns.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
-      [
-        {s:'present',l:'✅ Present',bg:'#e8f5e9',ac:'#2e7d32',brd:'#a5d6a7'},
-        {s:'absent',l:'❌ Absent',bg:'#ffebee',ac:'#c62828',brd:'#ef9a9a'},
-        {s:'uninformed',l:'⚠️ Uninformed',bg:'#fff3e0',ac:'#e65100',brd:'#ffcc80'}
+    var info=document.createElement('div');info.style.cssText='flex:1;min-width:140px;';
+    var nm=document.createElement('div');nm.style.cssText='font-size:13px;font-weight:700;color:#1a237e;';nm.textContent=e.name;
+    var loc=document.createElement('div');loc.style.cssText='font-size:11px;color:#888;margin-top:2px;';
+    loc.textContent=where+(time?' · '+shortTime(time):'')+(isAuto?' · auto':'');
+    info.appendChild(nm);info.appendChild(loc);
+    row.appendChild(info);
+
+    var btns=document.createElement('div');btns.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
+
+    if(isToday){
+      [{s:'present',l:'✅ Present',bg:'#e8f5e9',ac:'#2e7d32',brd:'#a5d6a7'},
+       {s:'absent',l:'❌ Absent',bg:'#ffebee',ac:'#c62828',brd:'#ef9a9a'},
+       {s:'uninformed',l:'⚠️ Uninformed',bg:'#fff3e0',ac:'#e65100',brd:'#ffcc80'}
       ].forEach(function(opt){
         var btn=document.createElement('button');
         var isActive=a.status===opt.s;
-        btn.style.cssText='padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid '+(isActive?opt.brd:'#e0e0e0')+';background:'+(isActive?opt.bg:'#fafafa')+';color:'+(isActive?opt.ac:'#999')+';transition:all 0.15s;';
+        btn.style.cssText='padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid '+(isActive?opt.brd:'#e0e0e0')+';background:'+(isActive?opt.bg:'#fafafa')+';color:'+(isActive?opt.ac:'#999')+';';
         btn.textContent=opt.l;
         btn.addEventListener('click',(function(eid,s){return function(){
-          var at=getAttendance();
-          if(!at[eid])at[eid]={};
-          at[eid].status=at[eid].status===s?'':s; // toggle
+          var at=getAttendance();if(!at[eid])at[eid]={};
+          if(at[eid].status===s){
+            // Toggle off → clear manual, allow auto to re-apply
+            at[eid].status='';at[eid].manual=false;at[eid].auto=false;
+          } else {
+            at[eid].status=s;at[eid].manual=true;at[eid].auto=false;
+          }
           saveAttendance();drawAttendance();
         };})(e.id,opt.s));
         btns.appendChild(btn);
       });
-
-      // Notes input
       var ni=document.createElement('input');
       ni.placeholder='Notes...';ni.value=a.notes||'';
-      ni.style.cssText='border:1px solid #e0e0e0;border-radius:8px;padding:5px 10px;font-size:11px;width:140px;outline:none;color:#333;';
+      ni.style.cssText='border:1px solid #e0e0e0;border-radius:8px;padding:5px 10px;font-size:11px;width:130px;outline:none;';
       ni.addEventListener('change',(function(eid){return function(){
         var at=getAttendance();if(!at[eid])at[eid]={};
         at[eid].notes=this.value;saveAttendance();
       };})(e.id));
       btns.appendChild(ni);
-      row.appendChild(btns);
-      el.appendChild(row);
-    });
+    } else {
+      var badge=document.createElement('span');
+      var bmap={present:{t:'✅ Present',c:'#2e7d32'},absent:{t:'❌ Absent',c:'#c62828'},uninformed:{t:'⚠️ Uninformed',c:'#e65100'}};
+      var binfo=bmap[a.status];
+      badge.style.cssText='font-size:12px;font-weight:700;color:'+(binfo?binfo.c:'#aaa')+';';
+      badge.textContent=binfo?binfo.t:'Not marked';
+      btns.appendChild(badge);
+      if(a.notes){var nt=document.createElement('span');nt.style.cssText='font-size:11px;color:#888;margin-left:8px;';nt.textContent=a.notes;btns.appendChild(nt);}
+    }
+    row.appendChild(btns);
+    el.appendChild(row);
   });
-
-  if(!el.children.length){
-    el.innerHTML='<div style="text-align:center;color:#bbb;padding:40px;font-size:14px;">No staff found</div>';
-  }
 }
 
-// Search
-g('ATN_SRCH')&&g('ATN_SRCH').addEventListener('input',drawAttendance);
-
-// Export attendance as CSV
-g('ATN_EXPORT')&&g('ATN_EXPORT').addEventListener('click',function(){
-  var d=_lastLoadedDate||getD();
-  var attn=getAttendance();
-  var rows=[['Name','Role','Assigned Venue','Time','Attendance','Notes']];
-  var staffVenue={},staffTime={};
-  Object.keys(asgn).forEach(function(vid){
-    Object.keys(asgn[vid]||{}).forEach(function(eid){
-      staffVenue[eid]=vid;staffTime[eid]=(asgn[vid][eid]&&asgn[vid][eid].duty)||'';
-    });
-  });
-  staff.forEach(function(e){
-    var a=attn[e.id]||{};
-    var vid=staffVenue[e.id];var vname=vid?(getV(vid)?getV(vid).name:''):'';
-    var isLeave=!!lvMap[e.id],isOff=!!offMap[e.id],isGdn=!!gdnMap[e.id];
-    var where=isLeave?'On Leave':isOff?'Office Duty':isGdn?'Godown Team':(vname||'');
-    rows.push([e.name,e.role,where,staffTime[e.id]||'',a.status||'Unmarked',a.notes||'']);
-  });
-  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
-  var blob=new Blob([csv],{type:'text/csv'});
-  var url=URL.createObjectURL(blob);
-  var a2=document.createElement('a');a2.href=url;a2.download='GAVS_Attendance_'+d+'.csv';
-  document.body.appendChild(a2);a2.click();document.body.removeChild(a2);
-  setTimeout(function(){URL.revokeObjectURL(url);},2000);
-  toast('Attendance CSV exported!');
+// Attendance date picker
+g('ATN_DATE')&&g('ATN_DATE').addEventListener('change',function(){
+  _atnDate=this.value||todayIST();
+  drawAttendance();
 });
+
+// Attendance role dropdown
+g('ATN_ROLE')&&g('ATN_ROLE').addEventListener('change',function(){
+  _atnRole=this.value;
+  drawAttendance();
+});
+
+// Export attendance as PDF
+g('ATN_EXPORT')&&g('ATN_EXPORT').addEventListener('click',function(){makeAttendancePDF();});
+
+function makeAttendancePDF(){
+  if(!window.jspdf){toast('PDF library loading...','w');return;}
+  var d=_atnDate||todayIST();
+  var attn=getAttendance();
+  var maps=atnBuildDutyMaps(d);
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,mg=10;
+  // Header
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,24,'F');
+  doc.setTextColor(255,215,100);doc.setFontSize(11);doc.setFont('helvetica','bold');
+  doc.text('|| Jai Guruji ||',pw/2,8,{align:'center'});
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv2=document.createElement('canvas');var _ls=280/img.naturalWidth;cv2.width=280;cv2.height=Math.round(img.naturalHeight*_ls);cv2.getContext('2d').drawImage(img,0,0,cv2.width,cv2.height);var lh=12,lw=Math.round(lh*(img.naturalWidth/img.naturalHeight));doc.addImage(cv2.toDataURL('image/png'),'PNG',mg,11,lw,lh);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text('GAVS ATTENDANCE SHEET',pw/2,20,{align:'center'});
+  doc.text(fd(d),pw-mg,20,{align:'right'});
+
+  // Summary strip
+  var sy=28;
+  var counts={present:0,absent:0,uninformed:0,unmarked:0};
+  staff.forEach(function(e){var a=attn[e.id];if(!a||!a.status)counts.unmarked++;else counts[a.status]=(counts[a.status]||0)+1;});
+  var sumCols=[{l:'Present',c:counts.present,rgb:[46,125,50]},{l:'Absent',c:counts.absent,rgb:[198,40,40]},{l:'Uninformed',c:counts.uninformed,rgb:[230,81,0]},{l:'Unmarked',c:counts.unmarked,rgb:[100,100,100]}];
+  var sw=(pw-mg*2)/4;
+  sumCols.forEach(function(x,i){
+    doc.setFillColor(x.rgb[0],x.rgb[1],x.rgb[2]);
+    doc.roundedRect(mg+i*sw,sy,sw-2,10,1,1,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
+    doc.text(String(x.c),mg+i*sw+sw/2-1,sy+5.5,{align:'center'});
+    doc.setFontSize(7);doc.setFont('helvetica','normal');
+    doc.text(x.l,mg+i*sw+sw/2-1,sy+9,{align:'center'});
+  });
+
+  var y=sy+14;
+  // Role sections
+  ROLES.forEach(function(r){
+    var rStaff=staff.filter(function(e){return e.role===r;});
+    if(!rStaff.length)return;
+    var c=cc(r);var rgb=hexToRgb(c);
+    // Role header
+    if(y>270){doc.addPage();y=14;}
+    doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.rect(mg,y,pw-mg*2,7,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','bold');
+    doc.text(r+' ('+rStaff.length+')',mg+3,y+4.8);
+    y+=8;
+    // Staff rows
+    rStaff.forEach(function(e){
+      if(y>282){doc.addPage();y=14;}
+      var a=attn[e.id]||{};
+      var vid=maps.staffVenue[e.id];var vname=vid?(getV(vid)?getV(vid).name:''):'';
+      var where=maps.isLeaveMap[e.id]?'On Leave':maps.isOffMap[e.id]?'Office Duty':maps.isGdnMap[e.id]?'Godown Team':(vname||'—');
+      var time=maps.staffTime[e.id]||'';
+      var status=a.status||'';
+      var statusRgb=status==='present'?[46,125,50]:status==='absent'?[198,40,40]:status==='uninformed'?[230,81,0]:[180,180,180];
+      var statusText=status==='present'?'P':status==='absent'?'A':status==='uninformed'?'U':'—';
+      // Row bg alternating
+      doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,7,'F');
+      doc.setDrawColor(220,225,245);doc.setLineWidth(0.2);doc.line(mg,y+7,pw-mg,y+7);
+      // Status badge
+      doc.setFillColor(statusRgb[0],statusRgb[1],statusRgb[2]);doc.roundedRect(mg+1,y+1,8,5,1,1,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      doc.text(statusText,mg+5,y+4.5,{align:'center'});
+      // Name
+      doc.setTextColor(26,35,126);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      var nameStr=e.name;if(nameStr.length>22)nameStr=nameStr.slice(0,21)+'…';
+      doc.text(nameStr,mg+11,y+4.5);
+      // Location
+      doc.setTextColor(80,80,80);doc.setFont('helvetica','normal');doc.setFontSize(7.5);
+      var locStr=where+(time?' · '+shortTime(time):'');if(locStr.length>30)locStr=locStr.slice(0,29)+'…';
+      doc.text(locStr,mg+70,y+4.5);
+      // Notes
+      if(a.notes){doc.setTextColor(100,100,100);doc.setFontSize(7);var ns=a.notes;if(ns.length>25)ns=ns.slice(0,24)+'…';doc.text(ns,mg+135,y+4.5);}
+      y+=7;
+    });
+    y+=3;
+  });
+
+  // Footer
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | Attendance | '+fd(d),mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_Attendance_'+d+'.pdf');
+  toast('Attendance PDF downloaded!');
+}
+
+function hexToRgb(hex){
+  var r=parseInt(hex.slice(1,3),16),g2=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return [isNaN(r)?21:r,isNaN(g2)?101:g2,isNaN(b)?192:b];
+}
 
 // ── REPORT ────────────────────────────────────────────────────
 function saveLog(forDate){
@@ -4004,6 +4176,8 @@ document.querySelectorAll('.rtab').forEach(function(btn){
     g('rp-venue').classList.toggle('hide',tab!=='venue');
     g('rp-staff').classList.toggle('hide',tab!=='staff');
     g('rp-lohistory').classList.toggle('hide',tab!=='lohistory');
+    g('rp-monthleatn').classList.toggle('hide',tab!=='monthleatn');
+    if(tab==='monthleatn')populateMARDrops();
     if(tab==='venue')populateVHVenue();
     if(tab==='staff'){populateSRDrops();drawSR();}
     if(tab==='lohistory'){
@@ -4251,10 +4425,6 @@ function makeVHPDF(){
 }
 
 // ── PDF ───────────────────────────────────────────────────────
-function hexToRgb(hex){
-  hex=hex.replace('#','');
-  return [parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)];
-}
 
 function makePDF(){
   if(!window.jspdf){toast('PDF library loading...','w');return;}
@@ -4472,6 +4642,138 @@ function drawSR(){
   if(btn)btn.classList.remove('hide');
 }
 g('SRPB').addEventListener('click',makeStaffPDF);
+
+// ── MONTHLY ATTENDANCE REPORT ──────────────────────────────────
+var MONS_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function populateMARDrops(){
+  var ms=g('MAR_MON'),rs=g('MAR_ROLE');
+  if(!ms||!rs)return;
+  if(!ms.options.length){
+    var cy=nowIST();
+    for(var i=0;i<12;i++){var o=document.createElement('option');o.value=i;o.textContent=MONS[i];ms.appendChild(o);}
+    ms.value=cy.getMonth();
+  }
+  if(!rs.options.length){
+    ROLES.forEach(function(r){var o=document.createElement('option');o.value=r;o.textContent=r;rs.appendChild(o);});
+  }
+  // Year hidden in month value for simplicity — add year selector
+  if(!g('MAR_YEAR')){
+    var yw=document.createElement('div');yw.style.cssText='display:none;';
+    var ys=document.createElement('select');ys.id='MAR_YEAR';ys.className='sel';
+    var cy2=nowIST().getFullYear();
+    for(var y=cy2;y>=cy2-2;y--){var o2=document.createElement('option');o2.value=y;o2.textContent=y;ys.appendChild(o2);}
+    ys.value=cy2;yw.appendChild(ys);
+    var grid=ms.closest('.sel')&&ms.closest('.sel').parentNode;
+    // just attach to MAR_MON parent node
+    if(ms.parentNode){ms.parentNode.appendChild(ys);}
+  }
+}
+g('btnMAR')&&g('btnMAR').addEventListener('click',makeMonthlyAttnPDF);
+
+function makeMonthlyAttnPDF(){
+  if(!window.jspdf){toast('PDF library loading...','w');return;}
+  var month=parseInt((g('MAR_MON')||{}).value||'0');
+  var year=parseInt((g('MAR_YEAR')||{}).value||nowIST().getFullYear());
+  var role=(g('MAR_ROLE')||{}).value||ROLES[0];
+  var rStaff=staff.filter(function(e){return e.role===role;});
+  if(!rStaff.length){toast('No staff in this role','w');return;}
+  var dim=new Date(year,month+1,0).getDate();
+  var today=todayIST();
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,mg=8;
+
+  // Header
+  doc.setFillColor(21,101,192);doc.rect(0,0,pw,24,'F');
+  doc.setTextColor(255,215,100);doc.setFontSize(11);doc.setFont('helvetica','bold');
+  doc.text('|| Jai Guruji ||',pw/2,8,{align:'center'});
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv2=document.createElement('canvas');var _ls=280/img.naturalWidth;cv2.width=280;cv2.height=Math.round(img.naturalHeight*_ls);cv2.getContext('2d').drawImage(img,0,0,cv2.width,cv2.height);var lh=12,lw=Math.round(lh*(img.naturalWidth/img.naturalHeight));doc.addImage(cv2.toDataURL('image/png'),'PNG',mg,11,lw,lh);}}catch(er){}
+  doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
+  doc.text('GAVS MONTHLY ATTENDANCE REPORT',pw/2,20,{align:'center'});
+  doc.setFontSize(10);
+  doc.text(MONS[month]+' '+year,pw-mg,20,{align:'right'});
+
+  // Column setup: Name col + 31 date cols + 4 summary cols
+  var nameW=34,sumW=6,dateW=Math.floor((pw-mg*2-nameW-sumW*4)/dim);
+  var rowH=5.5,hdrH=8;
+  var startX=mg,y=28;
+
+  function addPageHeader(){
+    // Role header bar
+    doc.setFillColor(21,101,192);doc.rect(startX,y,pw-mg*2,hdrH,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+    doc.text(role,startX+2,y+5.5);
+    doc.text(MONS[month]+' '+year,pw-mg-2,y+5.5,{align:'right'});
+    y+=hdrH+1;
+    // Column headers
+    doc.setFillColor(230,236,255);doc.rect(startX,y,pw-mg*2,6,'F');
+    doc.setTextColor(26,35,126);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+    doc.text('Name',startX+1,y+4);
+    for(var d2=1;d2<=dim;d2++){
+      var dx=startX+nameW+(d2-1)*dateW;
+      doc.text(String(d2),dx+dateW/2,y+4,{align:'center'});
+    }
+    // Summary headers
+    var sx=startX+nameW+dim*dateW;
+    ['P','A','U','–'].forEach(function(lbl,i){
+      doc.text(lbl,sx+i*sumW+sumW/2,y+4,{align:'center'});
+    });
+    y+=7;
+  }
+
+  addPageHeader();
+
+  rStaff.forEach(function(e,ri){
+    if(y>282){doc.addPage();y=14;addPageHeader();}
+    var attnCounts={present:0,absent:0,uninformed:0,unmarked:0};
+    // Row bg
+    doc.setFillColor(ri%2===0?248:255,ri%2===0?250:255,255);
+    doc.rect(startX,y,pw-mg*2,rowH,'F');
+    doc.setDrawColor(220,225,245);doc.setLineWidth(0.15);doc.line(startX,y+rowH,startX+pw-mg*2,y+rowH);
+    // Name
+    doc.setTextColor(26,35,126);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+    var nm=e.name;if(nm.length>17)nm=nm.slice(0,16)+'…';
+    doc.text(nm,startX+1,y+rowH-1.2);
+    // Date cells
+    for(var d3=1;d3<=dim;d3++){
+      var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d3).padStart(2,'0');
+      var isFuture=ds>today;
+      var dx=startX+nameW+(d3-1)*dateW;
+      if(isFuture){y+=0;/* skip fill */}
+      else {
+        var atnEntry=(dlog[ds]&&dlog[ds].attendance&&dlog[ds].attendance[e.id])||{};
+        var st=atnEntry.status||'unmarked';
+        if(st==='present'){doc.setFillColor(46,125,50);attnCounts.present++;}
+        else if(st==='absent'){doc.setFillColor(198,40,40);attnCounts.absent++;}
+        else if(st==='uninformed'){doc.setFillColor(230,81,0);attnCounts.uninformed++;}
+        else{doc.setFillColor(200,200,200);attnCounts.unmarked++;}
+        doc.rect(dx+0.5,y+0.8,dateW-1,rowH-1.6,'F');
+      }
+    }
+    // Summary cells
+    var sx=startX+nameW+dim*dateW;
+    var sumData=[{c:attnCounts.present,rgb:[46,125,50]},{c:attnCounts.absent,rgb:[198,40,40]},{c:attnCounts.uninformed,rgb:[230,81,0]},{c:attnCounts.unmarked,rgb:[160,160,160]}];
+    sumData.forEach(function(x,i){
+      doc.setTextColor(x.rgb[0],x.rgb[1],x.rgb[2]);doc.setFont('helvetica','bold');doc.setFontSize(6);
+      doc.text(String(x.c),sx+i*sumW+sumW/2,y+rowH-1.2,{align:'center'});
+    });
+    y+=rowH;
+  });
+
+  // Legend
+  y+=4;
+  if(y>278){doc.addPage();y=14;}
+  doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(80,80,80);doc.text('Legend:',mg,y);
+  [{l:'Present',rgb:[46,125,50]},{l:'Absent',rgb:[198,40,40]},{l:'Uninformed',rgb:[230,81,0]},{l:'Unmarked',rgb:[200,200,200]}].forEach(function(x,i){
+    doc.setFillColor(x.rgb[0],x.rgb[1],x.rgb[2]);doc.rect(mg+18+i*26,y-3.5,4,4,'F');
+    doc.setTextColor(60,60,60);doc.text(x.l,mg+24+i*26,y);
+  });
+
+  // Footer
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | Monthly Attendance | '+MONS[month]+' '+year,mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
+  doc.save('GAVS_Monthly_Attendance_'+role.replace(/ /g,'_')+'_'+MONS_SHORT[month]+'_'+year+'.pdf');
+  toast('Monthly Attendance PDF downloaded!');
+}
 
 function makeStaffPDF(){
   if(!window.jspdf){toast('PDF loading...','w');return;}
@@ -6054,11 +6356,19 @@ function renderHallsInVenueBox(body,v){
   halls.forEach(function(h){
     var ha=hallAsgn[h.id]||{};
     var entries=Object.keys(ha).map(function(eid){var emp=getS(eid);return emp?{emp:emp,duty:ha[eid].duty}:null;}).filter(Boolean);
-    if(!entries.length)return;
+    // Cross-check: skip staff already assigned to a DIFFERENT venue in main asgn
+    var skipped=[];
+    entries=entries.filter(function(a){
+      var inOtherVenue=Object.keys(asgn).some(function(vid){return vid!==v.id&&asgn[vid]&&asgn[vid][a.emp.id];});
+      if(inOtherVenue)skipped.push(a.emp.name);
+      return !inOtherVenue;
+    });
+    if(!entries.length&&!skipped.length)return;
 
     var hallHdr=document.createElement('div');
     hallHdr.style.cssText='font-size:9px;font-weight:800;color:#283593;background:#f0f4ff;border-radius:5px;padding:3px 7px;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between;';
-    hallHdr.innerHTML='🏛️ '+esc(h.name)+'<span style="font-size:8px;color:#888;">'+entries.length+' staff</span>';
+    var conflictBadge=skipped.length?'<span title="'+esc(skipped.join(', '))+' assigned elsewhere" style="font-size:8px;color:#c62828;background:#ffebee;border-radius:4px;padding:1px 5px;margin-left:4px;">⚠️ '+skipped.length+' moved</span>':'';
+    hallHdr.innerHTML='🏛️ '+esc(h.name)+'<span style="font-size:8px;color:#888;display:flex;align-items:center;gap:4px;">'+entries.length+' staff'+conflictBadge+'</span>';
     body.appendChild(hallHdr);
 
     // Show staff in hall grouped by role

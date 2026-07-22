@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>IHC Fabrication | GAVS</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4ff;min-height:100vh;}
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1565c0 0%,#283593 100%);}
+.login-card{background:#fff;border-radius:20px;padding:40px 32px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.login-logo{text-align:center;margin-bottom:24px;}
+.login-logo img{width:100px;height:100px;object-fit:contain;border-radius:14px;}
+.login-title{font-size:20px;font-weight:800;color:#1565c0;text-align:center;margin-bottom:4px;}
+.login-sub{font-size:12px;color:#888;text-align:center;margin-bottom:24px;}
+.inp{width:100%;padding:12px 14px;border:1.5px solid #e3eaff;border-radius:10px;font-size:14px;margin-bottom:12px;outline:none;}
+.inp:focus{border-color:#1565c0;}
+.login-btn{width:100%;padding:14px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;}
+.login-btn:hover{background:#0d47a1;}
+.login-err{color:#c62828;font-size:12px;text-align:center;margin-top:8px;display:none;background:#ffebee;padding:8px;border-radius:8px;}
+/* Main app */
+.app{display:none;flex-direction:column;height:100vh;}
+.hdr{background:linear-gradient(90deg,#1565c0,#283593);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.hdr-logo{width:48px;height:48px;object-fit:contain;border-radius:10px;background:#fff;padding:3px;}
+.hdr-info{flex:1;}
+.hdr-title{font-size:15px;font-weight:800;}
+.hdr-sub{font-size:10px;opacity:0.8;}
+.hdr-date{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;color:#fff;}
+.hdr-date input{background:transparent;border:none;color:#fff;font-size:13px;font-weight:700;outline:none;width:110px;}
+.hdr-actions{display:flex;gap:8px;}
+.hdr-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;}
+.hdr-btn:hover{background:rgba(255,255,255,0.25);}
+.hdr-btn.save{border-color:#a5d6a7;color:#c8e6c9;}
+.save-ind{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;}
+.main{display:flex;flex:1;overflow:hidden;}
+/* Left panel */
+.lp{width:240px;flex-shrink:0;background:#fff;border-right:1px solid #e3eaff;display:flex;flex-direction:column;overflow:hidden;}
+.lp-hdr{background:#1565c0;color:#fff;padding:10px 12px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between;}
+.lp-cnt{background:rgba(255,255,255,0.2);border-radius:10px;padding:1px 8px;font-size:11px;}
+.lp-search{padding:8px;border-bottom:1px solid #e3eaff;}
+.lp-search input{width:100%;padding:7px 10px;border:1.5px solid #e3eaff;border-radius:8px;font-size:12px;outline:none;}
+.lp-list{flex:1;overflow-y:auto;padding:6px;}
+.staff-card{background:transparent;border:none;border-radius:0;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:grab;margin-bottom:2px;}
+.staff-card:active{cursor:grabbing;opacity:0.6;}
+.sc-name{font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;line-height:1.3;}
+.sc-dep{font-size:8px;color:#888;}
+.role-hdr{font-size:8px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:6px 4px 3px;margin-top:4px;}
+.deployed-tag{font-size:8px;color:#888;font-style:italic;}
+/* Right panel */
+.rp{flex:1;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;padding:10px 12px;}
+.halls-grid{column-width:280px;column-gap:12px;}
+.halls-grid>*{break-inside:avoid;display:inline-block;width:100%;margin-bottom:12px;}
+.hall-box{background:#fff;border:2px solid #e3eaff;border-radius:14px;overflow:visible;}
+.hall-hdr{background:linear-gradient(90deg,#1565c0,#283593);color:#fff;padding:8px 10px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:6px;}
+.hall-name{font-size:13px;font-weight:800;flex:1;}
+.hall-cnt{background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 8px;font-size:10px;font-weight:700;}
+.hall-close{background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:4px;width:20px;height:20px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;}
+.hall-body{padding:8px;min-height:60px;}
+.drop-hint{text-align:center;color:#bbb;font-size:11px;padding:16px;border:2px dashed #e3eaff;border-radius:8px;}
+.hall-box.drag-over{border-color:#1565c0;box-shadow:0 0 0 3px rgba(21,101,192,0.2);}
+.add-hall-btn{background:#fff5f5;border:2px dashed #ef9a9a;border-radius:14px;padding:20px;text-align:center;cursor:pointer;color:#c62828;font-size:13px;font-weight:700;}
+.add-hall-btn:hover{background:#ffebee;}
+/* Staff row in hall */
+.hr-row{border-left:3px solid var(--rc);border-bottom:1px solid #eef2fb;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;background:var(--rb);}
+.hr-name{font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;}
+.hr-time{flex-shrink:0;background:#f0f4ff;border:1px solid #bbdefb;border-radius:4px;color:#0d47a1;padding:1px 1px;font-size:8px;cursor:pointer;width:38px;}
+.hr-rm{flex-shrink:0;width:14px;height:14px;background:#ffebee;border:none;color:#c62828;border-radius:3px;cursor:pointer;font-size:8px;display:flex;align-items:center;justify-content:center;}
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;}
+.modal-box{background:#fff;border-radius:16px;padding:24px;width:min(360px,90vw);max-height:80vh;overflow-y:auto;}
+.modal-title{font-size:17px;font-weight:800;color:#1565c0;text-align:center;margin-bottom:16px;}
+.mbtn{width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;}
+.mbtn.blue{background:#1565c0;color:#fff;}
+.mbtn.red{background:#c62828;color:#fff;}
+.mbtn.cancel{background:#f0f4ff;color:#555;}
+.minp{width:100%;padding:10px 12px;border:1.5px solid #e3eaff;border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;}
+/* Leave zone - matches admin panel style */
+.lv-zone{background:#fff;border:2px solid #ef9a9a;border-radius:14px;margin-bottom:12px;overflow:hidden;}
+.lv-hdr{background:linear-gradient(90deg,#c62828,#b71c1c);padding:8px 12px;display:flex;align-items:center;gap:8px;color:#fff;}
+.lv-hdr-title{font-size:12px;font-weight:700;flex:1;}
+.lv-cnt{background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;color:#fff;}
+.lv-col-btn{background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;}
+.lv-body{padding:8px;min-height:40px;background:#fff;}
+.lv-zone.drag-over{border-color:#c62828;box-shadow:0 0 0 3px rgba(198,40,40,0.15);}
+/* Saving indicator */
+#SAVE_IND{position:fixed;top:10px;right:10px;z-index:9999;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;display:none;box-shadow:0 2px 10px rgba(0,0,0,0.15);}
+@media(max-width:600px){.lp{width:200px;}.lp-hdr{font-size:11px;}.hall-name{font-size:12px;}}
+</style>
+</head>
+<body>
+
+<div id="SAVE_IND"></div>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <img src="gavs_logo.png" id="loginLogo" alt="GAVS"/>
+    </div>
+    <div class="login-title">IHC Fabrication</div>
+    <div class="login-sub">GAVS Staff Deployment Portal</div>
+    <input class="inp" id="L_U" placeholder="Username" autocomplete="off"/>
+    <input class="inp" id="L_P" type="password" placeholder="Password"/>
+    <button class="login-btn" id="L_BTN">Login</button>
+    <div class="login-err" id="L_ERR">Incorrect credentials. Please try again.</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="app">
+  <div class="hdr">
+    <img src="gavs_logo.png" class="hdr-logo" id="logoImg"/>
+    <div class="hdr-info">
+      <div class="hdr-title">IHC Fabrication</div>
+      <div class="hdr-sub">GAVS STAFF DEPLOYMENT</div>
+    </div>
+    <div class="hdr-date"><input type="date" id="DP"/></div>
+    <div class="hdr-actions">
+      <span id="SAVE_LABEL" class="save-ind"></span>
+      <button class="hdr-btn" id="btnAddHall">+ Add Hall</button>
+      <button class="hdr-btn save" id="btnSave">☁️ Save</button>
+      <button class="hdr-btn" id="btnPDF">📄 PDF</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="lp">
+      <div class="lp-hdr">
+        👥 IHC Fab Staff <span class="lp-cnt" id="LP_CNT">0</span>
+      </div>
+      <div class="lp-search"><input type="text" id="SRCH" placeholder="Search staff..."/></div>
+      <div class="lp-list" id="LP_LIST"></div>
+    </div>
+    <div class="rp" id="RP">
+      <div id="LEAVE_ZONE_WRAP" style="min-height:60px;margin-bottom:10px;"></div>
+      <div class="halls-grid" id="HALLS_GRID"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+// ── CONFIG ────────────────────────────────────────────────────
+var PORTAL_CREDS=[{u:'mihcfab',p:'ihcfab2024'}];
+var VENUE_NAME='IHC Fabrication';
+var PORTAL_TITLE='IHC Fabrication';
+var HALLS_KEY='ihcfabHalls'; // Firebase key for halls list
+var ASGN_KEY='ihcfabAsgn';  // Firebase key for hall assignments
+var LOG_KEY='ihcfabLog';    // Firebase key for daily log
+
+var fbConfig={apiKey:'AIzaSyCm0FFi1Bddwhpn3bV0kqQrQQVGnk4Q0gg',authDomain:'gavs-50ce3.firebaseapp.com',projectId:'gavs-50ce3',storageBucket:'gavs-50ce3.firebasestorage.app',messagingSenderId:'623320363748',appId:'1:623320363748:web:d4ca87d1d0cd29e9d2b2f1'};
+firebase.initializeApp(fbConfig);
+var db=firebase.firestore();
+
+// ── STATE ─────────────────────────────────────────────────────
+var staff=[];       // all staff from Firebase (filtered to pinned venue)
+var allStaff=[];    // raw staff from Firebase
+var venues=[];      // all venues
+var ihcVenueId='';  // found at load time
+var halls=[];       // [{id,name}]
+var asgn={};        // hallId -> {eid: {emp, duty, isFixed}}
+var dlog={};        // daily log
+var lvMap={};       // shared with admin - eid -> {emp, duty} for On Leave
+var lvCollapsed=false; // On Leave box collapsed state
+var TIMES=['5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM'];
+var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e','#37474f','#6a1b9a','#bf360c','#1565c0','#2e7d32'];
+var ROLES_LIST=[];
+var DB_LOADED=false;
+var SAVE_TIMER=null;
+var SAVE_PENDING=0;
+
+// ── HELPERS ───────────────────────────────────────────────────
+function g(id){return document.getElementById(id);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function getD(){return g('DP').value||todayIST();}
+function fd(d){if(!d)return '';var x=new Date(d+'T00:00:00');return x.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][x.getMonth()]+' '+x.getFullYear();}
+function mkId(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+function shortTime(t){return (t||'').replace(':00 ',' ');}
+function getS(eid){return allStaff.find(function(e){return e.id===eid;});}
+function cc(r){var i=ROLES_LIST.indexOf(r);return CLRS[i>=0?i%CLRS.length:0]||'#1565c0';}
+function showSaveInd(state){
+  var el=g('SAVE_IND');
+  var lbl=g('SAVE_LABEL');
+  if(state==='saving'){if(lbl)lbl.textContent='☁️ Saving...';}
+  else if(state==='saved'){if(lbl){lbl.textContent='✅ Saved';setTimeout(function(){lbl.textContent='';},2000);}}
+  else if(state==='error'){if(lbl)lbl.textContent='⚠️ Save failed';}
+}
+function showModal(html){var mb=g('modal-box');mb.innerHTML=html;g('modal').style.display='flex';}
+function closeModal(){g('modal').style.display='none';}
+g('modal').addEventListener('click',function(ev){if(ev.target===this)closeModal();});
+
+// ── LOGIN ─────────────────────────────────────────────────────
+g('L_BTN').addEventListener('click',doLogin);
+g('L_P').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+function doLogin(){
+  var u=(g('L_U').value||'').trim().toLowerCase();
+  var p=(g('L_P').value||'').trim();
+  var ok=PORTAL_CREDS.some(function(c){return c.u===u&&c.p===p;});
+  if(!ok){g('L_ERR').style.display='block';g('L_P').value='';return;}
+  g('login-screen').style.display='none';
+  g('app').style.display='flex';
+  g('DP').value=todayIST();
+  loadFromCloud();
+}
+
+
+// IST (UTC+5:30) helper
+function nowIST(){var n=new Date();return new Date(n.getTime()+((n.getTimezoneOffset()+330)*60000));}
+function todayIST(){return nowIST().toISOString().slice(0,10);}
+
+// ── FIREBASE ──────────────────────────────────────────────────
+function loadFromCloud(){
+  showSaveInd('saving');
+  // Use onSnapshot for real-time updates across all portals
+  var _lastSaveTime=0;
+  db.collection('gavs_data').doc('main').onSnapshot(function(doc){
+    if(doc.metadata&&doc.metadata.hasPendingWrites)return; // skip our own saves
+    if(doc.exists){
+      var d=doc.data();
+      allStaff=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
+      venues=d.venues||[];
+      ROLES_LIST=d.roles||[];
+      // Find IHC venue
+      var v=venues.find(function(v){return v.name===VENUE_NAME;});
+      ihcVenueId=v?v.id:'';
+      // Staff = pinned to IHC + any staff Admin temporarily deployed to IHC venue today
+      var adminDeployedToIHCFab={};
+      var adminAsgn=d.asgn||{};
+      if(ihcVenueId&&adminAsgn[ihcVenueId]){
+        Object.keys(adminAsgn[ihcVenueId]).forEach(function(eid){adminDeployedToIHCFab[eid]=true;});
+      }
+      staff=allStaff.filter(function(e){
+        return e.pv===ihcVenueId||adminDeployedToIHCFab[e.id];
+      });
+      // Load halls
+      halls=(d[HALLS_KEY]||[]);
+      // Load assignments
+      asgn=d[ASGN_KEY]||{};
+      // Load log
+      dlog=d[LOG_KEY]||{};
+      // Load dlog_main for leave data
+      var dlog_main_data=d.dlog||{};
+      if(typeof dlog_main!=='undefined')dlog_main=dlog_main_data;
+      else window.dlog_main=dlog_main_data;
+      // Load shared lvMap from today's dlog
+      var todayLog=dlog_main_data[getD()]||{};
+      lvMap={};
+      if(todayLog.leave){todayLog.leave.forEach(function(l){var emp=getS(l.id);if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};});}
+      // Also load from legacy lvMap
+      if(d.lvMap){
+        Object.keys(d.lvMap).forEach(function(eid){
+          var emp=getS(eid);
+          if(emp)lvMap[eid]={emp:emp,duty:d.lvMap[eid].duty||'6:00 AM'};
+        });
+      }
+      DB_LOADED=true;
+      loadDateData(getD());
+      drawStaffPanel();
+      drawHalls();
+      drawLeaveZone();
+    }
+    showSaveInd('saved');
+  },function(e){console.error(e);showSaveInd('error');});
+}
+
+function saveCloud(){
+  if(!DB_LOADED)return;
+  saveDayLog();
+  SAVE_PENDING++;
+  showSaveInd('saving');
+  clearTimeout(SAVE_TIMER);
+  SAVE_TIMER=setTimeout(function(){
+    var payload={};
+    payload[HALLS_KEY]=halls;
+    // Build clean asgn data
+    var asgnData={};
+    Object.keys(asgn).forEach(function(hid){
+      asgnData[hid]={};
+      Object.keys(asgn[hid]||{}).forEach(function(eid){
+        var a=asgn[hid][eid];
+        asgnData[hid][eid]={duty:a.duty||'6:00 AM',isFixed:a.isFixed||false};
+      });
+    });
+    payload[ASGN_KEY]=asgnData;
+    payload[LOG_KEY]=dlog;
+    // Save shared lvMap (same key as admin so it syncs)
+    var lvData={};
+    Object.keys(lvMap).forEach(function(eid){lvData[eid]={duty:lvMap[eid].duty||'6:00 AM'};});
+    payload['lvMap']=lvData;
+    db.collection('gavs_data').doc('main').update(payload).then(function(){
+      SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
+      showSaveInd('saved');
+    }).catch(function(e){
+      console.error(e);
+      SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
+      showSaveInd('error');
+    });
+  },300);
+}
+
+function saveDayLog(){
+  var d=getD();
+  var log={halls:{}};
+  halls.forEach(function(h){
+    var ha=asgn[h.id]||{};
+    if(Object.keys(ha).length){
+      log.halls[h.id]={name:h.name,staff:{}};
+      Object.keys(ha).forEach(function(eid){log.halls[h.id].staff[eid]=ha[eid].duty;});
+    }
+  });
+  // Save IHC leave in dlog
+  log.ihcfabLeave=Object.keys(lvMap).map(function(eid){return{id:eid,duty:lvMap[eid].duty||'6:00 AM'};});
+  dlog[d]=log;
+}
+
+// ── STAFF PANEL ───────────────────────────────────────────────
+
+function loadDateData(date){
+  // Load assignments from dlog for this specific date
+  var log=dlog[date];
+  asgn={};
+  if(log&&log.halls){
+    Object.keys(log.halls).forEach(function(hid){
+      asgn[hid]={};
+      var hlog=log.halls[hid];
+      if(hlog&&hlog.staff){
+        Object.keys(hlog.staff).forEach(function(eid){
+          var emp=getS(eid);
+          if(emp)asgn[hid][eid]={emp:emp,duty:hlog.staff[eid]||'6:00 AM',isFixed:false};
+        });
+      }
+    });
+  }
+  // Load lvMap from IHC Fabrication's own ihcfabLeave first
+  lvMap={};
+  if(log&&log.ihcfabLeave){
+    log.ihcfabLeave.forEach(function(l){
+      var emp=getS(l.id);
+      if(emp)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};
+    });
+  } else {
+    // Fallback: load from main app dlog
+    var _ml=(window.dlog_main||{})[date];
+    if(_ml&&_ml.leave){
+      _ml.leave.forEach(function(l){
+        var emp=getS(l.id);
+        if(emp&&emp.pv===ihcVenueId)lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};
+      });
+    }
+  }
+}
+
+function getDeployedEids(){
+  var deps={};
+  Object.keys(asgn).forEach(function(hid){Object.keys(asgn[hid]||{}).forEach(function(eid){deps[eid]=hid;});});
+  return deps;
+}
+
+function isOnLeave(eid){return !!lvMap[eid];}
+
+function drawStaffPanel(){
+  var el=g('LP_LIST');if(!el)return;
+  el.innerHTML='';
+  var q=(g('SRCH').value||'').toLowerCase().trim();
+  var deps=getDeployedEids();
+  var cntEl=g('LP_CNT');if(cntEl)cntEl.textContent=staff.length;
+
+  // Split staff into pinned and temporary
+  var pinnedStaff=staff.filter(function(e){return e.pv===ihcVenueId;});
+  var tempStaff=staff.filter(function(e){return e.pv!==ihcVenueId;});
+
+  function renderGroup(list,label,labelStyle){
+    if(!list.length)return;
+    if(label){
+      var sec=document.createElement('div');
+      sec.style.cssText='margin:10px 0 5px;padding:5px 6px;background:#1565c0;color:#fff;font-size:11px;font-weight:800;letter-spacing:0.05em;border-radius:6px;';
+      sec.textContent=label;
+      el.appendChild(sec);
+    }
+    var groups={};
+    list.forEach(function(e){
+      if(q&&e.name.toLowerCase().indexOf(q)<0)return;
+      if(!groups[e.role])groups[e.role]=[];
+      groups[e.role].push(e);
+    });
+    Object.keys(groups).forEach(function(r){
+      var c=cc(r);
+      var hdr=document.createElement('div');
+      hdr.className='role-hdr';hdr.style.color=c;hdr.textContent=r;
+      el.appendChild(hdr);
+      groups[r].forEach(function(e){
+        var isDeployed=!!deps[e.id];
+        var card=document.createElement('div');
+        card.className='staff-card';
+        card.setAttribute('data-eid',e.id);
+        var onLeave=isOnLeave(e.id);
+        card.style.cssText='background:'+(onLeave?'#ffebee':c+'12')+';border-left:3px solid '+(onLeave?'#ef9a9a':c)+';border-bottom:1px solid '+(onLeave?'#ffcdd2':c+'22')+';padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:'+(onLeave?'default':'grab')+';margin-bottom:2px;opacity:'+(onLeave?'0.45':isDeployed?'0.6':'1')+';';
+        card.draggable=!onLeave; // deployed staff still draggable to leave
+        var nm=document.createElement('div');nm.className='sc-name';nm.textContent=e.name;
+        card.appendChild(nm);
+        if(onLeave){var tag=document.createElement('span');tag.textContent='🌴';tag.style.color='#c62828';card.appendChild(tag);}
+        else if(isDeployed){var tag=document.createElement('span');tag.textContent='●';tag.style.color=c;card.appendChild(tag);}
+        if(!onLeave){card.addEventListener('dragstart',function(ev){ev.dataTransfer.setData('text/plain',e.id);ev.dataTransfer.effectAllowed='move';});}
+        el.appendChild(card);
+      });
+    });
+  }
+
+  // All IHC staff shown together — no sub-hall pinning
+  renderGroup(staff,null);
+
+  if(!el.children.length){
+    el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px;font-size:12px;">No staff found</div>';
+  }
+}
+g('SRCH').addEventListener('input',drawStaffPanel);
+
+// ── HALLS ─────────────────────────────────────────────────────
+function drawHalls(){
+  var el=g('HALLS_GRID');if(!el)return;
+  el.innerHTML='';
+  if(!halls.length){
+    var hint=document.createElement('div');
+    hint.style.cssText='text-align:center;color:#bbb;padding:60px 20px;font-size:14px;';
+    hint.innerHTML='<div style="font-size:40px;margin-bottom:12px;">🏛️</div><div>No halls created yet.<br>Click <strong>+ Add Hall</strong> to get started.</div>';
+    el.appendChild(hint);
+    return;
+  }
+  halls.forEach(function(h){el.appendChild(makeHallBox(h));});
+}
+
+function makeHallBox(h){
+  var ha=asgn[h.id]||{};
+  var staffInHall=Object.keys(ha).map(function(eid){var e=getS(eid);return e?{emp:e,duty:ha[eid].duty,isFixed:ha[eid].isFixed}:null;}).filter(Boolean);
+  var box=document.createElement('div');box.className='hall-box';box.id='hb-'+h.id;
+
+  var hdr=document.createElement('div');hdr.className='hall-hdr';
+  var nm=document.createElement('div');nm.className='hall-name';nm.textContent=h.name;
+  var cnt=document.createElement('span');cnt.className='hall-cnt';cnt.textContent=staffInHall.length+' staff';
+  var del=document.createElement('button');del.className='hall-close';del.textContent='✕';del.title='Delete hall';
+  del.addEventListener('click',(function(hid,hname){return function(){
+    showModal('<div class="modal-title" style="color:#c62828;">Delete Hall?</div>'+
+      '<p style="text-align:center;margin-bottom:16px;">Delete <strong>'+esc(hname)+'</strong>?<br><span style="font-size:12px;color:#888;">All assignments in this hall will be removed.</span></p>'+
+      '<button class="mbtn red" id="m-yes">Yes, Delete</button>'+
+      '<button class="mbtn cancel" id="m-no">Cancel</button>');
+    g('m-yes').onclick=function(){halls=halls.filter(function(x){return x.id!==hid;});delete asgn[hid];closeModal();drawHalls();drawStaffPanel();saveCloud();};
+    g('m-no').onclick=closeModal;
+  };})(h.id,h.name));
+  hdr.appendChild(nm);hdr.appendChild(cnt);hdr.appendChild(del);
+  box.appendChild(hdr);
+
+  var body=document.createElement('div');body.className='hall-body';
+
+  if(!staffInHall.length){
+    var hint=document.createElement('div');hint.className='drop-hint';hint.textContent='⬇ Drop staff here';
+    body.appendChild(hint);
+  } else {
+    // Group by role
+    var groups={};
+    staffInHall.forEach(function(a){if(!groups[a.emp.role])groups[a.emp.role]=[];groups[a.emp.role].push(a);});
+    Object.keys(groups).forEach(function(r){
+      var c=cc(r);
+      var rh=document.createElement('div');
+      rh.style.cssText='font-size:8px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+c+';padding:4px 2px 3px;border-bottom:1px solid '+c+'22;margin-bottom:3px;';
+      rh.textContent=r;
+      body.appendChild(rh);
+      groups[r].forEach(function(a){
+        var row=document.createElement('div');
+        row.className='hr-row';
+        row.style.setProperty('--rc',c);
+        row.style.setProperty('--rb',c+'12');
+        var nm2=document.createElement('div');nm2.className='hr-name';nm2.textContent=a.emp.name;
+        // No lock icon in IHC — staff are not pinned to sub-halls
+        row.appendChild(nm2);
+        var sel=document.createElement('select');sel.className='hr-time';
+        TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===a.duty)o.selected=true;sel.appendChild(o);});
+        sel.addEventListener('change',(function(hid,eid){return function(){if(asgn[hid]&&asgn[hid][eid]){asgn[hid][eid].duty=this.value;saveCloud();}};})(h.id,a.emp.id));
+        row.appendChild(sel);
+        var rm=document.createElement('button');rm.className='hr-rm';rm.textContent='✕';
+        rm.addEventListener('click',(function(hid,eid,ename){return function(){
+          showModal('<div class="modal-title" style="color:#c62828;">Remove Staff?</div>'+
+            '<p style="text-align:center;margin-bottom:16px;">Remove <strong>'+esc(ename)+'</strong> from <strong>'+esc(h.name)+'</strong>?</p>'+
+            '<button class="mbtn red" id="m-yes">Yes, Remove</button>'+
+            '<button class="mbtn cancel" id="m-no">Cancel</button>');
+          g('m-yes').onclick=function(){delete asgn[hid][eid];closeModal();drawHalls();drawStaffPanel();saveCloud();};
+          g('m-no').onclick=closeModal;
+        };})(h.id,a.emp.id,a.emp.name));
+        row.appendChild(rm);
+        body.appendChild(row);
+      });
+    });
+  }
+  box.appendChild(body);
+
+  // Drag and drop
+  box.addEventListener('dragover',function(ev){ev.preventDefault();box.classList.add('drag-over');});
+  box.addEventListener('dragleave',function(){box.classList.remove('drag-over');});
+  box.addEventListener('drop',function(ev){
+    ev.preventDefault();box.classList.remove('drag-over');
+    var eid=ev.dataTransfer.getData('text/plain');
+    if(!eid)return;
+    var emp=getS(eid);if(!emp)return;
+    // Remove from any other hall first
+    Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
+    if(!asgn[h.id])asgn[h.id]={};
+    asgn[h.id][eid]={duty:emp.fixedDuty||'6:00 AM',isFixed:false}; // never pin to sub-halls
+    if(navigator.vibrate)navigator.vibrate([20,10,20]);
+    drawHalls();drawStaffPanel();saveCloud();
+  });
+
+  return box;
+}
+
+// ── ON LEAVE ZONE ────────────────────────────────────────────
+// Permanent drop handler - attached once at page load, survives DOM rebuilds
+document.addEventListener('DOMContentLoaded',function(){
+  var _lzw=document.getElementById('LEAVE_ZONE_WRAP');
+  if(!_lzw)return;
+  _lzw.addEventListener('dragover',function(ev){
+    ev.preventDefault();ev.dataTransfer.dropEffect='move';
+    _lzw.style.outline='2px solid #c62828';
+  });
+  _lzw.addEventListener('dragleave',function(ev){
+    if(!_lzw.contains(ev.relatedTarget))_lzw.style.outline='';
+  });
+  _lzw.addEventListener('drop',function(ev){
+    ev.preventDefault();_lzw.style.outline='';
+    var eid=ev.dataTransfer.getData('text/plain');
+    if(!eid)return;
+    var emp=getS(eid);if(!emp)return;
+    if(lvMap[eid])return; // already on leave
+    Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
+    lvMap[eid]={emp:emp,duty:'6:00 AM'};
+    drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();
+  });
+});
+
+function drawLeaveZone(){
+  var wrap=g('LEAVE_ZONE_WRAP');if(!wrap)return;
+  wrap.innerHTML='';
+  var lvList=Object.values(lvMap).filter(function(a){
+    return staff.some(function(s){return s.id===a.emp.id;});
+  });
+
+  var zone=document.createElement('div');zone.className='lv-zone';
+
+  var hdr=document.createElement('div');hdr.className='lv-hdr';
+  hdr.innerHTML='<span style="font-size:14px;">🌴</span><span class="lv-hdr-title">On Leave</span><span class="lv-cnt">'+lvList.length+' staff</span>';
+  var colBtn=document.createElement('button');colBtn.className='lv-col-btn';
+  colBtn.textContent=lvCollapsed?'▶':'▼';
+  colBtn.addEventListener('click',function(){lvCollapsed=!lvCollapsed;drawLeaveZone();});
+  hdr.appendChild(colBtn);
+  zone.appendChild(hdr);
+
+  if(!lvCollapsed){
+    var body=document.createElement('div');body.className='lv-body';
+    if(!lvList.length){
+      body.innerHTML='<div style="text-align:center;color:#ef9a9a;font-size:12px;padding:12px;">Drag staff here to mark On Leave</div>';
+    } else {
+      lvList.forEach(function(a){
+        var c=cc(a.emp.role);
+        var row=document.createElement('div');
+        row.style.cssText='background:'+c+'22;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;margin-bottom:2px;';
+        var nm=document.createElement('div');nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;';nm.textContent=a.emp.name;
+        var rm=document.createElement('button');
+        rm.style.cssText='flex-shrink:0;width:14px;height:14px;background:#ffebee;border:none;color:#c62828;border-radius:3px;cursor:pointer;font-size:8px;display:flex;align-items:center;justify-content:center;';
+        rm.textContent='✕';
+        rm.addEventListener('click',(function(eid,ename){return function(){
+          showModal('<div class="modal-title" style="color:#c62828;">Remove from On Leave?</div>'+
+            '<p style="text-align:center;margin-bottom:16px;">Remove <strong>'+esc(ename)+'</strong> from On Leave?</p>'+
+            '<button class="mbtn blue" id="m-yes">Yes, Remove</button>'+
+            '<button class="mbtn cancel" id="m-no">Cancel</button>');
+          g('m-yes').onclick=function(){delete lvMap[eid];closeModal();drawLeaveZone();drawStaffPanel();saveCloud();};
+          g('m-no').onclick=closeModal;
+        };})(a.emp.id,a.emp.name));
+        row.appendChild(nm);row.appendChild(rm);
+        body.appendChild(row);
+      });
+    }
+    zone.appendChild(body);
+  }
+
+  // Drop zone for marking leave
+  zone.addEventListener('dragover',function(ev){ev.preventDefault();zone.classList.add('drag-over');});
+  zone.addEventListener('dragleave',function(ev){
+    // Only remove if truly leaving the zone (not entering a child)
+    if(!zone.contains(ev.relatedTarget))zone.classList.remove('drag-over');
+  });
+  zone.addEventListener('drop',function(ev){
+    ev.preventDefault();zone.classList.remove('drag-over');
+    var eid=ev.dataTransfer.getData('text/plain');
+    if(!eid){console.log('IHC leave drop: no eid');return;}
+    var emp=getS(eid);if(!emp){console.log('IHC leave drop: no emp for',eid);return;}
+    Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
+    lvMap[eid]={emp:emp,duty:'6:00 AM'};
+    drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();
+    console.log('IHC leave drop: added',eid);
+  });
+
+  // Also add drop handler to wrap for wider target
+  wrap.addEventListener('dragover',function(ev){ev.preventDefault();});
+  wrap.addEventListener('drop',function(ev){
+    ev.preventDefault();
+    var eid=ev.dataTransfer.getData('text/plain');
+    if(!eid||lvMap[eid])return;
+    var emp=getS(eid);if(!emp)return;
+    Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
+    lvMap[eid]={emp:emp,duty:'6:00 AM'};
+    drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();
+  });
+
+  wrap.appendChild(zone);
+}
+
+// Touch drop on leave zone
+document.addEventListener('touchend',function(ev){
+  if(!tEid)return;
+  var t=ev.changedTouches[0];
+  var el=document.elementFromPoint(t.clientX,t.clientY);
+  if(el){
+    var lz=el.closest('.lv-zone')||el.closest('[class*="lv-zone"]');
+    if(lz){
+      var emp=getS(tEid);
+      if(emp){
+        Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][tEid])delete asgn[hid][tEid];});
+        lvMap[tEid]={emp:emp,duty:'6:00 AM'};
+        drawLeaveZone();drawStaffPanel();drawHalls();saveCloud();
+        if(tGhost){try{document.body.removeChild(tGhost);}catch(x){}tGhost=null;}
+        document.querySelectorAll('.lv-zone').forEach(function(b){b.classList.remove('drag-over');});
+        var card=document.querySelector('.staff-card[data-eid="'+tEid+'"]');
+        if(card)card.style.opacity='';
+        tEid=null;
+        return;
+      }
+    }
+  }
+},{passive:true});
+
+// ── ADD HALL ──────────────────────────────────────────────────
+g('btnAddHall').addEventListener('click',function(){
+  showModal('<div class="modal-title">🏛️ Add New Hall</div>'+
+    '<input class="minp" id="NEW_HALL" placeholder="e.g. Durbar Hall, Amphitheatre..." autocomplete="off"/>'+
+    '<button class="mbtn blue" id="m-yes">Add Hall</button>'+
+    '<button class="mbtn cancel" id="m-no">Cancel</button>');
+  g('NEW_HALL').focus();
+  g('m-yes').onclick=function(){
+    var name=(g('NEW_HALL').value||'').trim();
+    if(!name){alert('Enter hall name');return;}
+    if(halls.some(function(h){return h.name.toLowerCase()===name.toLowerCase();})){alert('Hall already exists');return;}
+    halls.push({id:mkId(),name:name});
+    closeModal();drawHalls();saveCloud();
+  };
+  g('NEW_HALL').addEventListener('keydown',function(e){if(e.key==='Enter')g('m-yes').click();});
+  g('m-no').onclick=closeModal;
+});
+
+// ── SAVE ──────────────────────────────────────────────────────
+g('btnSave').addEventListener('click',function(){saveCloud();});
+
+// ── PDF ───────────────────────────────────────────────────────
+g('btnPDF').addEventListener('click',makePDF);
+function makePDF(){
+  if(!window.jspdf){alert('PDF library loading...');return;}
+  saveDayLog();
+  var doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=210,ph=297,mg=10,gap=6;
+  var colW=(pw-mg*2-gap)/2;
+  var rowH=7,mgrH=8.5,hdrH=10,timeW=11;
+  var startY=28,pageH=ph-mg;
+  var colX=[mg,mg+colW+gap];
+  var curCol=0,colY=[startY,startY];
+  var ac=[21,101,192];
+
+  // Header
+  doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(0,0,pw,24,'F');
+  try{var img=g('logoImg');if(img&&img.complete&&img.naturalWidth>0){var cv2=document.createElement('canvas');var sc=Math.min(140/img.naturalWidth,140/img.naturalHeight);cv2.width=Math.round(img.naturalWidth*sc*2);cv2.height=Math.round(img.naturalHeight*sc*2);var ct2=cv2.getContext('2d');ct2.clearRect(0,0,cv2.width,cv2.height);ct2.drawImage(img,0,0,cv2.width,cv2.height);var lh2=18,lw2=Math.round(lh2*(img.naturalWidth/img.naturalHeight));doc.addImage(cv2.toDataURL('image/png'),'PNG',mg,3,lw2,lh2);}}catch(e){}
+  doc.setTextColor(255,255,255);doc.setFontSize(12);doc.setFont('helvetica','bold');
+  doc.text('INDIA HABITAT CENTRE — EVENT SHEET',pw/2,11,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(fd(getD()),pw/2,19,{align:'center'});
+
+  function nextCol(){if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}}
+  function ensureSpace(n){if(colY[curCol]+n>pageH)nextCol();}
+  function cc2(r){var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e'];var i=ROLES_LIST.indexOf(r);var h=(CLRS[i>=0?i%CLRS.length:0]||'#1565c0').replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+  function st2(t){return (t||'').replace(':00 ',' ');}
+  function tMin(t){if(!t)return 999;var p=t.match(/([0-9]+):([0-9]+) *(AM|PM)/i);if(!p)return 999;var h=parseInt(p[1]),mn=parseInt(p[2]),ap=p[3].toUpperCase();if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h!==12)h+=12;return h*60+mn;}
+
+  var hasData=false;
+  halls.forEach(function(h){
+    var ha=asgn[h.id]||{};
+    var entries=Object.keys(ha).map(function(eid){var e=getS(eid);return e?{emp:e,duty:ha[eid].duty}:null;}).filter(Boolean);
+    if(!entries.length)return;
+    hasData=true;
+    // Sort: manager first, then by time, then alpha
+    entries.sort(function(a,b){
+      var am=a.emp.role==='Manager'?0:1,bm=b.emp.role==='Manager'?0:1;
+      if(am!==bm)return am-bm;
+      var ta=tMin(a.duty),tb=tMin(b.duty);if(ta!==tb)return ta-tb;
+      return a.emp.name.localeCompare(b.emp.name);
+    });
+    if(entries.length>15){doc.addPage();colY=[startY,startY];curCol=0;}
+    var firstBlock=true;var i=0;
+    while(i<entries.length){
+      ensureSpace(hdrH+rowH);
+      var ci=curCol;var x=colX[ci];var y=colY[ci];
+      doc.setFillColor(ac[0],ac[1],ac[2]);doc.roundedRect(x,y,colW,hdrH,2,2,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(8.5);doc.setFont('helvetica','bold');
+      var mc=Math.floor((colW-timeW-4)/2.2);
+      var hn=(!firstBlock?h.name+' (cont.)':h.name);if(hn.length>mc)hn=hn.slice(0,mc-1)+'...';
+      doc.text(hn,x+3,y+6.8);
+      doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(entries.length+' staff',x+colW-2,y+6.8,{align:'right'});
+      colY[ci]+=hdrH+1;firstBlock=false;
+      while(i<entries.length){
+        var a=entries[i];var isMgr=a.emp.role==='Manager';var rh=isMgr?mgrH:rowH;
+        if(colY[curCol]+rh>pageH){nextCol();break;}
+        var cx=colX[curCol];var cy=colY[curCol];
+        var c=cc2(a.emp.role);
+        var bg=isMgr?[255,253,225]:i%2===0?[240,245,255]:[255,255,255];
+        doc.setFillColor(bg[0],bg[1],bg[2]);doc.rect(cx,cy,colW,rh,'F');
+        doc.setFillColor(c[0],c[1],c[2]);doc.rect(cx,cy,2,rh,'F');
+        var nm=a.emp.name;var nmw=Math.floor((colW-timeW-8)/2.1);if(nm.length>nmw)nm=nm.slice(0,nmw-1)+'...';
+        if(isMgr){
+          doc.setTextColor(100,65,0);doc.setFontSize(8.5);doc.setFont('helvetica','bold');doc.text(nm,cx+4,cy+rh/2+1.5);
+          doc.setTextColor(160,140,100);doc.setFontSize(6);doc.setFont('helvetica','italic');doc.text('Manager',cx+4+doc.getTextWidth(nm)+1.5,cy+rh/2+1.5);
+        }else{
+          doc.setTextColor(20,20,20);doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.text(nm,cx+4,cy+rh-2);
+          // Role label omitted in IHC PDF to prevent overlap
+        }
+        doc.setTextColor(ac[0],ac[1],ac[2]);doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text(st2(a.duty),cx+colW-1,cy+rh-2,{align:'right'});
+        colY[curCol]+=rh;i++;
+      }
+      colY[curCol]+=2;
+      if(i<entries.length)nextCol();
+    }
+    colY[curCol]+=1;
+  });
+
+  // On Leave section
+  var lvList=Object.values(lvMap).filter(function(a){var e=a.emp||getS(a.id);return e&&e.pv===ihcVenueId;});
+  if(lvList.length){
+    lvList.sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
+    var srH=rowH;var hdrHs=9;
+    if(colY[curCol]+hdrHs+srH>pageH)nextCol();
+    var hx=colX[curCol];var hy=colY[curCol];
+    doc.setFillColor(160,30,30);doc.roundedRect(hx,hy,colW,hdrHs,2,2,'F');
+    doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+    doc.text('ON LEAVE — '+lvList.length,hx+3,hy+6.5);colY[curCol]+=hdrHs+1;
+    lvList.forEach(function(a,i3){
+      if(colY[curCol]+srH>pageH){nextCol();
+        doc.setFillColor(160,30,30);doc.roundedRect(colX[curCol],colY[curCol],colW,hdrHs,2,2,'F');
+        doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
+        doc.text('ON LEAVE (cont.)',colX[curCol]+3,colY[curCol]+6.5);colY[curCol]+=hdrHs+1;
+      }
+      var x3=colX[curCol];var y3=colY[curCol];
+      var rb=i3%2===0?[255,235,235]:[255,245,245];
+      doc.setFillColor(rb[0],rb[1],rb[2]);doc.rect(x3,y3,colW,srH,'F');
+      doc.setFillColor(200,50,50);doc.rect(x3,y3,2,srH,'F');
+      var sn2=a.emp.name;if(sn2.length>30)sn2=sn2.slice(0,29)+'...';
+      doc.setTextColor(20,20,20);doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.text(sn2,x3+4,y3+srH-2);
+      colY[curCol]+=srH;
+    });
+  }
+
+  if(!hasData&&!lvList.length){doc.setTextColor(150,150,150);doc.setFontSize(11);doc.setFont('helvetica','italic');doc.text('No staff assigned.',pw/2,startY+20,{align:'center'});}
+
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(0,ph-8,pw,8,'F');doc.setFontSize(6.5);doc.setTextColor(255,255,255);doc.setFont('helvetica','normal');doc.text('GAVS | IHC Fabrication | '+fd(getD()),mg,ph-3);doc.text('Page '+p+' of '+pc,pw-mg,ph-3,{align:'right'});}
+  doc.save('IHCFab_EventSheet_'+getD()+'.pdf');
+}
+
+function hexToRgb(hex){hex=hex.replace('#','');return[parseInt(hex.slice(0,2),16),parseInt(hex.slice(2,4),16),parseInt(hex.slice(4,6),16)];}
+
+// ── TOUCH DRAG ────────────────────────────────────────────────
+var tEid=null,tGhost=null;
+document.addEventListener('touchstart',function(ev){
+  var card=ev.target.closest('.staff-card[data-eid]');
+  if(!card||card.getAttribute('draggable')==='false')return;
+  tEid=card.getAttribute('data-eid');
+  var e=getS(tEid);if(!e)return;
+  var t=ev.touches[0];
+  tGhost=document.createElement('div');
+  tGhost.style.cssText='position:fixed;z-index:9999;pointer-events:none;background:#fff;border:2px solid #1565c0;border-radius:10px;padding:8px 12px;font-size:13px;color:#111;white-space:nowrap;box-shadow:0 6px 22px rgba(0,0,0,0.2);opacity:0.9;';
+  tGhost.textContent=e.name;tGhost.style.left=(t.clientX-50)+'px';tGhost.style.top=(t.clientY-30)+'px';
+  document.body.appendChild(tGhost);if(navigator.vibrate)navigator.vibrate(30);card.style.opacity='0.3';
+},{passive:true});
+document.addEventListener('touchmove',function(ev){
+  if(!tEid)return;
+  var t=ev.touches[0];if(tGhost){tGhost.style.left=(t.clientX-50)+'px';tGhost.style.top=(t.clientY-30)+'px';}
+  document.querySelectorAll('.hall-box,.lv-zone').forEach(function(b){b.classList.remove('drag-over');});
+  var el=document.elementFromPoint(t.clientX,t.clientY);
+  if(el){
+    var hb=el.closest('.hall-box');if(hb)hb.classList.add('drag-over');
+    var lz=el.closest('.lv-zone');if(lz)lz.classList.add('drag-over');
+  }
+},{passive:true});
+document.addEventListener('touchend',function(ev){
+  if(!tEid)return;
+  if(tGhost){try{document.body.removeChild(tGhost);}catch(x){}tGhost=null;}
+  var card=document.querySelector('.staff-card[data-eid="'+tEid+'"]');
+  if(card)card.style.opacity='';
+  document.querySelectorAll('.hall-box').forEach(function(b){b.classList.remove('drag-over');});
+  var t=ev.changedTouches[0];
+  var el=document.elementFromPoint(t.clientX,t.clientY);
+  if(el){
+    var hb=el.closest('.hall-box');
+    if(hb){
+      var hid=hb.id.replace('hb-','');
+      var emp=getS(tEid);
+      if(emp){
+        Object.keys(asgn).forEach(function(id){if(asgn[id]&&asgn[id][tEid])delete asgn[id][tEid];});
+        if(!asgn[hid])asgn[hid]={};
+        asgn[hid][tEid]={duty:emp.fixedDuty||'6:00 AM',isFixed:false}; // never pin to sub-halls
+        if(navigator.vibrate)navigator.vibrate([20,10,20]);
+        drawHalls();drawStaffPanel();saveCloud();
+      }
+    }
+  }
+  tEid=null;
+},{passive:true});
+
+// Date change
+g('DP').addEventListener('change',function(){
+  loadDateData(getD());
+  drawHalls();drawStaffPanel();drawLeaveZone();
+});
+</script>
+</body>
+</html>

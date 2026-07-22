@@ -122,11 +122,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="hdr-btn" id="btnPDF">📄 PDF</button>
     </div>
   </div>
+  <div id="OFFLINE_BNR" style="display:none;background:#c62828;color:#fff;text-align:center;padding:5px 12px;font-size:12px;font-weight:700;flex-shrink:0;">📴 Offline — saving when reconnected</div>
   <div class="main">
     <div class="lp">
       <div class="lp-hdr">
         👥 IHC Staff <span class="lp-cnt" id="LP_CNT">0</span>
       </div>
+      <div id="RPILLS" style="display:flex;flex-wrap:wrap;gap:3px;padding:5px 7px;border-bottom:1px solid #e3eaff;"></div>
       <div class="lp-search"><input type="text" id="SRCH" placeholder="Search staff..."/></div>
       <div class="lp-list" id="LP_LIST"></div>
     </div>
@@ -175,6 +177,8 @@ var ROLES_LIST=[];
 var DB_LOADED=false;
 var SAVE_TIMER=null;
 var SAVE_PENDING=0;
+var annualLeave=[];
+var _roleFilter='';
 
 // ── HELPERS ───────────────────────────────────────────────────
 function g(id){return document.getElementById(id);}
@@ -195,6 +199,51 @@ function showSaveInd(state){
 function showModal(html){var mb=g('modal-box');mb.innerHTML=html;g('modal').style.display='flex';}
 function closeModal(){g('modal').style.display='none';}
 g('modal').addEventListener('click',function(ev){if(ev.target===this)closeModal();});
+window.addEventListener('offline',function(){var b=g('OFFLINE_BNR');if(b)b.style.display='block';});
+window.addEventListener('online',function(){var b=g('OFFLINE_BNR');if(b)b.style.display='none';});
+
+function tMinIHC(t){if(!t)return 9999;var p=t.match(/([0-9]+):([0-9]+) *(AM|PM)/i);if(!p)return 9999;var h=parseInt(p[1]),mn=parseInt(p[2]),ap=p[3].toUpperCase();if(ap==='AM'&&h===12)h=0;if(ap==='PM'&&h!==12)h+=12;return h*60+mn;}
+
+function drawRolePills(){
+  var el=g('RPILLS');if(!el)return;el.innerHTML='';
+  var myRoles=[];
+  ROLES_LIST.forEach(function(r){if(staff.some(function(e){return e.role===r;}))myRoles.push(r);});
+  if(myRoles.length<=1){el.style.display='none';return;}
+  el.style.display='flex';
+  var allBtn=document.createElement('button');
+  allBtn.style.cssText='padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;cursor:pointer;border:1.5px solid #1565c0;background:'+(_roleFilter===''?'#1565c0':'#fff')+';color:'+(_roleFilter===''?'#fff':'#1565c0')+';flex-shrink:0;';
+  allBtn.textContent='All';
+  allBtn.addEventListener('click',function(){_roleFilter='';drawRolePills();drawStaffPanel();});
+  el.appendChild(allBtn);
+  myRoles.forEach(function(r){
+    var c=cc(r);var isActive=_roleFilter===r;
+    var btn=document.createElement('button');
+    btn.style.cssText='padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700;cursor:pointer;border:1.5px solid '+c+';background:'+(isActive?c:'#fff')+';color:'+(isActive?'#fff':c)+';flex-shrink:0;';
+    btn.textContent=r;
+    btn.addEventListener('click',function(){_roleFilter=isActive?'':r;drawRolePills();drawStaffPanel();});
+    el.appendChild(btn);
+  });
+}
+
+function showPeriodLeave(eid,ename){
+  var ex=annualLeave.find(function(x){return x.id===eid;})||{};
+  var today=getD();
+  showModal('<div class="modal-title">📅 Period Leave</div><div style="font-size:13px;font-weight:700;text-align:center;color:#1565c0;margin-bottom:14px;">'+esc(ename)+'</div><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Start Date</label><input type="date" id="al-s" class="minp" value="'+(ex.startDate||today)+'"/><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">End Date</label><input type="date" id="al-e" class="minp" value="'+(ex.endDate||today)+'"/><button class="mbtn blue" id="MY">Save Period Leave</button>'+(ex.startDate?'<button class="mbtn" id="MCLR" style="background:#ffebee;color:#c62828;margin-top:0;">🗑 Remove Period Leave</button>':'')+'<button class="mbtn cancel" id="MN">Cancel</button>');
+  g('MY').onclick=function(){
+    var s=(g('al-s').value||'').trim(),e2=(g('al-e').value||'').trim();
+    if(!s||!e2||s>e2){alert('Please select valid dates');return;}
+    annualLeave=annualLeave.filter(function(x){return x.id!==eid;});
+    annualLeave.push({id:eid,name:ename,startDate:s,endDate:e2});
+    closeModal();
+    db.collection('gavs_data').doc('main').update({annualLeave:annualLeave}).then(function(){drawLeaveZone();drawStaffPanel();});
+  };
+  if(g('MCLR'))g('MCLR').onclick=function(){
+    annualLeave=annualLeave.filter(function(x){return x.id!==eid;});
+    closeModal();
+    db.collection('gavs_data').doc('main').update({annualLeave:annualLeave}).then(function(){drawLeaveZone();drawStaffPanel();});
+  };
+  g('MN').onclick=closeModal;
+}
 
 // ── LOGIN ─────────────────────────────────────────────────────
 g('L_BTN').addEventListener('click',doLogin);
@@ -227,6 +276,7 @@ function loadFromCloud(){
       allStaff=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
       venues=d.venues||[];
       ROLES_LIST=d.roles||[];
+      if(d.annualLeave)annualLeave=d.annualLeave;
       // Find IHC venue
       var v=venues.find(function(v){return v.name===VENUE_NAME;});
       ihcVenueId=v?v.id:'';
@@ -262,6 +312,7 @@ function loadFromCloud(){
       }
       DB_LOADED=true;
       loadDateData(getD());
+      drawRolePills();
       drawStaffPanel();
       drawHalls();
       drawLeaveZone();
@@ -387,6 +438,7 @@ function drawStaffPanel(){
     var groups={};
     list.forEach(function(e){
       if(q&&e.name.toLowerCase().indexOf(q)<0)return;
+      if(_roleFilter&&e.role!==_roleFilter)return;
       if(!groups[e.role])groups[e.role]=[];
       groups[e.role].push(e);
     });
@@ -441,9 +493,22 @@ function makeHallBox(h){
   var staffInHall=Object.keys(ha).map(function(eid){var e=getS(eid);return e?{emp:e,duty:ha[eid].duty,isFixed:ha[eid].isFixed}:null;}).filter(Boolean);
   var box=document.createElement('div');box.className='hall-box';box.id='hb-'+h.id;
 
+  // Sort staff by time then alpha
+  staffInHall.sort(function(a,b){var ta=tMinIHC(a.duty),tb=tMinIHC(b.duty);if(ta!==tb)return ta-tb;return a.emp.name.localeCompare(b.emp.name);});
+
   var hdr=document.createElement('div');hdr.className='hall-hdr';
   var nm=document.createElement('div');nm.className='hall-name';nm.textContent=h.name;
   var cnt=document.createElement('span');cnt.className='hall-cnt';cnt.textContent=staffInHall.length+' staff';
+  // Bulk Time button
+  var bulkH=document.createElement('button');bulkH.textContent='⏰';bulkH.title='Set same time for all staff';
+  bulkH.style.cssText='background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:4px;cursor:pointer;width:20px;height:20px;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+  bulkH.addEventListener('click',(function(hid,hname,slen){return function(){
+    if(!slen){showModal('<div class="modal-title">No staff</div><button class="mbtn cancel" id="m-no">Close</button>');g('m-no').onclick=closeModal;return;}
+    var opts=TIMES.map(function(t){return '<option value="'+t+'">'+shortTime(t)+'</option>';}).join('');
+    showModal('<div class="modal-title">⏰ Set Same Time</div><div style="font-size:12px;color:#555;text-align:center;margin-bottom:12px;">Apply to all <strong>'+slen+'</strong> staff in <strong>'+esc(hname)+'</strong></div><select id="BULK_T" class="minp" style="padding:8px;">'+opts+'</select><button class="mbtn blue" id="MY">Apply to All</button><button class="mbtn cancel" id="MN">Cancel</button>');
+    g('MY').onclick=function(){var val=g('BULK_T').value;Object.keys(asgn[hid]||{}).forEach(function(eid){if(asgn[hid][eid])asgn[hid][eid].duty=val;});closeModal();drawHalls();saveCloud();};
+    g('MN').onclick=closeModal;
+  };})(h.id,h.name,staffInHall.length));
   var del=document.createElement('button');del.className='hall-close';del.textContent='✕';del.title='Delete hall';
   del.addEventListener('click',(function(hid,hname){return function(){
     showModal('<div class="modal-title" style="color:#c62828;">Delete Hall?</div>'+
@@ -453,7 +518,7 @@ function makeHallBox(h){
     g('m-yes').onclick=function(){halls=halls.filter(function(x){return x.id!==hid;});delete asgn[hid];closeModal();drawHalls();drawStaffPanel();saveCloud();};
     g('m-no').onclick=closeModal;
   };})(h.id,h.name));
-  hdr.appendChild(nm);hdr.appendChild(cnt);hdr.appendChild(del);
+  hdr.appendChild(nm);hdr.appendChild(cnt);hdr.appendChild(bulkH);hdr.appendChild(del);
   box.appendChild(hdr);
 
   var body=document.createElement('div');body.className='hall-body';
@@ -580,7 +645,10 @@ function drawLeaveZone(){
           g('m-yes').onclick=function(){delete lvMap[eid];closeModal();drawLeaveZone();drawStaffPanel();saveCloud();};
           g('m-no').onclick=closeModal;
         };})(a.emp.id,a.emp.name));
-        row.appendChild(nm);row.appendChild(rm);
+        var calBtn=document.createElement('button');calBtn.textContent='📅';calBtn.title='Set period leave';
+        calBtn.style.cssText='background:none;border:none;font-size:9px;cursor:pointer;padding:0;flex-shrink:0;';
+        calBtn.addEventListener('click',(function(eid2,ename2){return function(ev){ev.stopPropagation();showPeriodLeave(eid2,ename2);};})(a.emp.id,a.emp.name));
+        row.appendChild(nm);row.appendChild(calBtn);row.appendChild(rm);
         body.appendChild(row);
       });
     }

@@ -4,18 +4,14 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <title>GAVS - Staff Deployment</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,500,1,0&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}html{touch-action:manipulation;}button,a,input,select{touch-action:manipulation;}
-body{background:#f0f4ff;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111;font-size:14px;}
+body{background:#f0f4ff;font-family:"Segoe UI",Arial,sans-serif;color:#111;font-size:14px;}
 input,select,button{font-family:inherit;}
-.ms{font-family:'Material Symbols Rounded';font-size:18px;line-height:1;display:inline-flex;align-items:center;vertical-align:middle;font-weight:normal;font-style:normal;letter-spacing:normal;text-transform:none;white-space:nowrap;-webkit-font-smoothing:antialiased;}
 .hide{display:none!important;}
 /* Loading */
 #loadingOv{position:fixed;inset:0;background:rgba(21,101,192,0.97);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
@@ -287,13 +283,13 @@ input,select,button{font-family:inherit;}
   </div>
   <div class="stats" id="SB"></div>
   <div class="nav">
-    <button class="nb on" data-screen="assign"><span class="ni"><span class="ms">home</span></span><span>Assign Duties</span></button>
-    <button class="nb" data-screen="manage"><span class="ni"><span class="ms">settings</span></span><span>Manage</span></button>
-    <button class="nb" data-screen="report"><span class="ni"><span class="ms">description</span></span><span>Report</span></button>
-    <button class="nb" data-screen="vendorreport"><span class="ni"><span class="ms">inventory_2</span></span><span>Vendor Report</span></button>
-    <button class="nb" data-screen="attendance"><span class="ni"><span class="ms">bar_chart</span></span><span>Attendance</span></button>
-    <button class="nb" data-screen="drafts"><span class="ni"><span class="ms">folder_open</span></span><span>Drafts</span></button>
-    <button class="nb" data-screen="settings"><span class="ni"><span class="ms">tune</span></span><span>Settings</span></button>
+    <button class="nb on" data-screen="assign"><span class="ni">🏨</span><span>Assign Duties</span></button>
+    <button class="nb" data-screen="manage"><span class="ni">⚙️</span><span>Manage</span></button>
+    <button class="nb" data-screen="report"><span class="ni">📄</span><span>Report</span></button>
+    <button class="nb" data-screen="vendorreport"><span class="ni">📋</span><span>Vendor Report</span></button>
+    <button class="nb" data-screen="attendance"><span class="ni">📊</span><span>Attendance</span></button>
+    <button class="nb" data-screen="drafts"><span class="ni">📂</span><span>Drafts</span></button>
+    <button class="nb" data-screen="settings"><span class="ni">🔧</span><span>Settings</span></button>
   </div>
 </div>
 <div id="AB" style="display:none;">
@@ -303,14 +299,14 @@ input,select,button{font-family:inherit;}
 
   <!-- Mobile action bar (shown only on mobile, ATB hidden on mobile) -->
   <div class="mob-ab" id="MOB_AB">
-    <button class="mob-btn" id="mbtnCopy"><span class="ms" style="font-size:14px;">content_copy</span> Copy</button>
-    <button class="mob-btn" id="mbtnDraft" style="border-color:#f9a825;color:#f57f17;"><span class="ms" style="font-size:14px;">bookmark</span> Draft</button>
-    <button class="mob-btn" id="mbtnDrafts" style="border-color:#ce93d8;color:#6a1b9a;"><span class="ms" style="font-size:14px;">folder_open</span> Drafts</button>
-    <button class="mob-btn" id="mbtnSave" style="border-color:#a5d6a7;color:#1b5e20;"><span class="ms" style="font-size:14px;">cloud_upload</span> Save</button>
-    <button class="mob-btn" id="mbtnPDF" style="border-color:#90caf9;color:#1565c0;"><span class="ms" style="font-size:14px;">picture_as_pdf</span> PDF</button>
-    <button class="mob-btn" id="mbtnMultiView" style="border-color:#ce93d8;color:#6a1b9a;"><span class="ms" style="font-size:14px;">view_comfy</span> Multi-View</button>
-    <button class="mob-btn" id="mbtnContracted" style="border-color:#80cbc4;color:#00897b;"><span class="ms" style="font-size:14px;">push_pin</span> Contracted</button>
-    <button class="mob-btn" id="mbtnResetDuties" style="border-color:#ef9a9a;color:#c62828;"><span class="ms" style="font-size:14px;">restart_alt</span> Reset</button>
+    <button class="mob-btn" id="mbtnCopy">📅 Copy</button>
+    <button class="mob-btn" id="mbtnDraft" style="border-color:#f9a825;color:#f57f17;">💾 Draft</button>
+    <button class="mob-btn" id="mbtnDrafts" style="border-color:#ce93d8;color:#6a1b9a;">📂 Drafts</button>
+    <button class="mob-btn" id="mbtnSave" style="border-color:#a5d6a7;color:#1b5e20;">☁️ Save</button>
+    <button class="mob-btn" id="mbtnPDF" style="border-color:#90caf9;color:#1565c0;">📄 PDF</button>
+    <button class="mob-btn" id="mbtnMultiView" style="border-color:#ce93d8;color:#6a1b9a;">🔀 Multi-View</button>
+    <button class="mob-btn" id="mbtnContracted" style="border-color:#80cbc4;color:#00897b;">📌 Contracted</button>
+    <button class="mob-btn" id="mbtnResetDuties" style="border-color:#ef9a9a;color:#c62828;">🔄 Reset</button>
   </div>
 
   <!-- Compact topbar (desktop only, replaces main header) -->
@@ -323,23 +319,23 @@ input,select,button{font-family:inherit;}
     <div id="ATB_STATS" style="display:flex;gap:4px;flex-shrink:0;"></div>
     <div class="atb-sep"></div>
     <input type="date" id="DP2" class="atb-date"/>
-    <button class="atb-btn" id="btnCopy2" title="Copy from Date"><span class="ms" style="font-size:14px;">content_copy</span> Copy</button>
-    <button class="atb-btn" id="btnDraft2" style="border-color:#f9a825;color:#ffe082;" title="Save as Draft"><span class="ms" style="font-size:14px;">bookmark</span> Draft</button>
-    <button class="atb-btn" id="btnDrafts2" style="border-color:#ce93d8;color:#e1bee7;" title="Drafts"><span class="ms" style="font-size:14px;">folder_open</span> Drafts</button>
-    <button class="atb-btn" id="btnSave2" style="border-color:#a5d6a7;color:#c8e6c9;" title="Save to Cloud"><span class="ms" style="font-size:14px;">cloud_upload</span> Save</button>
-    <button class="atb-btn" id="btnExportPDF" style="border-color:#90caf9;color:#bbdefb;" title="Export Duty PDF"><span class="ms" style="font-size:14px;">picture_as_pdf</span> PDF</button>
-    <button class="atb-btn" id="btnMultiView" style="border-color:#ce93d8;color:#e1bee7;" title="Show Staff + Vendors Together"><span class="ms" style="font-size:14px;">view_comfy</span> Multi-View</button>
-    <button class="atb-btn" id="btnContracted" style="border-color:#80cbc4;color:#b2dfdb;" title="Show/hide contracted venues"><span class="ms" style="font-size:14px;">push_pin</span> Contracted</button>
-    <button class="atb-btn" id="btnResetDuties" style="border-color:#ef9a9a;color:#ffcdd2;" title="Reset all duties"><span class="ms" style="font-size:14px;">restart_alt</span> Reset</button>
+    <button class="atb-btn" id="btnCopy2" title="Copy from Date">📅 Copy</button>
+    <button class="atb-btn" id="btnDraft2" style="border-color:#f9a825;color:#ffe082;" title="Save as Draft">💾 Draft</button>
+    <button class="atb-btn" id="btnDrafts2" style="border-color:#ce93d8;color:#e1bee7;" title="Drafts">📂 Drafts</button>
+    <button class="atb-btn" id="btnSave2" style="border-color:#a5d6a7;color:#c8e6c9;" title="Save to Cloud">☁️ Save</button>
+    <button class="atb-btn" id="btnExportPDF" style="border-color:#90caf9;color:#bbdefb;" title="Export Duty PDF">📄 PDF</button>
+    <button class="atb-btn" id="btnMultiView" style="border-color:#ce93d8;color:#e1bee7;" title="Show Staff + Vendors Together">🔀 Multi-View</button>
+    <button class="atb-btn" id="btnContracted" style="border-color:#80cbc4;color:#b2dfdb;" title="Show/hide contracted venues">📌 Contracted</button>
+    <button class="atb-btn" id="btnResetDuties" style="border-color:#ef9a9a;color:#ffcdd2;" title="Reset all duties">🔄 Reset</button>
     <div class="atb-flex"></div>
     <div class="atb-sep"></div>
-    <button class="atb-nb" data-atb-screen="assign" title="Assign Duties"><span class="ms">home</span></button>
-    <button class="atb-nb" data-atb-screen="manage" title="Manage"><span class="ms">settings</span></button>
-    <button class="atb-nb" data-atb-screen="report" title="Report"><span class="ms">description</span></button>
-    <button class="atb-nb" data-atb-screen="vendorreport" title="Vendor Report"><span class="ms">inventory_2</span></button>
-    <button class="atb-nb" data-atb-screen="attendance" title="Attendance"><span class="ms">bar_chart</span></button>
-    <button class="atb-nb" data-atb-screen="drafts" title="Drafts"><span class="ms">folder_open</span></button>
-    <button class="atb-nb" data-atb-screen="settings" title="Settings"><span class="ms">tune</span></button>
+    <button class="atb-nb" data-atb-screen="assign" title="Assign Duties">🏨</button>
+    <button class="atb-nb" data-atb-screen="manage" title="Manage">⚙️</button>
+    <button class="atb-nb" data-atb-screen="report" title="Report">📄</button>
+    <button class="atb-nb" data-atb-screen="vendorreport" title="Vendor Report">📋</button>
+    <button class="atb-nb" data-atb-screen="attendance" title="Attendance">📊</button>
+    <button class="atb-nb" data-atb-screen="drafts" title="Drafts">📂</button>
+    <button class="atb-nb" data-atb-screen="settings" title="Settings">🔧</button>
   </div>
 
   <!-- Main area: staff panel + venue grid -->
@@ -1491,7 +1487,7 @@ function drawVenueGrid(){
   lvBox.id='drop-leave';
   var lvHdr=document.createElement('div');
   lvHdr.style.cssText='background:#c62828;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
-  lvHdr.innerHTML='<span class="ms" style="font-size:20px;">beach_access</span><span style="font-size:13px;font-weight:700;flex:1;">On Leave</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+lvCount+' staff</span>';
+  lvHdr.innerHTML='<span style="font-size:16px;">🌴</span><span style="font-size:13px;font-weight:700;flex:1;">On Leave</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+lvCount+' staff</span>';
   // Collapse toggle button
   var lvColBtn=document.createElement('button');
   lvColBtn.style.cssText='background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:5px;cursor:pointer;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;';
@@ -1564,7 +1560,7 @@ function drawVenueGrid(){
   offBox.id='drop-office';
   var offHdr=document.createElement('div');
   offHdr.style.cssText='background:#7b1fa2;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
-  offHdr.innerHTML='<span class="ms" style="font-size:20px;">business</span><span style="font-size:13px;font-weight:700;flex:1;">Office Duty</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+offCount+' staff</span>';
+  offHdr.innerHTML='<span style="font-size:16px;">🏢</span><span style="font-size:13px;font-weight:700;flex:1;">Office Duty</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+offCount+' staff</span>';
   // Collapse toggle
   var offColBtn=document.createElement('button');
   offColBtn.style.cssText='background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:5px;cursor:pointer;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;';
@@ -1630,7 +1626,7 @@ function drawVenueGrid(){
   gdnBox.id='drop-godown';
   var gdnHdr=document.createElement('div');
   gdnHdr.style.cssText='background:#e91e8c;color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px;';
-  gdnHdr.innerHTML='<span class="ms" style="font-size:20px;">warehouse</span><span style="font-size:13px;font-weight:700;flex:1;">Godown Team</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+gdnCount+' staff</span>';
+  gdnHdr.innerHTML='<span style="font-size:16px;">🏗️</span><span style="font-size:13px;font-weight:700;flex:1;">Godown Team</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">'+gdnCount+' staff</span>';
   var gdnColBtn=document.createElement('button');
   gdnColBtn.style.cssText='background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:5px;cursor:pointer;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:4px;';
   gdnColBtn.textContent=gdnCollapsed?'▶':'▼';
@@ -1642,7 +1638,7 @@ function drawVenueGrid(){
   if(hasPinnedGdn){
     var gdnEyeBtn=document.createElement('button');
     gdnEyeBtn.style.cssText='background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:5px;cursor:pointer;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:2px;';
-    gdnEyeBtn.innerHTML='<span class="ms" style="font-size:12px;">'+(gdnPinnedVisible?'visibility':'visibility_off')+'</span>';
+    gdnEyeBtn.textContent=gdnPinnedVisible?'👁':'🚫';
     gdnEyeBtn.title=gdnPinnedVisible?'Hide pinned staff':'Show pinned staff';
     gdnEyeBtn.addEventListener('click',function(){gdnPinnedVisible=!gdnPinnedVisible;drawVenueGrid();});
     gdnHdr.appendChild(gdnEyeBtn);
@@ -1918,7 +1914,7 @@ function makeVenueBox(v,hasPinned,viewData){
   // All Same Time button
   var allTimeBtn=document.createElement('button');
   allTimeBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 5px;font-size:10px;cursor:pointer;flex-shrink:0;';
-  allTimeBtn.innerHTML='<span class="ms" style="font-size:12px;">schedule</span>';
+  allTimeBtn.textContent='⏰';
   allTimeBtn.title='Set same time for all staff';
   allTimeBtn.addEventListener('click',(function(vid){return function(){showBulkTime(vid);};})(v.id));
   hdr.appendChild(allTimeBtn);
@@ -1933,7 +1929,7 @@ function makeVenueBox(v,hasPinned,viewData){
   var cmtBtn=document.createElement('button');
   var _hasCmt=!!(_dateComments[v.id]&&_dateComments[v.id].trim());
   cmtBtn.style.cssText='background:'+(_hasCmt?'#f48fb1':'rgba(255,255,255,0.15)')+';border:1px solid '+(_hasCmt?'#f48fb1':'rgba(255,255,255,0.4)')+';color:#fff;border-radius:6px;padding:2px 5px;font-size:10px;cursor:pointer;flex-shrink:0;';
-  cmtBtn.innerHTML='<span class="ms" style="font-size:12px;">chat</span>';
+  cmtBtn.textContent='💬';
   cmtBtn.title=_hasCmt?'Edit comment for today':'Add comment for today';
   cmtBtn.addEventListener('click',(function(vid){return function(ev){ev.stopPropagation();showVenueCommentPrompt(vid);};})(v.id));
   hdr.appendChild(cmtBtn);
@@ -1942,7 +1938,7 @@ function makeVenueBox(v,hasPinned,viewData){
     var eyeOn=pinnedVisibleVids.has(v.id);
     var eyeBtn=document.createElement('button');
     eyeBtn.className='vbox-close';
-    eyeBtn.innerHTML='<span class="ms" style="font-size:12px;">visibility</span>';
+    eyeBtn.textContent=eyeOn?'👁':'👁';
     eyeBtn.title=eyeOn?'Hide pinned staff':'Show pinned staff';
     eyeBtn.style.background=eyeOn?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.1)';
     eyeBtn.style.opacity=eyeOn?'1':'0.5';

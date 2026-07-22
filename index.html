@@ -5414,6 +5414,7 @@ var PORTAL_ACCOUNTS=[
   {id:'admin',   label:'Admin',          username:'admin',       password:'gavs2024'},
   {id:'grover',  label:'Grover',         username:'grover',      password:'audio123'},
   {id:'ihc',     label:'IHC Manager',    username:'ihc',         password:'ihc2024'},
+  {id:'ihcfab',  label:'IHC Fabrication',username:'mihcfab',     password:'ihcfab2024'},
   {id:'jaipur',  label:'Jaipur Manager', username:'jaipur',      password:'jaipur2024'},
   {id:'fab',     label:'Fabrication Team',username:'fabrication', password:'fab2024'},
   {id:'led',     label:'LED Team',        username:'led',         password:'led2024'},
@@ -5424,16 +5425,18 @@ var PORTAL_ACCOUNTS=[
 // Portal access control - which roles/vendors each team portal can manage
 // Loaded from Firebase (portalAccess key), overrides defaults below
 var PORTAL_ACCESS={
-  fab:  {roles:['Fabrication Manager','Fabrication Field Team','Fabrication Store Team','IHC Fabrication'], vendors:['fabrication']},
-  led:  {roles:['LED'], vendors:['led']},
-  lt:   {roles:['Light','Truss'], vendors:[]},
-  labour:{roles:[], vendors:['labour']},
+  fab:    {roles:['Fabrication Manager','Fabrication Field Team','Fabrication Store Team','IHC Fabrication'], vendors:['fabrication']},
+  led:    {roles:['LED'], vendors:['led']},
+  lt:     {roles:['Light','Truss'], vendors:[]},
+  labour: {roles:[], vendors:['labour']},
+  ihcfab: {roles:['IHC Fabrication'], vendors:[]},
 };
 
 // Sub-venue halls for IHC and Jaipur
 // Portal passwords - stored in Firebase so admin can change them
 var portalPasswords={
   ihc:'ihc2024',
+  ihcfab:'ihcfab2024',
   jaipur:'jaipur2024',
   fabrication:'fab2024',
   led:'led2024',
@@ -5453,6 +5456,7 @@ var portalAccess={
   lighttruss:{roles:['Light','Truss'],vendors:[]},
   labour:{roles:[],vendors:['labour']},
   ihc:{roles:[],vendors:[]},
+  ihcfab:{roles:['IHC Fabrication'],vendors:[]},
   jaipur:{roles:[],vendors:[]}
 };  // mirrors deskRole for staff but for vendor types
 
@@ -6242,6 +6246,7 @@ var PORTAL_DEFS=[
   {id:'lighttruss',label:'Light & Truss Team',icon:'🔆',user:'lighttruss'},
   {id:'labour',label:'Labour Team',icon:'👷',user:'labour'},
   {id:'ihc',label:'IHC Manager',icon:'🏛️',user:'ihc'},
+  {id:'ihcfab',label:'IHC Fabrication',icon:'🏗️',user:'mihcfab'},
   {id:'jaipur',label:'Jaipur Manager',icon:'📍',user:'jaipur'}
 ];
 var curPortalId=null;
@@ -6411,7 +6416,7 @@ function drawPortalDetail(){
   var acct=PORTAL_ACCOUNTS.find(function(a){return a.id===curPortalId;});
   if(!acct)return;
   var access=PORTAL_ACCESS[acct.id]||{roles:[],vendors:[]};
-  var isTeamPortal=['fab','led','lt','labour'].indexOf(acct.id)>=0;
+  var isTeamPortal=['fab','led','lt','labour','ihcfab'].indexOf(acct.id)>=0;
 
   var html='<div class="addbox" style="margin-bottom:16px;">';
   html+='<div class="abt" style="margin-bottom:12px;">🔑 '+esc(acct.label)+' — Password</div>';

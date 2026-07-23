@@ -3135,7 +3135,8 @@ function drawMStaff(){
     info.innerHTML='<div class="sr-name">'+esc(e.name)+(isMgr(e)?' <span class="badge bm">MGR</span>':'')+'</div>'+
       '<div class="sr-role" style="color:'+c+';">'+esc(e.role)+'</div>'+
       (e.phone?'<div class="sr-sub">📞 '+esc(e.phone)+'</div>':'')+
-      (pv?'<div class="sr-sub" style="color:#7986cb;">📌 '+esc(pv.name)+(e.fixedDuty?' @ '+e.fixedDuty:'')+'</div>':'');
+      (pv?'<div class="sr-sub" style="color:#7986cb;">📌 '+esc(pv.name)+(e.fixedDuty?' @ '+shortTime(e.fixedDuty):'')+'</div>':'')+
+      (!pv&&e.pgdn?'<div class="sr-sub" style="color:#f57f17;">🏗️ Godown Team'+(e.fixedDuty?' @ '+shortTime(e.fixedDuty):'')+'</div>':'');
     var btns=document.createElement('div');btns.style.display='flex';btns.style.gap='6px';
     var eb=document.createElement('button');eb.className='ibtn eb';eb.textContent='✏️';eb.title='Edit';
     eb.addEventListener('click',(function(eid){return function(){editStaff(eid);};})(e.id));
@@ -3294,9 +3295,11 @@ function drawMVenues(){
           tSel.addEventListener('mousedown',function(ev){ev.stopPropagation();});
           tSel.addEventListener('click',function(ev){ev.stopPropagation();});
           item.appendChild(nameSpan);item.appendChild(tSel);
-          item.addEventListener('mouseenter',function(){this.style.background='#e8f5e9';});
-          item.addEventListener('mouseleave',function(){this.style.background='';});
-          item.addEventListener('click',(function(eid,ts){return function(){
+          var pinBtn=document.createElement('button');
+          pinBtn.textContent='📌';pinBtn.title='Pin to venue';
+          pinBtn.style.cssText='background:#1565c0;border:none;color:#fff;border-radius:5px;padding:2px 7px;font-size:11px;cursor:pointer;flex-shrink:0;';
+          pinBtn.addEventListener('mousedown',(function(eid,ts){return function(ev){
+            ev.preventDefault();ev.stopPropagation();
             var emp2=getS(eid);if(!emp2)return;
             var oldPv=emp2.pv;
             emp2.pv=vid2;
@@ -3306,7 +3309,7 @@ function drawMVenues(){
             pinInput.value='';pinDD.style.display='none';
             saveCloud();drawMVenues();applyPinned();drawVenueGrid();
           };})(e.id,tSel));
-          pinDD.appendChild(item);
+          item.appendChild(pinBtn);
         });
         pinDD.style.display='block';
       });

@@ -165,7 +165,6 @@ var db=firebase.firestore();
 // ── STATE ─────────────────────────────────────────────────────
 var staff=[];       // all staff from Firebase (filtered to pinned venue)
 var allStaff=[];    // raw staff from Firebase
-var myAccess={roles:[],vendors:[]}; // portal access — loaded from Firebase portalAccess[PID]
 var venues=[];      // all venues
 var ihcVenueId='';  // found at load time
 var halls=[];       // [{id,name}]
@@ -247,6 +246,20 @@ function showPeriodLeave(eid,ename){
 }
 
 // ── LOGIN ─────────────────────────────────────────────────────
+// Load updated password from Firebase before login
+db.collection('gavs_data').doc('main').get().then(function(doc){
+  if(!doc.exists)return;
+  var d=doc.data();
+  if(d.portalPasswords&&d.portalPasswords[PORTAL_TITLE.toLowerCase().replace(/ /g,'')]){
+    var _pw=d.portalPasswords[PORTAL_TITLE.toLowerCase().replace(/ /g,'')];
+    var newP=(typeof _pw==='object'?_pw.password:_pw);
+    if(newP)PORTAL_CREDS=[{u:PORTAL_CREDS[0].u,p:newP}];
+  }
+  // Also try by venue name key
+  var _key=Object.keys(d.portalPasswords||{}).find(function(k){return k.toLowerCase()===VENUE_NAME.toLowerCase().replace(/ /g,'');});
+  if(_key&&d.portalPasswords[_key]){var _pw2=d.portalPasswords[_key];var _np=(typeof _pw2==='object'?_pw2.password:_pw2);if(_np)PORTAL_CREDS=[{u:PORTAL_CREDS[0].u,p:_np}];}
+}).catch(function(){});
+
 g('L_BTN').addEventListener('click',doLogin);
 g('L_P').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 function doLogin(){
@@ -278,7 +291,6 @@ function loadFromCloud(){
       venues=d.venues||[];
       ROLES_LIST=d.roles||[];
       if(d.annualLeave)annualLeave=d.annualLeave;
-      if(d.portalAccess&&d.portalAccess['ihcfab'])myAccess=d.portalAccess['ihcfab'];
       // Find IHC venue
       var v=venues.find(function(v){return v.name===VENUE_NAME;});
       ihcVenueId=v?v.id:'';
@@ -289,12 +301,6 @@ function loadFromCloud(){
         Object.keys(adminAsgn[ihcVenueId]).forEach(function(eid){adminDeployedToIHCFab[eid]=true;});
       }
       staff=allStaff.filter(function(e){
-        // Role-based filter: if portal has role restrictions, apply them
-        if(myAccess.roles&&myAccess.roles.length>0&&myAccess.roles.indexOf(e.role)<0)return false;
-        // If no roles assigned yet, show empty rather than all staff
-        if(!myAccess.roles||myAccess.roles.length===0)return false;
-        // If no venue found yet or role-only portal, just show role-filtered staff
-        if(!ihcVenueId)return true;
         return e.pv===ihcVenueId||adminDeployedToIHCFab[e.id];
       });
       // Load halls

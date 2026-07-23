@@ -990,10 +990,14 @@ function getPortalAttendance(d){
 function savePortalAttendance(d,attn){
   if(!mainDlog[d])mainDlog[d]={};
   mainDlog[d].attendance=attn;
-  // Write to gavs_data/dlog (new separate document), merge so other date fields untouched
   var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attn};
-  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true})
-    .catch(function(e){console.warn('Portal attendance save error:',e);});
+  _savePortalAtnWithRetry(dlogUpdate,0);
+}
+function _savePortalAtnWithRetry(payload,attempt){
+  db.collection('gavs_data').doc('dlog').set(payload,{merge:true}).catch(function(e){
+    console.warn('Portal attendance save error (attempt '+attempt+'):',e.message||e);
+    if(attempt<4)setTimeout(function(){_savePortalAtnWithRetry(payload,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
+  });
 }
 function pAtnBuildDutyMaps(d){
   var sv={},st2={},lm={},om={},gm={};
@@ -1027,6 +1031,11 @@ function drawPortalAttendance(){
   var el=g('ATN_PANEL_P');if(!el)return;
   if(!_patnDate)_patnDate=getD();
   el.innerHTML='';
+  // Show loading if dlog not yet available
+  if(!_portalDlogLoaded&&!Object.keys(mainDlog).length){
+    el.innerHTML='<div style="text-align:center;padding:40px;color:#888;font-size:13px;">⏳ Loading attendance data...</div>';
+    setTimeout(function(){drawPortalAttendance();},1000);return;
+  }
   // Header
   var hdr=document.createElement('div');
   hdr.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;';

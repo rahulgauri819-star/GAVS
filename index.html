@@ -629,10 +629,14 @@ input,select,button{font-family:inherit;}
   <!-- Monthly Attendance panel -->
   <div id="rp-monthleatn" class="hide">
     <div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;margin-bottom:16px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;">
         <div>
           <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Month</label>
           <select class="sel" id="MAR_MON" style="margin-bottom:0;"></select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Year</label>
+          <select class="sel" id="MAR_YEAR" style="margin-bottom:0;"></select>
         </div>
         <div>
           <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Role</label>
@@ -3859,14 +3863,29 @@ function getAttendance(){
   if(!dlog[d].attendance)dlog[d].attendance={};
   return dlog[d].attendance;
 }
+var _atnOfflineQueue=null; // holds pending attendance write when offline
+var _atnRetryTimer=null;
+
 function saveAttendance(){
   var d=_atnDate||todayIST();
   if(!dlog[d])dlog[d]={};
-  // Write attendance to gavs_data/dlog using merge — only touches attendance key
-  db.collection('gavs_data').doc('dlog').set(
-    {dlog:(function(o){o[d]=o[d]||{};o[d].attendance=dlog[d].attendance;return o;})({})},
-    {merge:true}
-  );
+  var attnPayload=dlog[d].attendance||{};
+  clearTimeout(_atnRetryTimer);
+  _saveAttendanceWithRetry(d,attnPayload,0);
+}
+
+function _saveAttendanceWithRetry(d,attnPayload,attempt){
+  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attnPayload};
+  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true}).then(function(){
+    _atnOfflineQueue=null;
+  }).catch(function(e){
+    console.warn('Attendance save error (attempt '+attempt+'):',e.message||e);
+    _atnOfflineQueue={d:d,attn:attnPayload};
+    if(attempt<5){
+      var delay=Math.min(1500*Math.pow(2,attempt),30000);
+      _atnRetryTimer=setTimeout(function(){_saveAttendanceWithRetry(d,attnPayload,attempt+1);},delay);
+    }
+  });
 }
 
 var _atnRole='Manager'; // kept for PDF compat
@@ -3893,32 +3912,31 @@ function atnBuildDutyMaps(d){
   return {staffVenue:staffVenue,staffTime:staffTime,isLeaveMap:isLeaveMap,isOffMap:isOffMap,isGdnMap:isGdnMap};
 }
 
+var _atnLastAutoDate=''; // track which date was last auto-marked to avoid repeat runs
+
 function atnAutoMark(d,attn,maps){
-  // Apply auto-mark for all staff that don't have manual=true
+  // Only auto-mark once per date — not on every redraw
+  if(_atnLastAutoDate===d)return;
   var changed=false;
   staff.forEach(function(e){
     var a=attn[e.id]||{};
-    if(a.manual)return; // manual override — never touch
+    if(a.manual)return;
     var newStatus='';
     if(maps.isLeaveMap[e.id])newStatus='absent';
     else if(maps.isOffMap[e.id]||maps.isGdnMap[e.id]||maps.staffVenue[e.id])newStatus='present';
-    // else: unassigned → leave unmarked
     if(newStatus&&a.status!==newStatus){
       if(!attn[e.id])attn[e.id]={};
-      attn[e.id].status=newStatus;
-      attn[e.id].auto=true;
-      changed=true;
+      attn[e.id].status=newStatus;attn[e.id].auto=true;changed=true;
     } else if(!newStatus&&a.auto&&a.status){
-      // Was auto-marked but now nothing assigned — clear it
-      attn[e.id].status='';attn[e.id].auto=false;
-      changed=true;
+      attn[e.id].status='';attn[e.id].auto=false;changed=true;
     }
   });
   if(changed){
     if(!dlog[d])dlog[d]={};
     dlog[d].attendance=attn;
-    saveCloud();
+    saveAttendance(); // Fix 1: use targeted attendance save, not full saveCloud()
   }
+  _atnLastAutoDate=d; // Fix 7: mark this date as done so we don't re-run on every redraw
 }
 
 function makeAtnRow(e,attn,maps,d,saveFn,redrawFn){
@@ -3935,7 +3953,7 @@ function makeAtnRow(e,attn,maps,d,saveFn,redrawFn){
   row.appendChild(info);
   var btns=document.createElement('div');btns.style.cssText='display:flex;gap:5px;align-items:center;flex-wrap:wrap;';
   [{s:'present',l:'✅ P',bg:'#e8f5e9',ac:'#2e7d32',brd:'#a5d6a7'},
-   {s:'absent',l:'❌ A',bg:'#ffebee',ac:'#c62828',brd:'#ef9a9a'},
+   {s:'absent',l:'❌ L',bg:'#ffebee',ac:'#c62828',brd:'#ef9a9a'},
    {s:'uninformed',l:'⚠️ U',bg:'#fff3e0',ac:'#e65100',brd:'#ffcc80'}
   ].forEach(function(opt){
     var btn=document.createElement('button');var isActive=a.status===opt.s;
@@ -4007,6 +4025,7 @@ function drawAttendance(){
 // Attendance date picker
 g('ATN_DATE')&&g('ATN_DATE').addEventListener('change',function(){
   _atnDate=this.value||todayIST();
+  _atnLastAutoDate=''; // reset so auto-mark runs for new date
   drawAttendance();
 });
 // Attendance search
@@ -4631,26 +4650,20 @@ g('SRPB').addEventListener('click',makeStaffPDF);
 // ── MONTHLY ATTENDANCE REPORT ──────────────────────────────────
 var MONS_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function populateMARDrops(){
-  var ms=g('MAR_MON'),rs=g('MAR_ROLE');
-  if(!ms||!rs)return;
+  var ms=g('MAR_MON'),rs=g('MAR_ROLE'),ys=g('MAR_YEAR');
+  if(!ms||!rs||!ys)return;
   if(!ms.options.length){
     var cy=nowIST();
     for(var i=0;i<12;i++){var o=document.createElement('option');o.value=i;o.textContent=MONS[i];ms.appendChild(o);}
     ms.value=cy.getMonth();
   }
-  if(!rs.options.length){
-    ROLES.forEach(function(r){var o=document.createElement('option');o.value=r;o.textContent=r;rs.appendChild(o);});
-  }
-  // Year hidden in month value for simplicity — add year selector
-  if(!g('MAR_YEAR')){
-    var yw=document.createElement('div');yw.style.cssText='display:none;';
-    var ys=document.createElement('select');ys.id='MAR_YEAR';ys.className='sel';
+  if(!ys.options.length){
     var cy2=nowIST().getFullYear();
-    for(var y=cy2;y>=cy2-2;y--){var o2=document.createElement('option');o2.value=y;o2.textContent=y;ys.appendChild(o2);}
-    ys.value=cy2;yw.appendChild(ys);
-    var grid=ms.closest('.sel')&&ms.closest('.sel').parentNode;
-    // just attach to MAR_MON parent node
-    if(ms.parentNode){ms.parentNode.appendChild(ys);}
+    for(var y=cy2;y>=cy2-3;y--){var o2=document.createElement('option');o2.value=y;o2.textContent=y;ys.appendChild(o2);}
+    ys.value=cy2;
+  }
+  if(!rs.options.length){
+    ROLES.forEach(function(r){var o3=document.createElement('option');o3.value=r;o3.textContent=r;rs.appendChild(o3);});
   }
 }
 g('btnMAR')&&g('btnMAR').addEventListener('click',makeMonthlyAttnPDF);
@@ -5408,7 +5421,7 @@ var PORTAL_ACCOUNTS=[
   {id:'jaipur',  label:'Jaipur Manager', username:'jaipur',      password:'jaipur2024'},
   {id:'fab',     label:'Fabrication Team',username:'fabrication', password:'fab2024'},
   {id:'led',     label:'LED Team',        username:'led',         password:'led2024'},
-  {id:'lt',      label:'Light & Truss',   username:'lighttruss',  password:'lt2024'},
+  {id:'lighttruss',label:'Light & Truss',   username:'lighttruss',  password:'lt2024'},
   {id:'labour',  label:'Labour Team',     username:'labour',      password:'labour2024'},
 ];
 
@@ -5443,6 +5456,7 @@ var jaipurLog={};
 var portalAccess={
   fabrication:{roles:['Fabrication Manager','Fabrication Field Team','Fabrication Store Team','IHC Fabrication'],vendors:['fabrication']},
   led:{roles:['LED'],vendors:['led']},
+  lt:{roles:['Light','Truss'],vendors:[]},
   lighttruss:{roles:['Light','Truss'],vendors:[]},
   labour:{roles:[],vendors:['labour']},
   ihc:{roles:[],vendors:[]},
@@ -6635,6 +6649,11 @@ window.addEventListener('online',function(){
     showSaveIndicator('saving');
     doSaveWithRetry(_offlineQueue,0);
   }
+  // Retry queued attendance save
+  if(_atnOfflineQueue){
+    clearTimeout(_atnRetryTimer);
+    _saveAttendanceWithRetry(_atnOfflineQueue.d,_atnOfflineQueue.attn,0);
+  }
 });
 
 function saveCloud(){
@@ -6748,21 +6767,30 @@ function loadFromCloud(callback){
   if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
   // Set up dlog listener — reads from gavs_data/dlog (separate document)
   _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      dlog=dlogDoc.data().dlog;
-      _dlogMigrated=true;
-      // Refresh the currently shown date if app is loaded
+      var newDlog=dlogDoc.data().dlog;
+      // Only re-render venue grid if duty data changed (not just attendance)
+      var needsRedraw=false;
       if(DB_LOADED){
         var _cd=_lastLoadedDate||getD();
-        loadLiveFromDlog(_cd);
+        var oldEntry=dlog[_cd]||{};var newEntry=newDlog[_cd]||{};
+        var oldVenues=JSON.stringify(oldEntry.venues||{});var newVenues=JSON.stringify(newEntry.venues||{});
+        var oldLeave=JSON.stringify(oldEntry.leave||[]);var newLeave=JSON.stringify(newEntry.leave||[]);
+        needsRedraw=(oldVenues!==newVenues||oldLeave!==newLeave);
+      }
+      dlog=newDlog;
+      _dlogMigrated=true;
+      if(DB_LOADED&&needsRedraw){
+        var _cd2=_lastLoadedDate||getD();
+        loadLiveFromDlog(_cd2);
         drawVenueGrid();drawStaffPanel();drawStats();
       }
     } else if(_mainDlogCache&&!_dlogMigrated){
-      // Migration: dlog doc doesn't exist yet — copy from main doc
       console.log('Migrating dlog to separate document...');
       db.collection('gavs_data').doc('dlog').set({dlog:_mainDlogCache,updatedAt:new Date().toISOString()}).then(function(){
-        _dlogMigrated=true;
-        dlog=_mainDlogCache;
+        _dlogMigrated=true;dlog=_mainDlogCache;
+        _mainDlogCache=null; // Fix 5: clear cache after migration
         console.log('Dlog migration complete.');
       }).catch(function(e){console.error('Dlog migration error:',e);});
     }

@@ -287,6 +287,10 @@ function loadFromCloud(){
         Object.keys(adminAsgn[ihcVenueId]).forEach(function(eid){adminDeployedToIHCFab[eid]=true;});
       }
       staff=allStaff.filter(function(e){
+        // Role-based filter: if portal has role restrictions, apply them
+        if(myAccess.roles&&myAccess.roles.length>0&&myAccess.roles.indexOf(e.role)<0)return false;
+        // If no venue found yet or role-only portal, just show role-filtered staff
+        if(!ihcVenueId)return true;
         return e.pv===ihcVenueId||adminDeployedToIHCFab[e.id];
       });
       // Load halls
@@ -917,8 +921,13 @@ function saveIHCAttendance(d,attn){
   if(!mainDlog[d])mainDlog[d]={};
   mainDlog[d].attendance=attn;
   var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attn};
-  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true})
-    .catch(function(e){console.warn('IHC attendance save error:',e);});
+  _saveIHCAtnWithRetry(dlogUpdate,0);
+}
+function _saveIHCAtnWithRetry(payload,attempt){
+  db.collection('gavs_data').doc('dlog').set(payload,{merge:true}).catch(function(e){
+    console.warn('IHC attendance save error (attempt '+attempt+'):',e.message||e);
+    if(attempt<4)setTimeout(function(){_saveIHCAtnWithRetry(payload,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
+  });
 }
 function ihcAtnBuildMaps(d){
   var sv={},st2={},lm={};
@@ -963,6 +972,10 @@ function drawIHCAttendance(){
   var el=g('ATN_PANEL_IHC');if(!el)return;
   if(!_ihcAtnDate)_ihcAtnDate=g('DP').value||new Date().toISOString().slice(0,10);
   el.innerHTML='';
+  if(!Object.keys(mainDlog).length){
+    el.innerHTML='<div style="text-align:center;padding:40px;color:#888;font-size:13px;">⏳ Loading attendance data...</div>';
+    setTimeout(function(){drawIHCAttendance();},1000);return;
+  }
   var hdr=document.createElement('div');hdr.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;';
   hdr.innerHTML='<h2 style="font-size:15px;font-weight:800;color:#1a237e;flex:1;">📊 Attendance — '+esc(PORTAL_TITLE)+'</h2>'+
     '<input type="date" id="IATN_DATE" value="'+_ihcAtnDate+'" style="padding:6px 10px;border:1.5px solid #e3eaff;border-radius:8px;font-size:12px;font-weight:700;color:#1a237e;outline:none;"/>'+

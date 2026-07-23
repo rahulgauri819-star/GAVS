@@ -165,6 +165,7 @@ var db=firebase.firestore();
 // ── STATE ─────────────────────────────────────────────────────
 var staff=[];       // all staff from Firebase (filtered to pinned venue)
 var allStaff=[];    // raw staff from Firebase
+var myAccess={roles:[],vendors:[]}; // portal access — loaded from Firebase portalAccess[PID]
 var venues=[];      // all venues
 var ihcVenueId='';  // found at load time
 var halls=[];       // [{id,name}]
@@ -277,6 +278,7 @@ function loadFromCloud(){
       venues=d.venues||[];
       ROLES_LIST=d.roles||[];
       if(d.annualLeave)annualLeave=d.annualLeave;
+      if(d.portalAccess&&d.portalAccess['ihcfab'])myAccess=d.portalAccess['ihcfab'];
       // Find IHC venue
       var v=venues.find(function(v){return v.name===VENUE_NAME;});
       ihcVenueId=v?v.id:'';
@@ -617,6 +619,9 @@ function drawLeaveZone(){
   var lvList=Object.values(lvMap).filter(function(a){
     return staff.some(function(s){return s.id===a.emp.id;});
   });
+  // Auto-collapse when empty
+  if(!lvList.length&&!lvCollapsed)lvCollapsed=true;
+  if(lvList.length&&lvCollapsed)lvCollapsed=false;
 
   var zone=document.createElement('div');zone.className='lv-zone';
 

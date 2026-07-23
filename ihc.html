@@ -613,6 +613,9 @@ function drawLeaveZone(){
   var lvList=Object.values(lvMap).filter(function(a){
     return staff.some(function(s){return s.id===a.emp.id;});
   });
+  // Auto-collapse when empty
+  if(!lvList.length&&!lvCollapsed)lvCollapsed=true;
+  if(lvList.length&&lvCollapsed)lvCollapsed=false;
 
   var zone=document.createElement('div');zone.className='lv-zone';
 

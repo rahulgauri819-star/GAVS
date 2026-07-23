@@ -194,7 +194,11 @@ function loadData(){
   // Listen to gavs_data/dlog for attendance and duty log data
   db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      mainDlog=dlogDoc.data().dlog;_portalDlogLoaded=true;
+      var newDlog=dlogDoc.data().dlog;
+      mainDlog=newDlog;
+      dlog=newDlog; // Fix: keep dlog in sync with gavs_data/dlog (the new source of truth)
+      _portalDlogLoaded=true;
+      if(DBL){loadDateData(getD());drawDZ();drawGrid();updateStats();}
     }
   },function(e){console.warn('Portal dlog listener error:',e);});
 }
@@ -292,7 +296,13 @@ function save(){
   if(!DBL)return;sv('saving');clearTimeout(ST);
   ST=setTimeout(function(){
     saveLog();
-    db.collection('gavs_data').doc('main').update({dlog:dlog,vdlog:vdlog}).then(function(){sv('saved');}).catch(function(){sv('error');});
+    var d=_lastDate||getD();
+    // Write this date's dlog entry to gavs_data/dlog (new location)
+    var dlogPayload={dlog:{}};dlogPayload.dlog[d]=dlog[d];
+    db.collection('gavs_data').doc('dlog').set(dlogPayload,{merge:true})
+      .then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
+    // vdlog still goes to main
+    db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
   },400);
 }
 
@@ -425,14 +435,16 @@ function drawDZ(){
   var msids=new Set(myS().map(function(e){return e.id;}));
   function makeDZ(bg,borderC,hdrBg,title,map,col){
     var list=Object.values(map).filter(function(a){return msids.has(a.emp.id);});
+    var isEmpty=!list.length;
     var box=document.createElement('div');
-    // Compact venue-box style
     box.style.cssText='background:#fff;border:2px solid '+borderC+';border-radius:14px;overflow:hidden;margin-bottom:8px;';
     var hdr=document.createElement('div');
-    hdr.style.cssText='background:'+hdrBg+';color:#fff;padding:6px 10px;display:flex;align-items:center;gap:6px;border-radius:12px 12px 0 0;';
+    hdr.style.cssText='background:'+hdrBg+';color:#fff;padding:6px 10px;display:flex;align-items:center;gap:6px;border-radius:'+(isEmpty?'12px':'12px 12px 0 0')+';cursor:pointer;user-select:none;';
+    var collapseArr=document.createElement('span');collapseArr.style.cssText='font-size:11px;';collapseArr.textContent=isEmpty?'▶':'▼';
     hdr.innerHTML='<span style="font-size:11px;font-weight:800;flex:1;">'+title+'</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;">'+list.length+' staff</span>';
+    hdr.appendChild(collapseArr);
     box.appendChild(hdr);
-    var body=document.createElement('div');body.style.cssText='padding:6px;min-height:36px;';
+    var body=document.createElement('div');body.style.cssText='padding:6px;min-height:36px;display:'+(isEmpty?'none':'block')+';';
     if(!list.length){body.innerHTML='<div style="text-align:center;font-size:10px;color:#bbb;padding:6px;">Drag staff here</div>';}
     else{
       var roleGrps={};
@@ -480,7 +492,14 @@ function drawDZ(){
       });
     }
     box.appendChild(body);
-    box.addEventListener('dragover',function(ev){ev.preventDefault();box.style.opacity='0.8';});
+    // Toggle collapse on header click
+    hdr.addEventListener('click',function(){
+      var isHidden=body.style.display==='none';
+      body.style.display=isHidden?'block':'none';
+      collapseArr.textContent=isHidden?'▼':'▶';
+      hdr.style.borderRadius=isHidden?'12px 12px 0 0':'12px';
+    });
+    box.addEventListener('dragover',function(ev){ev.preventDefault();box.style.opacity='0.8';body.style.display='block';collapseArr.textContent='▼';hdr.style.borderRadius='12px 12px 0 0';});
     box.addEventListener('dragleave',function(){box.style.opacity='1';});
     box.addEventListener('drop',function(ev){
       ev.preventDefault();box.style.opacity='1';

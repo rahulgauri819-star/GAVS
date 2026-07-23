@@ -291,6 +291,8 @@ function loadFromCloud(){
       staff=allStaff.filter(function(e){
         // Role-based filter: if portal has role restrictions, apply them
         if(myAccess.roles&&myAccess.roles.length>0&&myAccess.roles.indexOf(e.role)<0)return false;
+        // If no roles assigned yet, show empty rather than all staff
+        if(!myAccess.roles||myAccess.roles.length===0)return false;
         // If no venue found yet or role-only portal, just show role-filtered staff
         if(!ihcVenueId)return true;
         return e.pv===ihcVenueId||adminDeployedToIHCFab[e.id];

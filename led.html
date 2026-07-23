@@ -473,6 +473,13 @@ function drawDZ(){
             calBtn.addEventListener('click',(function(eid,ename){return function(ev){ev.stopPropagation();showPeriodLeave(eid,ename);};})(a.emp.id,a.emp.name));
             cell.appendChild(calBtn);
           }
+          if(map===offMap||map===gdnMap){
+            var tSel2=document.createElement('select');
+            tSel2.style.cssText='flex-shrink:0;background:'+(map===offMap?'#f3e5f5':'#fce4ec')+';border:1px solid '+(map===offMap?'#ce93d8':'#f48fb1')+';border-radius:4px;color:'+(map===offMap?'#7b1fa2':'#e91e8c')+';padding:1px;font-size:7.5px;cursor:pointer;width:36px;max-width:36px;';
+            TMS.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=st(t);if(t===(a.duty||'6:00 AM'))o.selected=true;tSel2.appendChild(o);});
+            (function(eid2,m2){tSel2.addEventListener('change',function(){if(m2[eid2]){m2[eid2].duty=this.value;save();}});})(a.emp.id,map);
+            cell.appendChild(tSel2);
+          }
           var rm=document.createElement('button');rm.textContent='✕';
           rm.style.cssText='background:none;border:none;color:'+col+';font-size:10px;cursor:pointer;padding:0;flex-shrink:0;';
           rm.addEventListener('click',(function(eid){return function(){

@@ -3208,9 +3208,10 @@ function drawMVenues(){
         var gtSel=document.createElement('select');
         gtSel.style.cssText='border:1px solid #ffd54f;border-radius:5px;color:#f57f17;padding:2px 4px;font-size:10px;background:#fffde7;flex-shrink:0;';
         TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(e.fixedDuty||'6:00 AM'))o.selected=true;gtSel.appendChild(o);});
+        gtSel.addEventListener('mousedown',function(ev){ev.stopPropagation();});
         gtSel.addEventListener('click',function(ev){ev.stopPropagation();});
         item.appendChild(ns);item.appendChild(gtSel);
-        item.addEventListener('mousedown',(function(emp2,ts2){return function(ev){ev.preventDefault();
+        item.addEventListener('click',(function(emp2,ts2){return function(ev){
           emp2.pgdn=true;
           emp2.fixedDuty=ts2.value||emp2.fixedDuty||'6:00 AM';
           gdnInput.value='';gdnDD.style.display='none';
@@ -3290,6 +3291,7 @@ function drawMVenues(){
           var tSel=document.createElement('select');
           tSel.style.cssText='border:1px solid #bbdefb;border-radius:5px;color:#0d47a1;padding:2px 4px;font-size:10px;background:#f0f4ff;flex-shrink:0;';
           TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===(e.fixedDuty||'6:00 AM'))o.selected=true;tSel.appendChild(o);});
+          tSel.addEventListener('mousedown',function(ev){ev.stopPropagation();});
           tSel.addEventListener('click',function(ev){ev.stopPropagation();});
           item.appendChild(nameSpan);item.appendChild(tSel);
           item.addEventListener('mouseenter',function(){this.style.background='#e8f5e9';});
@@ -3367,7 +3369,6 @@ function editStaff(eid){
   var roOpts=ROLES.map(function(r){return'<option value="'+esc(r)+'"'+(e.role===r?' selected':'')+'>'+esc(r)+'</option>';}).join('');
   var pvOpts='<option value="">No Fixed Venue</option>'+venues.map(function(v){return'<option value="'+v.id+'"'+(e.pv===v.id?' selected':'')+'>'+esc(v.name)+'</option>';}).join('');
   var ftOpts=TIMES.map(function(t){return'<option'+(t===(e.fixedDuty||'6:00 AM')?' selected':'')+'>'+t+'</option>';}).join('');
-  var gdnOpts=TIMES.map(function(t){return'<option'+(t===(e.fixedDuty||'6:00 AM')?' selected':'')+'>'+t+'</option>';}).join('');
   showModal(
     '<div class="mt">Edit Staff</div>'+
     '<label class="lbl">Name</label><input id="ESN" class="inp" value="'+esc(e.name)+'"/>'+
@@ -3379,27 +3380,16 @@ function editStaff(eid){
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'+
       '<input type="checkbox" id="ESPGDN" style="width:18px;height:18px;cursor:pointer;accent-color:#f57f17;"'+(e.pgdn?' checked':'')+'>'+
       '<span style="font-size:12px;color:#f57f17;font-weight:600;">Auto-assign to Godown Team every day</span>'+
-      '<select id="ESGDNT" class="sel" style="margin-bottom:0;margin-left:8px;min-width:90px;'+(e.pgdn?'':'opacity:0.4;pointer-events:none;')+'">'+gdnOpts+'</select>'+
     '</div>'+
     '<button class="mbtn blue" id="m-yes">Save Changes</button>'+
     '<button class="mcancel" id="m-no">Cancel</button>'
   );
-  // Enable/disable time selector based on checkbox
-  var gdnChk=g('ESPGDN'),gdnTSel=g('ESGDNT');
-  if(gdnChk&&gdnTSel){
-    gdnChk.addEventListener('change',function(){
-      gdnTSel.style.opacity=this.checked?'1':'0.4';
-      gdnTSel.style.pointerEvents=this.checked?'auto':'none';
-    });
-  }
   g('m-yes').onclick=function(){
     var n=(g('ESN').value||'').trim();
     if(!n){toast('Enter name','w');return;}
     if(staff.find(function(x){return x.name.toLowerCase()===n.toLowerCase()&&x.id!==eid;})){toast('"'+n+'" already exists!','e');return;}
     var r=g('ESR').value,ph=(g('ESP').value||'').trim(),pv=g('ESPV').value||'',ft=g('ESFT').value||'6:00 AM';
     var pgdn=!!(g('ESPGDN')&&g('ESPGDN').checked);
-    // If pinned to godown, use godown time as fixedDuty (overrides venue fixed time)
-    if(pgdn&&g('ESGDNT'))ft=g('ESGDNT').value||ft;
     var oldPv=e.pv;var oldFt=e.fixedDuty||'6:00 AM';
     e.name=n;e.role=r;e.phone=ph;e.pv=pv;e.fixedDuty=ft;e.pgdn=pgdn;
     // Update in asgn
@@ -6432,7 +6422,7 @@ function drawPortalDetail(){
   var acct=PORTAL_ACCOUNTS.find(function(a){return a.id===curPortalId;});
   if(!acct)return;
   var access=PORTAL_ACCESS[acct.id]||{roles:[],vendors:[]};
-  var isTeamPortal=['fab','led','lt','labour','ihcfab'].indexOf(acct.id)>=0;
+  var isTeamPortal=['fab','led','lighttruss','labour','ihcfab'].indexOf(acct.id)>=0;
 
   var html='<div class="addbox" style="margin-bottom:16px;">';
   html+='<div class="abt" style="margin-bottom:12px;">🔑 '+esc(acct.label)+' — Password</div>';

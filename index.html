@@ -3223,7 +3223,7 @@ function drawMVenues(){
       });
       gdnDD.style.display=opts.length?'block':'none';
     });
-    gdnInput.addEventListener('blur',function(){setTimeout(function(){gdnDD.style.display='none';},150);});
+    gdnInput.addEventListener('blur',function(){setTimeout(function(){if(!gdnDD.contains(document.activeElement))gdnDD.style.display='none';},200);});
     gdnPinWrap.appendChild(gdnInput);gdnPinWrap.appendChild(gdnDD);
     gdnCard.appendChild(gdnPinWrap);
     el.appendChild(gdnCard);

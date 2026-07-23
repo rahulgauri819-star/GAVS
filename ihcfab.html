@@ -165,6 +165,7 @@ var db=firebase.firestore();
 // ── STATE ─────────────────────────────────────────────────────
 var staff=[];       // all staff from Firebase (filtered to pinned venue)
 var allStaff=[];    // raw staff from Firebase
+var myAccess={roles:[],vendors:[]}; // portal access — loaded from Firebase
 var venues=[];      // all venues
 var ihcVenueId='';  // found at load time
 var halls=[];       // [{id,name}]
@@ -291,6 +292,7 @@ function loadFromCloud(){
       venues=d.venues||[];
       ROLES_LIST=d.roles||[];
       if(d.annualLeave)annualLeave=d.annualLeave;
+      if(d.portalAccess&&d.portalAccess['ihcfab'])myAccess=d.portalAccess['ihcfab'];
       // Find IHC venue
       var v=venues.find(function(v){return v.name===VENUE_NAME;});
       ihcVenueId=v?v.id:'';
@@ -301,7 +303,12 @@ function loadFromCloud(){
         Object.keys(adminAsgn[ihcVenueId]).forEach(function(eid){adminDeployedToIHCFab[eid]=true;});
       }
       staff=allStaff.filter(function(e){
-        return e.pv===ihcVenueId||adminDeployedToIHCFab[e.id];
+        // If portal has role restrictions, apply them
+        if(myAccess.roles&&myAccess.roles.length>0){
+          return myAccess.roles.indexOf(e.role)>=0;
+        }
+        // No roles assigned — show empty (not all staff)
+        return false;
       });
       // Load halls
       halls=(d[HALLS_KEY]||[]);

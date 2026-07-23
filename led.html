@@ -564,10 +564,10 @@ function showPeriodLeave(eid,ename){
 // Venue search
 function wireVenueSearch(){
   var inp=g('VSRCH'),dd=g('VDD');if(!inp||!dd)return;
-  inp.addEventListener('input',function(){
+  inp.oninput=function(){
     var q=this.value.toLowerCase();dd.innerHTML='';
     if(!q){dd.style.display='none';return;}
-    var matches=allV.filter(function(v){return v.name.toLowerCase().indexOf(q)>=0&&activeVids.indexOf(v.id)<0;}).slice(0,8);
+    var matches=allV.filter(function(v){return v.name.toLowerCase().indexOf(q)>=0&&activeVids.indexOf(v.id)<0;}).slice(0,10);
     if(!matches.length){dd.style.display='none';return;}
     matches.forEach(function(v){
       var item=document.createElement('div');item.className='vdd-item';item.textContent=v.name;
@@ -581,8 +581,8 @@ function wireVenueSearch(){
       dd.appendChild(item);
     });
     dd.style.display='block';
-  });
-  inp.addEventListener('blur',function(){setTimeout(function(){dd.style.display='none';},150);});
+  };
+  inp.onblur=function(){setTimeout(function(){dd.style.display='none';},150);};
 }
 
 // Comment / Info

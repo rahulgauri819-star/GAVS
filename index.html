@@ -3843,9 +3843,12 @@ function getAttendance(){
 }
 function saveAttendance(){
   var d=_atnDate||todayIST();
-  // Only save attendance key — never touch venues/leave/office/godown of that date
   if(!dlog[d])dlog[d]={};
-  saveCloud();
+  // Write attendance to gavs_data/dlog using merge — only touches attendance key
+  db.collection('gavs_data').doc('dlog').set(
+    {dlog:(function(o){o[d]=o[d]||{};o[d].attendance=dlog[d].attendance;return o;})({})},
+    {merge:true}
+  );
 }
 
 var _atnRole='Manager'; // kept for PDF compat
@@ -6660,11 +6663,12 @@ function actuallySaveCloud(){
     });
     var payload={
       staff:staffData,venues:venueData,asgn:asgnData,lvMap:lvData,offMap:offData,
-      drafts:draftsData,roles:ROLES,dlog:dlog,activeVids:activeVids,annualLeave:annualLeave,
+      drafts:draftsData,roles:ROLES,activeVids:activeVids,annualLeave:annualLeave,
       vHalls:vHalls,venueOrder:venueOrder,
       vendorAsgn:vendorAsgn,vendorCompanies:vendorCompanies,
       vendorTypesCustom:VENDOR_TYPES,vdlog:vdlog,portalPasswords:portalPasswords,portalAccess:portalAccess,ihcHalls:ihcHalls,jaipurHalls:jaipurHalls,ihcAsgn:ihcAsgn,jaipurAsgn:jaipurAsgn,ihcLog:ihcLog,jaipurLog:jaipurLog,
       updatedAt:new Date().toISOString()
+      // dlog deliberately excluded — written separately to gavs_data/dlog
     };
     doSaveWithRetry(payload,0);
   }catch(err){console.error('Save prep error:',err);}
@@ -6682,6 +6686,8 @@ function doSaveWithRetry(payload,attempt){
     _firstFailTime=null; // reset on success
     _clearBackupLocal();
     showSaveIndicator('saved');
+    // Write dlog to separate document after main save succeeds
+    saveDlogSeparate(0);
   }).catch(function(e){
     console.warn('Save error (attempt '+attempt+'):',e.message||e);
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
@@ -6704,10 +6710,45 @@ function doSaveWithRetry(payload,attempt){
   });
 }
 
+function saveDlogSeparate(attempt){
+  if(attempt>5)return;
+  db.collection('gavs_data').doc('dlog').set({dlog:dlog,updatedAt:new Date().toISOString()}).then(function(){
+    _dlogMigrated=true;
+  }).catch(function(e){
+    console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
+    setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
+  });
+}
+
 var _snapshotUnsub=null; // holds the onSnapshot unsubscribe handle
+var _dlogSnapshotUnsub=null; // separate listener for dlog document
+var _dlogMigrated=false; // true once dlog has been written to gavs_data/dlog
+var _mainDlogCache=null; // holds dlog from main doc for migration
 function loadFromCloud(callback){
   // Unsubscribe any previous listener before creating a new one
   if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){} _snapshotUnsub=null;}
+  if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
+  // Set up dlog listener — reads from gavs_data/dlog (separate document)
+  _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+      dlog=dlogDoc.data().dlog;
+      _dlogMigrated=true;
+      // Refresh the currently shown date if app is loaded
+      if(DB_LOADED){
+        var _cd=_lastLoadedDate||getD();
+        loadLiveFromDlog(_cd);
+        drawVenueGrid();drawStaffPanel();drawStats();
+      }
+    } else if(_mainDlogCache&&!_dlogMigrated){
+      // Migration: dlog doc doesn't exist yet — copy from main doc
+      console.log('Migrating dlog to separate document...');
+      db.collection('gavs_data').doc('dlog').set({dlog:_mainDlogCache,updatedAt:new Date().toISOString()}).then(function(){
+        _dlogMigrated=true;
+        dlog=_mainDlogCache;
+        console.log('Dlog migration complete.');
+      }).catch(function(e){console.error('Dlog migration error:',e);});
+    }
+  },function(e){console.warn('Dlog listener error:',e);});
   var initialLoad=true;
   var timeout=setTimeout(function(){
     console.warn('Firebase timeout');
@@ -6734,8 +6775,8 @@ function loadFromCloud(callback){
       }
       // Restore roles
       if(d.roles&&d.roles.length)ROLES=d.roles;
-      // Restore dlog FIRST — it is the source of truth for every date's data
-      if(d.dlog)dlog=d.dlog;
+      // Cache dlog from main for migration — used if gavs_data/dlog doesn't exist yet
+      if(d.dlog){_mainDlogCache=d.dlog;if(!_dlogMigrated)dlog=d.dlog;}
       if(d.vdlog)vdlog=d.vdlog;
       if(d.annualLeave)annualLeave=d.annualLeave;
       // Build the live working set from dlog for the date currently shown.

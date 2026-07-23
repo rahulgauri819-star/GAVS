@@ -898,6 +898,13 @@ g('DP').addEventListener('change',function(){
   drawHalls();drawStaffPanel();drawLeaveZone();
 });
 
+// Listen to gavs_data/dlog for attendance data
+db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+  if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+    mainDlog=dlogDoc.data().dlog;
+  }
+},function(e){console.warn('IHC dlog listener error:',e);});
+
 // ── IHC ATTENDANCE ────────────────────────────────────────────
 function getIHCAttendance(d){
   if(!mainDlog)mainDlog={};
@@ -906,17 +913,12 @@ function getIHCAttendance(d){
   return mainDlog[d].attendance;
 }
 var mainDlog={};
-// Load mainDlog from snapshot — patch into existing snapshot handler
-(function(){
-  var _origSnap=db.collection('gavs_data').doc('main');
-  // mainDlog loaded via onSnapshot already subscribed; we patch after load
-})();
 function saveIHCAttendance(d,attn){
   if(!mainDlog[d])mainDlog[d]={};
   mainDlog[d].attendance=attn;
-  db.collection('gavs_data').doc('main').update(
-    (function(o){o['dlog.'+d+'.attendance']=attn;return o;})({})
-  );
+  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attn};
+  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true})
+    .catch(function(e){console.warn('IHC attendance save error:',e);});
 }
 function ihcAtnBuildMaps(d){
   var sv={},st2={},lm={};

@@ -149,6 +149,7 @@ g('LBTN').addEventListener('click',doLogin);
 g('LP').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 
 // Pre-load portal credentials from Firebase before login
+var _portalDlogLoaded=false;
 db.collection('gavs_data').doc('main').get().then(function(doc){
   if(!doc.exists)return;
   var d=doc.data();
@@ -180,7 +181,7 @@ function loadData(){
     allS=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM',pgdn:e.pgdn||false};});
     allV=d.venues||[];ROLES=d.roles||[];VTS=d.vendorTypesCustom||[];VCO=d.vendorCompanies||{};
     if(d.dlog)dlog=d.dlog;
-    if(d.dlog)mainDlog=d.dlog;
+    if(d.dlog&&!_portalDlogLoaded)mainDlog=d.dlog; // fallback until dlog doc loads
     if(d.vdlog)vdlog=d.vdlog;
     if(d.annualLeave)annualLeave=d.annualLeave;
     if(d.portalAccess&&d.portalAccess[PID])myAccess=d.portalAccess[PID];
@@ -190,6 +191,12 @@ function loadData(){
     if(firstLoad){firstLoad=false;buildTabs();}else{drawSP();drawDZ();drawGrid();updateStats();}
     sv('saved');
   },function(e){console.error(e);sv('error');});
+  // Listen to gavs_data/dlog for attendance and duty log data
+  db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+      mainDlog=dlogDoc.data().dlog;_portalDlogLoaded=true;
+    }
+  },function(e){console.warn('Portal dlog listener error:',e);});
 }
 
 function myS(){return allS.filter(function(e){return myAccess.roles&&myAccess.roles.indexOf(e.role)>=0;});}
@@ -983,9 +990,10 @@ function getPortalAttendance(d){
 function savePortalAttendance(d,attn){
   if(!mainDlog[d])mainDlog[d]={};
   mainDlog[d].attendance=attn;
-  db.collection('gavs_data').doc('main').update(
-    (function(o){o['dlog.'+d+'.attendance']=attn;return o;})({})
-  );
+  // Write to gavs_data/dlog (new separate document), merge so other date fields untouched
+  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attn};
+  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true})
+    .catch(function(e){console.warn('Portal attendance save error:',e);});
 }
 function pAtnBuildDutyMaps(d){
   var sv={},st2={},lm={},om={},gm={};

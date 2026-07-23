@@ -575,6 +575,11 @@ function wireVenueSearch(){
         ev.preventDefault();
         if(activeVids.indexOf(v.id)<0)activeVids.push(v.id);
         if(!asgn[v.id])asgn[v.id]={};
+        // Persist empty venue in manualVids so it survives dlog listener reloads
+        var d2=_lastDate||getD();
+        if(!dlog[d2])dlog[d2]={};
+        if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
+        if(dlog[d2].manualVids.indexOf(v.id)<0)dlog[d2].manualVids.push(v.id);
         inp.value='';dd.style.display='none';
         drawGrid();save();
       });

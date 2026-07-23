@@ -1011,7 +1011,7 @@ function go(s){
     });
   } else {
     document.body.classList.remove('in-assign');
-    if(s==='manage')drawManage();
+    if(s==='manage'){checkAdminPass(function(){drawManage();});return;}
     else if(s==='leave')drawLeave();
     else if(s==='office'){drawOffice();drawGodownTeam();}
     else if(s==='report'){
@@ -3548,7 +3548,10 @@ function confirmDelRole(r){
 function markLeave(eid){
   var e=getS(eid);if(!e)return;
   Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][eid];});
-  delete offMap[eid];
+  // Also clear from portal hall assignments
+  Object.keys(ihcAsgn).forEach(function(hid){if(ihcAsgn[hid])delete ihcAsgn[hid][eid];});
+  Object.keys(jaipurAsgn).forEach(function(hid){if(jaipurAsgn[hid])delete jaipurAsgn[hid][eid];});
+  delete offMap[eid];delete gdnMap[eid];
   lvMap[eid]={emp:e,duty:'6:00 AM'};
   toast(e.name+' on leave');
   drawLeave();drawStats();
@@ -3589,6 +3592,8 @@ if(g('LSR'))g('LSR').addEventListener('input',drawLeave);
 function markGodown(eid){
   var e=getS(eid);if(!e)return;
   Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][eid];});
+  Object.keys(ihcAsgn).forEach(function(hid){if(ihcAsgn[hid])delete ihcAsgn[hid][eid];});
+  Object.keys(jaipurAsgn).forEach(function(hid){if(jaipurAsgn[hid])delete jaipurAsgn[hid][eid];});
   delete lvMap[eid];delete gdnMap[eid];
   offMap[eid]={emp:e,duty:'6:00 AM'};
   toast(e.name+' on Office Duty');
@@ -3606,6 +3611,8 @@ function unGodown(eid){
 function markGdn(eid){
   var e=getS(eid);if(!e)return;
   Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][eid];});
+  Object.keys(ihcAsgn).forEach(function(hid){if(ihcAsgn[hid])delete ihcAsgn[hid][eid];});
+  Object.keys(jaipurAsgn).forEach(function(hid){if(jaipurAsgn[hid])delete jaipurAsgn[hid][eid];});
   delete lvMap[eid];delete offMap[eid];delete gdnMap[eid];
   gdnMap[eid]={emp:e,duty:'6:00 AM'};
   toast(e.name+' in Godown Team');
@@ -6369,8 +6376,9 @@ function renderHallsInVenueBox(body,v){
     var skipped=[];
     entries=entries.filter(function(a){
       var inOtherVenue=Object.keys(asgn).some(function(vid){return vid!==v.id&&asgn[vid]&&asgn[vid][a.emp.id];});
-      if(inOtherVenue)skipped.push(a.emp.name);
-      return !inOtherVenue;
+      var inDZ=!!(lvMap[a.emp.id]||offMap[a.emp.id]||gdnMap[a.emp.id]);
+      if(inOtherVenue||inDZ)skipped.push(a.emp.name);
+      return !(inOtherVenue||inDZ);
     });
     if(!entries.length&&!skipped.length)return;
 
@@ -6424,8 +6432,10 @@ function drawPortalDetail(){
   var el=g('PORTAL_DETAIL');if(!el)return;
   var acct=PORTAL_ACCOUNTS.find(function(a){return a.id===curPortalId;});
   if(!acct)return;
-  var access=PORTAL_ACCESS[acct.id]||{roles:[],vendors:[]};
-  var isTeamPortal=['fab','led','lighttruss','labour','ihcfab'].indexOf(acct.id)>=0;
+  // Use portalAccess (synced to Firebase) not PORTAL_ACCESS (local-only)
+  var portalKey=portalAccess.hasOwnProperty(acct.id)?acct.id:acct.username;
+  var access=portalAccess[portalKey]||{roles:[],vendors:[]};
+  var isTeamPortal=['fab','led','lighttruss','labour','ihcfab','ihc','jaipur'].indexOf(acct.id)>=0;
 
   var html='<div class="addbox" style="margin-bottom:16px;">';
   html+='<div class="abt" style="margin-bottom:12px;">🔑 '+esc(acct.label)+' — Password</div>';
@@ -6479,9 +6489,14 @@ function drawPortalDetail(){
       document.querySelectorAll('.portal-role-chk:checked').forEach(function(chk){roles.push(chk.getAttribute('data-role'));});
       var vendors=[];
       document.querySelectorAll('.portal-vendor-chk:checked').forEach(function(chk){vendors.push(chk.getAttribute('data-vtid'));});
+      // Update portalAccess (the variable that saveCloud sends to Firebase)
+      var pk=portalAccess.hasOwnProperty(acct.id)?acct.id:acct.username;
+      if(!portalAccess[pk])portalAccess[pk]={};
+      portalAccess[pk].roles=roles;
+      portalAccess[pk].vendors=vendors;
+      // Also update PORTAL_ACCESS for display consistency
       if(!PORTAL_ACCESS[acct.id])PORTAL_ACCESS[acct.id]={};
-      PORTAL_ACCESS[acct.id].roles=roles;
-      PORTAL_ACCESS[acct.id].vendors=vendors;
+      PORTAL_ACCESS[acct.id].roles=roles;PORTAL_ACCESS[acct.id].vendors=vendors;
       toast(acct.label+' access updated!');saveCloud();
     });
   }

@@ -303,12 +303,10 @@ function loadFromCloud(){
         Object.keys(adminAsgn[ihcVenueId]).forEach(function(eid){adminDeployedToIHCFab[eid]=true;});
       }
       staff=allStaff.filter(function(e){
-        // If portal has role restrictions, apply them
-        if(myAccess.roles&&myAccess.roles.length>0){
-          return myAccess.roles.indexOf(e.role)>=0;
-        }
-        // No roles assigned — show empty (not all staff)
-        return false;
+        var atVenue=e.pv===ihcVenueId||adminDeployedToIHCFab[e.id];
+        if(!atVenue)return false;
+        if(myAccess.roles&&myAccess.roles.length>0)return myAccess.roles.indexOf(e.role)>=0;
+        return true;
       });
       // Load halls
       halls=(d[HALLS_KEY]||[]);

@@ -172,6 +172,7 @@ var asgn={};        // hallId -> {eid: {emp, duty, isFixed}}
 var dlog={};        // daily log
 var lvMap={};       // shared with admin - eid -> {emp, duty} for On Leave
 var lvCollapsed=false; // On Leave box collapsed state
+var myAccess={roles:[],vendors:[]}; // portal access from Firebase
 var TIMES=['5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM'];
 var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e','#37474f','#6a1b9a','#bf360c','#1565c0','#2e7d32'];
 var ROLES_LIST=[];
@@ -291,6 +292,7 @@ function loadFromCloud(){
       venues=d.venues||[];
       ROLES_LIST=d.roles||[];
       if(d.annualLeave)annualLeave=d.annualLeave;
+      if(d.portalAccess&&d.portalAccess['jaipur'])myAccess=d.portalAccess['jaipur'];
       // Find IHC venue
       var v=venues.find(function(v){return v.name===VENUE_NAME;});
       jaipurVenueId=v?v.id:'';
@@ -301,7 +303,10 @@ function loadFromCloud(){
         Object.keys(adminAsgn[jaipurVenueId]).forEach(function(eid){adminDeployedToVenue[eid]=true;});
       }
       staff=allStaff.filter(function(e){
-        return e.pv===jaipurVenueId||adminDeployedToVenue[e.id];
+        var atVenue=e.pv===jaipurVenueId||adminDeployedToVenue[e.id];
+        if(!atVenue)return false;
+        if(myAccess.roles&&myAccess.roles.length>0)return myAccess.roles.indexOf(e.role)>=0;
+        return true;
       });
       // Load halls
       halls=(d[HALLS_KEY]||[]);

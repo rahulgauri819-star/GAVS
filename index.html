@@ -797,7 +797,12 @@ input,select,button{font-family:inherit;}
       <button class="bigbtn" id="btnChgPass">Change Password</button>
     </div>
     <div style="background:#fff;border-radius:14px;border:1.5px solid #e3eaff;padding:20px;margin-bottom:16px;">
-      <div style="font-size:14px;color:#888;">Grover Audio Visual Services — Staff Deployment System v21</div>
+      <div style="font-size:14px;font-weight:800;color:#1565c0;margin-bottom:8px;">💾 Data Backup</div>
+      <div style="font-size:12px;color:#888;margin-bottom:14px;">Download a complete backup of all staff, venues, and duty history as a JSON file. Keep this safe — it contains your entire GAVS data.</div>
+      <button class="bigbtn" id="btnDownloadBackup">⬇ Download Full Backup</button>
+    </div>
+    <div style="background:#fff;border-radius:14px;border:1.5px solid #e3eaff;padding:20px;margin-bottom:16px;">
+      <div style="font-size:14px;color:#888;">Grover Audio Visual Services — Staff Deployment System v84</div>
     </div>
     <button id="btnLogout" style="display:block;width:100%;max-width:600px;background:#ffebee;border:1.5px solid #ffcdd2;color:#c62828;border-radius:11px;padding:13px 0;font-size:15px;font-weight:700;cursor:pointer;">🚪 Logout</button>
   </div>
@@ -2356,8 +2361,10 @@ function dropStaff(eid,vid){
   // Auto-expand venue when first staff is dropped in (was auto-collapsed on fresh start)
   collapsedVids.delete(vid);
   var e=getS(eid);if(!e||!vid)return;
-  // Remove from other venues
+  // Remove from other venues AND portal hall assignments
   Object.keys(asgn).forEach(function(v){if(asgn[v]&&asgn[v][eid])delete asgn[v][eid];});
+  Object.keys(ihcAsgn).forEach(function(hid){if(ihcAsgn[hid])delete ihcAsgn[hid][eid];});
+  Object.keys(jaipurAsgn).forEach(function(hid){if(jaipurAsgn[hid])delete jaipurAsgn[hid][eid];});
   delete lvMap[eid];delete offMap[eid];delete gdnMap[eid];
   if(!asgn[vid])asgn[vid]={};
   var duty=e.pv===vid?(e.fixedDuty||'6:00 AM'):'6:00 AM';
@@ -2388,9 +2395,8 @@ function remVConfirm(eid,vid){
     );
     g('m-rem').onclick=function(){remV(eid,vid);closeModal();};
     g('m-lv').onclick=function(){
-      remV(eid,vid);
-      lvMap[eid]={emp:e,duty:e.fixedDuty||'6:00 AM'};
-      closeModal();drawStaffPanel();drawVenueGrid();drawStats();saveCloud();
+      markLeave(eid);
+      closeModal();
     };
     g('m-no').onclick=closeModal;
   } else {
@@ -4136,7 +4142,7 @@ function hexToRgb(hex){
 // ── REPORT ────────────────────────────────────────────────────
 function saveLog(forDate){
   var d=forDate||getD();
-  var log={venues:{},leave:[],office:[],godown:[],attendance:(dlog[d]&&dlog[d].attendance)||{}};
+  var log={venues:{},leave:[],office:[],godown:[],attendance:(dlog[d]&&dlog[d].attendance)||{},leaveExclude:(dlog[d]&&dlog[d].leaveExclude)||{}};
   Object.keys(asgn).forEach(function(vid){
     if(!asgn[vid])return;
     log.venues[vid]={};
@@ -5077,6 +5083,28 @@ g('btnChgPass').addEventListener('click',function(){
   toast('Password updated!');
 });
 g('btnLogout').addEventListener('click',doLogout);
+g('btnDownloadBackup')&&g('btnDownloadBackup').addEventListener('click',function(){
+  try{
+    db.collection('gavs_data').doc('dlog').get().then(function(dlogDoc){
+      var fullDlog=dlogDoc.exists&&dlogDoc.data()?dlogDoc.data().dlog||dlog:dlog;
+      var backup={exportDate:new Date().toISOString(),version:'gavs-v84',staff:staff,venues:venues,roles:ROLES,annualLeave:annualLeave,portalAccess:portalAccess,dlog:fullDlog,vdlog:vdlog};
+      var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');a.href=url;a.download='GAVS_Backup_'+todayIST()+'.json';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(function(){URL.revokeObjectURL(url);},3000);
+      toast('✅ Full backup downloaded!');
+    }).catch(function(){
+      var backup={exportDate:new Date().toISOString(),version:'gavs-v84',staff:staff,venues:venues,roles:ROLES,annualLeave:annualLeave,portalAccess:portalAccess,dlog:dlog,vdlog:vdlog};
+      var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');a.href=url;a.download='GAVS_Backup_'+todayIST()+'.json';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(function(){URL.revokeObjectURL(url);},3000);
+      toast('Backup downloaded!');
+    });
+  }catch(err){toast('Backup error: '+err.message,'e');}
+});
 
 // ── DATE CHANGE ───────────────────────────────────────────────
 g('DP').addEventListener('change',function(){
@@ -5468,11 +5496,10 @@ var jaipurLog={};
 var portalAccess={
   fabrication:{roles:['Fabrication Manager','Fabrication Field Team','Fabrication Store Team','IHC Fabrication'],vendors:['fabrication']},
   led:{roles:['LED'],vendors:['led']},
-  lt:{roles:['Light','Truss'],vendors:[]},
   lighttruss:{roles:['Light','Truss'],vendors:[]},
   labour:{roles:[],vendors:['labour']},
   ihc:{roles:[],vendors:[]},
-  ihcfab:{roles:['IHC Fabrication'],vendors:[]},
+  ihcfab:{roles:[],vendors:[]},
   jaipur:{roles:[],vendors:[]}
 };  // mirrors deskRole for staff but for vendor types
 
@@ -6435,9 +6462,10 @@ function drawPortalDetail(){
   // Use portalAccess (synced to Firebase) not PORTAL_ACCESS (local-only)
   var portalKey=portalAccess.hasOwnProperty(acct.id)?acct.id:acct.username;
   var access=portalAccess[portalKey]||{roles:[],vendors:[]};
-  var isTeamPortal=['fab','led','lighttruss','labour','ihcfab','ihc','jaipur'].indexOf(acct.id)>=0;
+  var isTeamPortal=['fab','led','lighttruss','labour','ihcfab'].indexOf(acct.id)>=0;
 
-  var html='<div class="addbox" style="margin-bottom:16px;">';
+  var html='<div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#e65100;font-weight:600;">⚠️ Portal access saves were previously broken. Please re-check and re-save settings for each portal.</div>';
+  html+='<div class="addbox" style="margin-bottom:16px;">';
   html+='<div class="abt" style="margin-bottom:12px;">🔑 '+esc(acct.label)+' — Password</div>';
   html+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
   html+='<div style="flex:1;"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Username</label>';

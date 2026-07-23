@@ -270,7 +270,7 @@ function doLogin(){
   if(!ok){g('L_ERR').style.display='block';g('L_P').value='';return;}
   g('login-screen').style.display='none';
   g('app').style.display='flex';
-  g('DP').value=todayIST();
+  g('DP').value=nd(todayIST());
   loadFromCloud();
 }
 

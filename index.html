@@ -1265,6 +1265,26 @@ function applyPinned(){
     if(!asgn[e.pv])asgn[e.pv]={};
     if(!asgn[e.pv][e.id]){asgn[e.pv][e.id]={emp:e,duty:e.fixedDuty||'6:00 AM',pinned:true,isFixed:true};}
   });
+
+  // Merge portal-specific log data (Labour, Fab, LED, LightTruss)
+  // These portals write to their own {PID}_log docs — main app READS but never overwrites them
+  Object.keys(_portalLogs).forEach(function(pid){
+    var pLog=_portalLogs[pid];
+    var pDay=pLog&&pLog[date]||{};
+    Object.keys(pDay.venues||{}).forEach(function(vid){
+      if(!asgn[vid])asgn[vid]={};
+      if(activeVids.indexOf(vid)<0)activeVids.push(vid);
+      Object.keys(pDay.venues[vid]||{}).forEach(function(eid){
+        var emp=getS(eid);
+        if(emp&&!asgn[vid][eid]){
+          asgn[vid][eid]={emp:emp,duty:pDay.venues[vid][eid]||'6:00 AM',_portal:pid};
+        }
+      });
+    });
+    (pDay.leave||[]).forEach(function(x){var emp=getS(x.id);if(emp&&!lvMap[x.id])lvMap[x.id]={emp:emp,duty:x.duty||'6:00 AM',_portal:pid};});
+    (pDay.office||[]).forEach(function(x){var emp=getS(x.id);if(emp&&!offMap[x.id])offMap[x.id]={emp:emp,duty:x.duty||'6:00 AM',_portal:pid};});
+    (pDay.godown||[]).forEach(function(x){var emp=getS(x.id);if(emp&&!gdnMap[x.id])gdnMap[x.id]={emp:emp,duty:x.duty||'6:00 AM',_portal:pid};});
+  });
 }
 
 // ── STAFF PANEL ───────────────────────────────────────────────
@@ -4147,6 +4167,7 @@ function saveLog(forDate){
     if(!asgn[vid])return;
     log.venues[vid]={};
     Object.keys(asgn[vid]).forEach(function(eid){
+      if(asgn[vid][eid]&&asgn[vid][eid]._portal)return; // portal staff — skip, they save to their own doc
       log.venues[vid][eid]=asgn[vid][eid].duty;
       if(asgn[vid][eid].camType){
         if(!log.camTypes)log.camTypes={};
@@ -4155,9 +4176,9 @@ function saveLog(forDate){
       }
     });
   });
-  Object.keys(lvMap).forEach(function(eid){log.leave.push({id:eid,duty:lvMap[eid].duty});});
-  Object.keys(offMap).forEach(function(eid){log.office.push({id:eid,duty:offMap[eid].duty});});
-  log.godown=[];Object.keys(gdnMap).forEach(function(eid){log.godown.push({id:eid,duty:gdnMap[eid].duty});});
+  Object.keys(lvMap).forEach(function(eid){if(!lvMap[eid]._portal)log.leave.push({id:eid,duty:lvMap[eid].duty});});
+  Object.keys(offMap).forEach(function(eid){if(!offMap[eid]._portal)log.office.push({id:eid,duty:offMap[eid].duty});});
+  log.godown=[];Object.keys(gdnMap).forEach(function(eid){if(!gdnMap[eid]._portal)log.godown.push({id:eid,duty:gdnMap[eid].duty});});
   // Save date-specific VIP and halls
   if(Object.keys(_dateVip).length)log.dateVip=JSON.parse(JSON.stringify(_dateVip));
   log.dateHalls=JSON.parse(JSON.stringify(_dateHalls)); // always write (even empty {}) to clear stale Firebase value
@@ -6808,6 +6829,29 @@ var _snapshotUnsub=null; // holds the onSnapshot unsubscribe handle
 var _dlogSnapshotUnsub=null; // separate listener for dlog document
 var _dlogMigrated=false; // true once dlog has been written to gavs_data/dlog
 var _mainDlogCache=null; // holds dlog from main doc for migration
+var _portalLogs={}; // holds latest portal-specific logs keyed by PID
+var _portalLogUnsubs=[]; // holds unsubscribe handles for portal log listeners
+
+function subscribeToPortalLogs(){
+  // Unsubscribe previous listeners
+  _portalLogUnsubs.forEach(function(u){try{u();}catch(e){}});
+  _portalLogUnsubs=[];
+  // Subscribe to each Type 3 portal's own log document
+  ['labour','fabrication','led','lighttruss'].forEach(function(pid){
+    var unsub=db.collection('gavs_data').doc(pid+'_log').onSnapshot(function(doc){
+      if(doc.metadata&&doc.metadata.hasPendingWrites)return;
+      if(doc.exists&&doc.data()){
+        _portalLogs[pid]=doc.data();
+        // Only redraw if staff is loaded and user is on assign screen
+        if(DB_LOADED&&staff.length>0&&curScreen==='assign'){
+          var cd=_lastLoadedDate||getD();
+          loadLiveFromDlog(cd);drawVenueGrid();drawStaffPanel();drawStats();
+        }
+      }
+    },function(e){console.warn('Portal log listener error ('+pid+'):',e);});
+    _portalLogUnsubs.push(unsub);
+  });
+}
 function loadFromCloud(callback){
   // Unsubscribe any previous listener before creating a new one
   if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){} _snapshotUnsub=null;}
@@ -6968,6 +7012,7 @@ function loadFromCloud(callback){
     DB_LOADED=true;showLoad(false);
     if(initialLoad){
       initialLoad=false;
+      subscribeToPortalLogs(); // subscribe to portal-specific log documents
       if(callback){callback();callback=null;}
     } else {
       // Subsequent updates: repaint UI but keep live working set intact

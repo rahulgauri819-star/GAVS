@@ -6464,8 +6464,7 @@ function drawPortalDetail(){
   var access=portalAccess[portalKey]||{roles:[],vendors:[]};
   var isTeamPortal=['fab','led','lighttruss','labour','ihcfab'].indexOf(acct.id)>=0;
 
-  var html='<div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#e65100;font-weight:600;">⚠️ Portal access saves were previously broken. Please re-check and re-save settings for each portal.</div>';
-  html+='<div class="addbox" style="margin-bottom:16px;">';
+  var html='<div class="addbox" style="margin-bottom:16px;">';
   html+='<div class="abt" style="margin-bottom:12px;">🔑 '+esc(acct.label)+' — Password</div>';
   html+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">';
   html+='<div style="flex:1;"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;">Username</label>';

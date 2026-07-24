@@ -184,7 +184,7 @@ function loadData(){
     allS=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM',pgdn:e.pgdn||false};});
     allV=d.venues||[];ROLES=d.roles||[];VTS=d.vendorTypesCustom||[];VCO=d.vendorCompanies||{};
     if(d.dlog)dlog=d.dlog;
-    if(d.dlog&&!_portalDlogLoaded)mainDlog=d.dlog; // fallback until dlog doc loads
+    if(d.dlog&&!_portalDlogLoaded){mainDlog=d.dlog;dlog=d.dlog;} // fallback until dlog doc loads
     if(d.vdlog)vdlog=d.vdlog;
     if(d.annualLeave)annualLeave=d.annualLeave;
     if(d.portalAccess&&d.portalAccess[PID])myAccess=d.portalAccess[PID];
@@ -200,9 +200,9 @@ function loadData(){
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var newDlog=dlogDoc.data().dlog;
       mainDlog=newDlog;
-      dlog=newDlog; // Fix: keep dlog in sync with gavs_data/dlog (the new source of truth)
+      dlog=newDlog;
       _portalDlogLoaded=true;
-      if(DBL){loadDateData(getD());drawDZ();drawGrid();updateStats();}
+      if(DBL){loadDateData(getD());drawDZ();drawGrid();drawSP();updateStats();}
     }
   },function(e){console.warn('Portal dlog listener error:',e);});
 }
@@ -399,10 +399,18 @@ function drawSP(){
       var isDZ=isLv||isOf||isGd;
       var dzLabel=isLv?'🌴 Leave':isOf?'🏢 Office':isGd?'🏗️ Godown':'';
       var card=document.createElement('div');card.draggable=!isDZ;card.setAttribute('data-eid',e.id);
-      card.style.cssText='background:'+(isDZ?'#f5f5f5':c+'12')+';border-left:3px solid '+(isDZ?'#bbb':c)+';border-bottom:1px solid '+(isDZ?'#eee':c+'22')+';padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:'+(isDZ?'default':'grab')+';margin-bottom:2px;opacity:'+(isDZ?'0.45':isDep?'0.6':'1')+';';
-      var nm=document.createElement('div');nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;';nm.textContent=e.name;card.appendChild(nm);
-      if(isDZ){var lbl=document.createElement('span');lbl.textContent=dzLabel;lbl.style.cssText='font-size:8px;color:#888;';card.appendChild(lbl);}
-      else if(isDep){var dot=document.createElement('span');dot.textContent='●';dot.style.cssText='font-size:8px;color:'+c+';';card.appendChild(dot);}
+      card.style.cssText='background:'+(isDZ?'#f5f5f5':isDep?c+'08':c+'12')+';border-left:3px solid '+(isDZ?'#bbb':c)+';padding:3px 5px 3px 6px;display:flex;align-items:flex-start;gap:4px;cursor:'+(isDZ?'default':'grab')+';margin-bottom:2px;opacity:'+(isDZ?'0.45':isDep?'0.65':'1')+';flex-direction:column;';
+      var topRow=document.createElement('div');topRow.style.cssText='display:flex;align-items:center;gap:4px;width:100%;';
+      var nm=document.createElement('div');nm.style.cssText='font-size:9px;font-weight:700;color:#111;flex:1;word-break:break-word;';nm.textContent=e.name;topRow.appendChild(nm);
+      if(isDZ){var lbl=document.createElement('span');lbl.textContent=dzLabel;lbl.style.cssText='font-size:8px;color:#888;flex-shrink:0;';topRow.appendChild(lbl);}
+      else if(isDep){var dot=document.createElement('span');dot.textContent='●';dot.style.cssText='font-size:8px;color:'+c+';flex-shrink:0;';topRow.appendChild(dot);}
+      card.appendChild(topRow);
+      // Show deployment location below name
+      if(!isDZ&&isDep){
+        var depVid=d2[e.id];
+        var depV=allV.find(function(v){return v.id===depVid;});
+        if(depV){var loc=document.createElement('div');loc.style.cssText='font-size:8px;color:#888;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;';loc.textContent=depV.name;card.appendChild(loc);}
+      }
       if(!isDZ){card.addEventListener('dragstart',function(ev){ev.dataTransfer.setData('text/plain',e.id);ev.dataTransfer.effectAllowed='move';});}
       el.appendChild(card);
     });
@@ -585,11 +593,14 @@ function wireVenueSearch(){
         ev.preventDefault();
         if(activeVids.indexOf(v.id)<0)activeVids.push(v.id);
         if(!asgn[v.id])asgn[v.id]={};
-        // Persist empty venue in manualVids so it survives dlog listener reloads
+        // Persist via manualVids in dlog
         var d2=_lastDate||getD();
         if(!dlog[d2])dlog[d2]={};
         if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
         if(dlog[d2].manualVids.indexOf(v.id)<0)dlog[d2].manualVids.push(v.id);
+        // Write IMMEDIATELY to Firebase (not debounced) so dlog listener doesn't reset it
+        var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
+        db.collection('gavs_data').doc('dlog').set(imPayload,{merge:true});
         inp.value='';dd.style.display='none';
         drawGrid();save();
       });
@@ -635,6 +646,14 @@ function drawGrid(){
     el.appendChild(hint);return;
   }
   rel.forEach(function(v){el.appendChild(makeBox(v,msids,mvtids));});
+  // Add New Venue tile at end of grid
+  var addTile=document.createElement('div');
+  addTile.style.cssText='border:2px dashed #c5cae9;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 16px;cursor:pointer;color:#9fa8da;min-height:120px;transition:all 0.2s;';
+  addTile.innerHTML='<div style="font-size:28px;margin-bottom:8px;">+</div><div style="font-size:12px;font-weight:700;">Add New Venue</div><div style="font-size:10px;margin-top:4px;opacity:0.7;">Click to search</div>';
+  addTile.addEventListener('mouseenter',function(){this.style.borderColor='#5c6bc0';this.style.color='#5c6bc0';this.style.background='#e8eaf6';});
+  addTile.addEventListener('mouseleave',function(){this.style.borderColor='#c5cae9';this.style.color='#9fa8da';this.style.background='';});
+  addTile.addEventListener('click',function(){var s=g('VSRCH');if(s){s.focus();s.scrollIntoView({behavior:'smooth',block:'center'});}});
+  el.appendChild(addTile);
 }
 
 function makeBox(v,msids,mvtids){

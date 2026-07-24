@@ -156,6 +156,7 @@ db.collection('gavs_data').doc('main').get().then(function(doc){
   var d=doc.data();
   if(d.portalPasswords&&d.portalPasswords[PID]){
     var _pw=d.portalPasswords[PID];
+    // Main app saves password as a string; handle both string and object formats
     APASS=(typeof _pw==='object'?_pw.password:_pw)||DPASS;
     AUSER=(typeof _pw==='object'?_pw.username:DUSER)||DUSER;
   }
@@ -182,44 +183,26 @@ function loadData(){
     var d=doc.data();
     allS=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM',pgdn:e.pgdn||false};});
     allV=d.venues||[];ROLES=d.roles||[];VTS=d.vendorTypesCustom||[];VCO=d.vendorCompanies||{};
-    // dlog (venue assignments) now comes from PID_log — NOT from main doc
+    if(d.dlog)dlog=d.dlog;
+    if(d.dlog&&!_portalDlogLoaded){mainDlog=d.dlog;dlog=d.dlog;} // fallback until dlog doc loads
     if(d.vdlog)vdlog=d.vdlog;
     if(d.annualLeave)annualLeave=d.annualLeave;
     if(d.portalAccess&&d.portalAccess[PID])myAccess=d.portalAccess[PID];
     if(d.portalPasswords&&d.portalPasswords[PID]){var _pw2=d.portalPasswords[PID];APASS=(typeof _pw2==='object'?_pw2.password:_pw2)||DPASS;AUSER=(typeof _pw2==='object'?_pw2.username:DUSER)||DUSER;}
     DBL=true;
-    if(firstLoad){
-      firstLoad=false;
-      // Load portal's own log before first render
-      db.collection('gavs_data').doc(PID+'_log').get().then(function(logDoc){
-        if(logDoc.exists&&logDoc.data()){
-          var ld=logDoc.data();
-          Object.keys(ld).forEach(function(date){dlog[date]=ld[date];});
-        }
-        _portalDlogLoaded=true;
-        loadDateData(getD());buildTabs();
-      }).catch(function(){_portalDlogLoaded=true;loadDateData(getD());buildTabs();});
-    } else {
-      drawSP();drawDZ();drawGrid();updateStats();
-    }
+    loadDateData(getD());
+    if(firstLoad){firstLoad=false;buildTabs();}else{drawSP();drawDZ();drawGrid();updateStats();}
     sv('saved');
   },function(e){console.error(e);sv('error');});
-
-  // Subscribe to portal's OWN log — venue assignments only, main app never overwrites this
-  db.collection('gavs_data').doc(PID+'_log').onSnapshot(function(doc){
-    if(doc.metadata&&doc.metadata.hasPendingWrites)return;
-    if(doc.exists&&doc.data()){
-      var data=doc.data();var curD=_lastDate||getD();
-      if(data[curD]){dlog[curD]=data[curD];if(DBL){loadDateData(curD);drawDZ();drawGrid();drawSP();updateStats();}}
-    }
-  },function(e){console.warn('Portal log listener error:',e);});
-
-  // Subscribe to gavs_data/dlog for ATTENDANCE only (mainDlog) — never overwrites local dlog
+  // Listen to gavs_data/dlog for attendance and duty log data
   db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own saves
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      mainDlog=dlogDoc.data().dlog; // attendance only
+      var newDlog=dlogDoc.data().dlog;
+      mainDlog=newDlog;
+      dlog=newDlog;
       _portalDlogLoaded=true;
+      if(DBL){loadDateData(getD());drawDZ();drawGrid();drawSP();updateStats();}
     }
   },function(e){console.warn('Portal dlog listener error:',e);});
 }
@@ -318,10 +301,10 @@ function save(){
   ST=setTimeout(function(){
     saveLog();
     var d=_lastDate||getD();
-    // Write to portal's OWN document — main app's saveDlogSeparate NEVER overwrites this
-    var payload={};payload[d]=dlog[d];
-    db.collection('gavs_data').doc(PID+'_log').set(payload,{merge:true})
-      .then(function(){sv('saved');}).catch(function(e){console.warn('Portal log save error:',e);sv('error');});
+    // Write this date's dlog entry to gavs_data/dlog (new location)
+    var dlogPayload={dlog:{}};dlogPayload.dlog[d]=dlog[d];
+    db.collection('gavs_data').doc('dlog').set(dlogPayload,{merge:true})
+      .then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
     // vdlog still goes to main
     db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
   },400);
@@ -345,13 +328,8 @@ g('BMULTI')&&g('BMULTI').addEventListener('click',function(){
 g('SRCH').addEventListener('input',function(){if(curTab==='staff')drawSP();else drawVP();});
 g('DP').addEventListener('change',function(){
   _lastDate=getD();
-  // Load from portal's own log for new date
-  db.collection('gavs_data').doc(PID+'_log').get().then(function(logDoc){
-    if(logDoc.exists&&logDoc.data()&&logDoc.data()[_lastDate]){
-      dlog[_lastDate]=logDoc.data()[_lastDate];
-    }
-    loadDateData(_lastDate);drawSP();drawDZ();drawGrid();updateStats();
-  }).catch(function(){loadDateData(_lastDate);drawSP();drawDZ();drawGrid();updateStats();});
+  loadDateData(getD());
+  drawSP();drawDZ();drawGrid();updateStats();
 });
 
 function drawRolePills(){
@@ -620,9 +598,9 @@ function wireVenueSearch(){
         if(!dlog[d2])dlog[d2]={};
         if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
         if(dlog[d2].manualVids.indexOf(v.id)<0)dlog[d2].manualVids.push(v.id);
-        // Write IMMEDIATELY to portal's own log
-        var imPayload={};imPayload[d2]=dlog[d2];
-        db.collection('gavs_data').doc(PID+'_log').set(imPayload,{merge:true});
+        // Write IMMEDIATELY to Firebase (not debounced) so dlog listener doesn't reset it
+        var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
+        db.collection('gavs_data').doc('dlog').set(imPayload,{merge:true});
         inp.value='';dd.style.display='none';
         drawGrid();save();
       });

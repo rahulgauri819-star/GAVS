@@ -4155,9 +4155,9 @@ function saveLog(forDate){
       }
     });
   });
-  Object.keys(lvMap).forEach(function(eid){log.leave.push({id:eid,duty:lvMap[eid].duty});});
-  Object.keys(offMap).forEach(function(eid){log.office.push({id:eid,duty:offMap[eid].duty});});
-  log.godown=[];Object.keys(gdnMap).forEach(function(eid){log.godown.push({id:eid,duty:gdnMap[eid].duty});});
+  Object.keys(lvMap).forEach(function(eid){if(!lvMap[eid]._portal)log.leave.push({id:eid,duty:lvMap[eid].duty});});
+  Object.keys(offMap).forEach(function(eid){if(!offMap[eid]._portal)log.office.push({id:eid,duty:offMap[eid].duty});});
+  log.godown=[];Object.keys(gdnMap).forEach(function(eid){if(!gdnMap[eid]._portal)log.godown.push({id:eid,duty:gdnMap[eid].duty});});
   // Save date-specific VIP and halls
   if(Object.keys(_dateVip).length)log.dateVip=JSON.parse(JSON.stringify(_dateVip));
   log.dateHalls=JSON.parse(JSON.stringify(_dateHalls)); // always write (even empty {}) to clear stale Firebase value

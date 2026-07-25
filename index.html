@@ -802,13 +802,7 @@ input,select,button{font-family:inherit;}
       <button class="bigbtn" id="btnDownloadBackup">⬇ Download Full Backup</button>
     </div>
     <div style="background:#fff;border-radius:14px;border:1.5px solid #e3eaff;padding:20px;margin-bottom:16px;">
-      <div style="font-size:14px;font-weight:800;color:#b71c1c;margin-bottom:8px;">🧹 Fix Drag Issue (Clean Old Data)</div>
-      <div style="font-size:12px;color:#888;margin-bottom:14px;">Removes duty history older than 60 days from Firebase to fix the "too many index entries" error that causes dragging to revert. Your recent data (last 60 days) is kept. Run this once.</div>
-      <div id="dlogCleanStatus" style="font-size:12px;margin-bottom:10px;display:none;padding:10px;border-radius:8px;"></div>
-      <button class="bigbtn" id="btnDlogClean" style="background:#c62828;">🧹 Clean Old Dlog Data</button>
-    </div>
-    <div style="background:#fff;border-radius:14px;border:1.5px solid #e3eaff;padding:20px;margin-bottom:16px;">
-      <div style="font-size:14px;color:#888;">Grover Audio Visual Services — Staff Deployment System v85</div>
+      <div style="font-size:14px;color:#888;">Grover Audio Visual Services — Staff Deployment System v84</div>
     </div>
     <button id="btnLogout" style="display:block;width:100%;max-width:600px;background:#ffebee;border:1.5px solid #ffcdd2;color:#c62828;border-radius:11px;padding:13px 0;font-size:15px;font-weight:700;cursor:pointer;">🚪 Logout</button>
   </div>
@@ -3899,8 +3893,8 @@ function saveAttendance(){
 }
 
 function _saveAttendanceWithRetry(d,attnPayload,attempt){
-  var dlogUpdate={};dlogUpdate['dlog.'+d]={attendance:attnPayload};dlogUpdate.updatedAt=new Date().toISOString();
-  dlogRef(d).update(dlogUpdate).then(function(){
+  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attnPayload};
+  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true}).then(function(){
     _atnOfflineQueue=null;
   }).catch(function(e){
     console.warn('Attendance save error (attempt '+attempt+'):',e.message||e);
@@ -5089,51 +5083,9 @@ g('btnChgPass').addEventListener('click',function(){
   toast('Password updated!');
 });
 g('btnLogout').addEventListener('click',doLogout);
-
-// Dlog cleanup button
-g('btnDlogClean')&&g('btnDlogClean').addEventListener('click',function(){
-  var btn=g('btnDlogClean');var st=g('dlogCleanStatus');
-  if(!confirm('This will remove duty history older than 60 days from Firebase to fix dragging. Recent data is kept. Continue?'))return;
-  btn.disabled=true;btn.textContent='Cleaning...';
-  st.style.display='block';st.style.background='#e3f2fd';st.style.color='#0d47a1';
-  st.textContent='Reading dlog from Firebase...';
-  dlogRef(getD()).get().then(function(doc){
-    var fullDlog=(doc.exists&&doc.data()&&doc.data().dlog)||dlog;
-    var cutoff=new Date();cutoff.setDate(cutoff.getDate()-60);
-    var cutoffStr=cutoff.toISOString().slice(0,10);
-    var allDates=Object.keys(fullDlog);
-    var toKeep={};var removed=0;
-    allDates.forEach(function(d){
-      if(d>=cutoffStr){toKeep[d]=fullDlog[d];}
-      else{removed++;}
-    });
-    st.textContent='Found '+allDates.length+' dates. Removing '+removed+' old dates, keeping '+Object.keys(toKeep).length+'...';
-    if(removed===0){
-      st.style.background='#e8f5e9';st.style.color='#1b5e20';
-      st.textContent='Nothing to remove — dlog is already clean!';
-      btn.disabled=false;btn.textContent='🧹 Clean Old Dlog Data';return;
-    }
-    // Write trimmed dlog back
-    dlogRef(getD()).set({dlog:toKeep,updatedAt:new Date().toISOString()}).then(function(){
-      dlog=toKeep; // update in-memory too
-      st.style.background='#e8f5e9';st.style.color='#1b5e20';
-      st.textContent='✅ Done! Removed '+removed+' old dates. Dragging should now work correctly.';
-      btn.disabled=false;btn.textContent='✅ Done';
-    }).catch(function(e){
-      st.style.background='#ffebee';st.style.color='#c62828';
-      st.textContent='Error: '+( e.message||e)+'. Please try again.';
-      btn.disabled=false;btn.textContent='🧹 Clean Old Dlog Data';
-    });
-  }).catch(function(e){
-    st.style.background='#ffebee';st.style.color='#c62828';
-    st.textContent='Error reading Firebase: '+(e.message||e);
-    btn.disabled=false;btn.textContent='🧹 Clean Old Dlog Data';
-  });
-});
 g('btnDownloadBackup')&&g('btnDownloadBackup').addEventListener('click',function(){
   try{
-    // Read current month doc for backup
-    dlogRef(getD()).get().then(function(dlogDoc){
+    db.collection('gavs_data').doc('dlog').get().then(function(dlogDoc){
       var fullDlog=dlogDoc.exists&&dlogDoc.data()?dlogDoc.data().dlog||dlog:dlog;
       var backup={exportDate:new Date().toISOString(),version:'gavs-v84',staff:staff,venues:venues,roles:ROLES,annualLeave:annualLeave,portalAccess:portalAccess,dlog:fullDlog,vdlog:vdlog};
       var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
@@ -6842,64 +6794,13 @@ function doSaveWithRetry(payload,attempt){
   });
 }
 
-
-// Monthly dlog helpers — each month stored in gavs_data/dlog_YYYY_MM
-function dlogDocId(dateStr){
-  // dateStr = YYYY-MM-DD, returns e.g. dlog_2026_07
-  var parts=(dateStr||getD()).split('-');
-  return 'dlog_'+parts[0]+'_'+parts[1];
-}
-function dlogRef(dateStr){
-  return db.collection('gavs_data').doc(dlogDocId(dateStr));
-}
 function saveDlogSeparate(attempt){
   if(attempt>5)return;
-  var d=_lastLoadedDate||getD();
-  var payload={updatedAt:new Date().toISOString()};
-  payload['dlog.'+d]=dlog[d]||{};
-  // Write to monthly document e.g. gavs_data/dlog_2026_07
-  dlogRef(d).update(payload).then(function(){
+  db.collection('gavs_data').doc('dlog').set({dlog:dlog,updatedAt:new Date().toISOString()}).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
-    // Doc doesn't exist yet for this month — create it
-    var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d]=dlog[d]||{};
-    dlogRef(d).set(sp,{merge:true}).then(function(){_dlogMigrated=true;}).catch(function(e2){
-      console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
-      setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
-    });
-  });
-}
-
-// One-time migration: split gavs_data/dlog into monthly documents
-var _dlogMigrationDone=false;
-function migrateDlogToMonthly(){
-  if(_dlogMigrationDone)return;
-  _dlogMigrationDone=true;
-  var allDates=Object.keys(dlog);
-  if(!allDates.length){console.log('Dlog migration: no dates to migrate');return;}
-  // Group dates by YYYY_MM
-  var byMonth={};
-  allDates.forEach(function(d){
-    var key=dlogDocId(d);
-    if(!byMonth[key])byMonth[key]={};
-    byMonth[key][d]=dlog[d];
-  });
-  var months=Object.keys(byMonth);
-  console.log('Dlog migration: splitting '+allDates.length+' dates into '+months.length+' monthly docs');
-  var done=0;
-  months.forEach(function(monthKey){
-    var monthDates=byMonth[monthKey];
-    var payload={updatedAt:new Date().toISOString()};
-    Object.keys(monthDates).forEach(function(d){payload['dlog.'+d]=monthDates[d];});
-    db.collection('gavs_data').doc(monthKey).set(payload,{merge:true}).then(function(){
-      done++;
-      if(done===months.length){
-        console.log('Dlog migration: complete! All dates now in monthly docs.');
-        db.collection('gavs_data').doc('dlog').update({_migratedToMonthly:true,updatedAt:new Date().toISOString()}).catch(function(){});
-        // Re-subscribe to monthly doc now that data is there
-        if(typeof _subscribeDlogMonthly==='function')_subscribeDlogMonthly();
-      }
-    }).catch(function(e){console.warn('Dlog migration error for '+monthKey+':',e.message||e);});
+    console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
+    setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
   });
 }
 
@@ -6911,14 +6812,11 @@ function loadFromCloud(callback){
   // Unsubscribe any previous listener before creating a new one
   if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){} _snapshotUnsub=null;}
   if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
-  // Set up dlog listener — first tries monthly doc, falls back to old dlog doc
-  var _curMonthDocId=dlogDocId(getD());
-  function _subscribeDlogMonthly(){
-    if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){}}
-    _dlogSnapshotUnsub=db.collection('gavs_data').doc(_curMonthDocId).onSnapshot(function(dlogDoc){
-      if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
-      if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-        var newDlog=dlogDoc.data().dlog;
+  // Set up dlog listener — reads from gavs_data/dlog (separate document)
+  _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
+    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+      var newDlog=dlogDoc.data().dlog;
       // Only re-render venue grid if duty data changed (not just attendance)
       var needsRedraw=false;
       if(DB_LOADED){
@@ -6930,32 +6828,20 @@ function loadFromCloud(callback){
       }
       dlog=newDlog;
       _dlogMigrated=true;
-      if(!DB_LOADED){setTimeout(migrateDlogToMonthly,3000);} // migrate to monthly docs on first load
       if(DB_LOADED&&needsRedraw){
         var _cd2=_lastLoadedDate||getD();
         loadLiveFromDlog(_cd2);
         drawVenueGrid();drawStaffPanel();drawStats();
       }
-      } else {
-        // Monthly doc empty — fall back to reading old dlog doc
-        db.collection('gavs_data').doc('dlog').get().then(function(oldDoc){
-          if(oldDoc.exists&&oldDoc.data()&&oldDoc.data().dlog){
-            dlog=oldDoc.data().dlog;
-            _dlogMigrated=false;
-            _mainDlogCache=dlog;
-            console.log('Loaded from old dlog doc, migration pending...');
-            if(DB_LOADED){
-              var _cd2=_lastLoadedDate||getD();
-              loadLiveFromDlog(_cd2);
-              drawVenueGrid();drawStaffPanel();drawStats();
-            }
-            setTimeout(migrateDlogToMonthly,2000);
-          }
-        }).catch(function(e){console.warn('Old dlog fallback error:',e);});
-      }
-    },function(e){console.warn('Dlog listener error:',e);});
-  }
-  _subscribeDlogMonthly();
+    } else if(_mainDlogCache&&!_dlogMigrated){
+      console.log('Migrating dlog to separate document...');
+      db.collection('gavs_data').doc('dlog').set({dlog:_mainDlogCache,updatedAt:new Date().toISOString()}).then(function(){
+        _dlogMigrated=true;dlog=_mainDlogCache;
+        _mainDlogCache=null; // Fix 5: clear cache after migration
+        console.log('Dlog migration complete.');
+      }).catch(function(e){console.error('Dlog migration error:',e);});
+    }
+  },function(e){console.warn('Dlog listener error:',e);});
   var initialLoad=true;
   var timeout=setTimeout(function(){
     console.warn('Firebase timeout');

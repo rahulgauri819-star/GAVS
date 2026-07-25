@@ -6816,6 +6816,27 @@ function saveDlogSeparate(attempt){
   });
 }
 
+// One-time cleanup: delete dlog entries older than 90 days from Firestore to fix index entry limit
+var _dlogCleanupDone=false;
+function pruneDlogFirestore(){
+  if(_dlogCleanupDone)return;
+  _dlogCleanupDone=true;
+  var cutoff=new Date();cutoff.setDate(cutoff.getDate()-90);
+  var cutoffStr=cutoff.toISOString().slice(0,10); // YYYY-MM-DD
+  var oldDates=Object.keys(dlog).filter(function(d){return d<cutoffStr;});
+  if(!oldDates.length){console.log('Dlog prune: nothing to remove');return;}
+  console.log('Dlog prune: removing '+oldDates.length+' old date(s) from Firestore');
+  var delPayload={};
+  oldDates.forEach(function(d){
+    delPayload['dlog.'+d]=firebase.firestore.FieldValue.delete();
+    delete dlog[d]; // also remove from in-memory dlog
+  });
+  delPayload.updatedAt=new Date().toISOString();
+  db.collection('gavs_data').doc('dlog').update(delPayload).then(function(){
+    console.log('Dlog prune: done, removed '+oldDates.length+' dates');
+  }).catch(function(e){console.warn('Dlog prune error:',e.message||e);});
+}
+
 var _snapshotUnsub=null; // holds the onSnapshot unsubscribe handle
 var _dlogSnapshotUnsub=null; // separate listener for dlog document
 var _dlogMigrated=false; // true once dlog has been written to gavs_data/dlog
@@ -6840,6 +6861,7 @@ function loadFromCloud(callback){
       }
       dlog=newDlog;
       _dlogMigrated=true;
+      if(!DB_LOADED){setTimeout(pruneDlogFirestore,3000);} // prune old dates once on first load
       if(DB_LOADED&&needsRedraw){
         var _cd2=_lastLoadedDate||getD();
         loadLiveFromDlog(_cd2);

@@ -1224,7 +1224,11 @@ function switchToDate(newDate){
     if(staff.some(function(e){return e.pv===v.id;}))contractedHiddenVids.add(v.id);
   });
   // 3. Hydrate live working set from this date's dlog (single source of truth).
-  loadLiveFromDlog(newDate);
+  if(dlog[newDate]===undefined){
+    fetchDlogDate(newDate,function(){loadLiveFromDlog(newDate);drawVenueGrid();drawStaffPanel();drawStats();});
+  } else {
+    loadLiveFromDlog(newDate);
+  }
 }
 
 // ── STATS ─────────────────────────────────────────────────────
@@ -6794,68 +6798,69 @@ function doSaveWithRetry(payload,attempt){
   });
 }
 
+function dailyDocId(dateStr){return 'dlog_'+(dateStr||getD()).replace(/-/g,'_');}
+function dailyRef(dateStr){return db.collection('gavs_data').doc(dailyDocId(dateStr));}
+function fetchDlogDate(dateStr,cb){
+  if(dlog[dateStr]!==undefined){if(cb)cb();return;}
+  dailyRef(dateStr).get().then(function(doc){
+    dlog[dateStr]=(doc.exists&&doc.data()&&doc.data().dlog&&doc.data().dlog[dateStr])?doc.data().dlog[dateStr]:{};
+    if(cb)cb();
+  }).catch(function(e){console.warn('fetchDlogDate error:',e.message||e);dlog[dateStr]={};if(cb)cb();});
+}
 function saveDlogSeparate(attempt){
   if(attempt>5)return;
   var d=_lastLoadedDate||getD();
   var payload={updatedAt:new Date().toISOString()};
   payload['dlog.'+d]=dlog[d]||{};
-  db.collection('gavs_data').doc('dlog').update(payload).then(function(){
+  dailyRef(d).update(payload).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
-    if(e.code==='not-found'||String(e.message||e).indexOf('No document')>=0){
-      var sp={dlog:{},updatedAt:new Date().toISOString()};
-      sp.dlog[d]=dlog[d]||{};
-      db.collection('gavs_data').doc('dlog').set(sp,{merge:true}).then(function(){
-        _dlogMigrated=true;
-      }).catch(function(e2){
-        console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
-        setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
-      });
-    } else {
-      console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
+    var sp={updatedAt:new Date().toISOString()};sp['dlog.'+d]=dlog[d]||{};
+    dailyRef(d).set(sp,{merge:true}).then(function(){
+      _dlogMigrated=true;
+    }).catch(function(e2){
+      console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
       setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
-    }
+    });
   });
 }
 
 var _snapshotUnsub=null; // holds the onSnapshot unsubscribe handle
 var _dlogSnapshotUnsub=null; // separate listener for dlog document
-var _dlogMigrated=false; // true once dlog has been written to gavs_data/dlog
-var _mainDlogCache=null; // holds dlog from main doc for migration
+var _dlogMigrated=true; // always true — using daily docs
+var _mainDlogCache=null;
+var _dlogReady=false;
+var _mainReady=false;
+function _tryInitialRender(){
+  if(!_dlogReady||!_mainReady)return;
+  var d=_lastLoadedDate||getD();
+  loadLiveFromDlog(d);
+  drawVenueGrid();drawStaffPanel();drawStats();
+}
 function loadFromCloud(callback){
-  // Unsubscribe any previous listener before creating a new one
   if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){} _snapshotUnsub=null;}
   if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
-  // Set up dlog listener — reads from gavs_data/dlog (separate document)
-  _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
+  _dlogReady=false;_mainReady=false;
+  // Set up listener for TODAY's daily doc
+  _dlogSnapshotUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
+    var today=getD();
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      var newDlog=dlogDoc.data().dlog;
-      // Only re-render venue grid if duty data changed (not just attendance)
-      var needsRedraw=false;
-      if(DB_LOADED){
-        var _cd=_lastLoadedDate||getD();
-        var oldEntry=dlog[_cd]||{};var newEntry=newDlog[_cd]||{};
-        var oldVenues=JSON.stringify(oldEntry.venues||{});var newVenues=JSON.stringify(newEntry.venues||{});
-        var oldLeave=JSON.stringify(oldEntry.leave||[]);var newLeave=JSON.stringify(newEntry.leave||[]);
-        needsRedraw=(oldVenues!==newVenues||oldLeave!==newLeave);
+      var incoming=dlogDoc.data().dlog;
+      Object.keys(incoming).forEach(function(d){dlog[d]=incoming[d];});
+      if(!_dlogReady){
+        // pre-fetch yesterday
+        var yd=new Date(today);yd.setDate(yd.getDate()-1);
+        fetchDlogDate(yd.toISOString().slice(0,10));
+        _dlogReady=true;_tryInitialRender();
+      } else if(DB_LOADED){
+        var _cd=_lastLoadedDate||today;
+        if(incoming[_cd]!==undefined){loadLiveFromDlog(_cd);drawVenueGrid();drawStaffPanel();drawStats();}
       }
-      dlog=newDlog;
-      _dlogMigrated=true;
-      if(DB_LOADED&&needsRedraw){
-        var _cd2=_lastLoadedDate||getD();
-        loadLiveFromDlog(_cd2);
-        drawVenueGrid();drawStaffPanel();drawStats();
-      }
-    } else if(_mainDlogCache&&!_dlogMigrated){
-      console.log('Migrating dlog to separate document...');
-      db.collection('gavs_data').doc('dlog').set({dlog:_mainDlogCache,updatedAt:new Date().toISOString()}).then(function(){
-        _dlogMigrated=true;dlog=_mainDlogCache;
-        _mainDlogCache=null; // Fix 5: clear cache after migration
-        console.log('Dlog migration complete.');
-      }).catch(function(e){console.error('Dlog migration error:',e);});
+    } else {
+      if(!_dlogReady){_dlogReady=true;_tryInitialRender();}
     }
-  },function(e){console.warn('Dlog listener error:',e);});
+  },function(e){console.warn('Dlog listener error:',e);if(!_dlogReady){_dlogReady=true;_tryInitialRender();}});
   var initialLoad=true;
   var timeout=setTimeout(function(){
     console.warn('Firebase timeout');
@@ -6983,6 +6988,7 @@ function loadFromCloud(callback){
     if(initialLoad){
       initialLoad=false;
       if(callback){callback();callback=null;}
+      if(!_mainReady){_mainReady=true;_tryInitialRender();}
     } else {
       // Subsequent updates: repaint UI but keep live working set intact
       populateRoleDD();populateVenueDD();populateTimeDD();

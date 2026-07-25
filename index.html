@@ -3893,8 +3893,8 @@ function saveAttendance(){
 }
 
 function _saveAttendanceWithRetry(d,attnPayload,attempt){
-  var dlogUpdate={updatedAt:new Date().toISOString()};dlogUpdate['dlog.'+d]={attendance:attnPayload};
-  dlogRef(d).update(dlogUpdate).then(function(){
+  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attnPayload};
+  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true}).then(function(){
     _atnOfflineQueue=null;
   }).catch(function(e){
     console.warn('Attendance save error (attempt '+attempt+'):',e.message||e);
@@ -6796,59 +6796,11 @@ function doSaveWithRetry(payload,attempt){
 
 function saveDlogSeparate(attempt){
   if(attempt>5)return;
-  var d=_lastLoadedDate||getD();
-  var payload={updatedAt:new Date().toISOString()};
-  payload['dlog.'+d]=dlog[d]||{};
-  dlogRef(d).update(payload).then(function(){
+  db.collection('gavs_data').doc('dlog').set({dlog:dlog,updatedAt:new Date().toISOString()}).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
-    // Monthly doc missing — create it
-    var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d]=dlog[d]||{};
-    dlogRef(d).set(sp,{merge:true}).then(function(){_dlogMigrated=true;}).catch(function(e2){
-      console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
-      setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
-    });
-  });
-}
-
-// Monthly dlog helpers
-function dlogDocId(dateStr){var parts=(dateStr||getD()).split('-');return 'dlog_'+parts[0]+'_'+parts[1];}
-function dlogRef(dateStr){return db.collection('gavs_data').doc(dlogDocId(dateStr));}
-
-// ── MONTHLY DLOG MIGRATION (background only, does not affect reads/writes) ──
-// Copies gavs_data/dlog into monthly docs e.g. gavs_data/dlog_2026_07
-// Safe to run multiple times. Original doc untouched.
-var _monthlyMigDone=false;
-function migrateToMonthlyDocs(){
-  if(_monthlyMigDone)return;
-  _monthlyMigDone=true;
-  var allDates=Object.keys(dlog);
-  if(!allDates.length){console.log('[Migration] No dates to migrate.');return;}
-  // Group by YYYY_MM
-  var byMonth={};
-  allDates.forEach(function(d){
-    var parts=d.split('-');if(parts.length<2)return;
-    var key='dlog_'+parts[0]+'_'+parts[1];
-    if(!byMonth[key])byMonth[key]={};
-    byMonth[key][d]=dlog[d];
-  });
-  var months=Object.keys(byMonth);
-  console.log('[Migration] Copying '+allDates.length+' dates into '+months.length+' monthly docs...');
-  var done=0;
-  months.forEach(function(monthKey){
-    var payload={updatedAt:new Date().toISOString()};
-    Object.keys(byMonth[monthKey]).forEach(function(d){
-      payload['dlog.'+d]=byMonth[monthKey][d];
-    });
-    db.collection('gavs_data').doc(monthKey).set(payload,{merge:true}).then(function(){
-      done++;
-      console.log('[Migration] '+monthKey+' done ('+done+'/'+months.length+')');
-      if(done===months.length){
-        console.log('[Migration] COMPLETE. Monthly docs ready. Safe to switch in next deploy.');
-      }
-    }).catch(function(e){
-      console.warn('[Migration] Error on '+monthKey+':',e.message||e);
-    });
+    console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
+    setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
   });
 }
 
@@ -6860,9 +6812,8 @@ function loadFromCloud(callback){
   // Unsubscribe any previous listener before creating a new one
   if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){} _snapshotUnsub=null;}
   if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
-  // Set up dlog listener — reads from monthly doc e.g. gavs_data/dlog_2026_07
-  var _curMonthDocId=dlogDocId(getD());
-  _dlogSnapshotUnsub=db.collection('gavs_data').doc(_curMonthDocId).onSnapshot(function(dlogDoc){
+  // Set up dlog listener — reads from gavs_data/dlog (separate document)
+  _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var newDlog=dlogDoc.data().dlog;
@@ -6877,11 +6828,6 @@ function loadFromCloud(callback){
       }
       dlog=newDlog;
       _dlogMigrated=true;
-      if(!DB_LOADED){
-        setTimeout(migrateToMonthlyDocs,5000); // background migration, runs once
-        // Dlog arrived before main doc — pre-load live data so grid renders immediately
-        loadLiveFromDlog(getD());
-      }
       if(DB_LOADED&&needsRedraw){
         var _cd2=_lastLoadedDate||getD();
         loadLiveFromDlog(_cd2);

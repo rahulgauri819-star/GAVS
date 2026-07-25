@@ -471,7 +471,15 @@ function drawDZ(){
     hdr.appendChild(collapseArr);
     box.appendChild(hdr);
     var body=document.createElement('div');body.style.cssText='padding:6px;min-height:36px;display:'+(isEmpty?'none':'block')+';';
-    if(!list.length){body.innerHTML='<div style="text-align:center;font-size:10px;color:#bbb;padding:6px;">Drag staff here</div>';}
+    // Quick search bar inside DZ zone
+    var dzSrchWrap=document.createElement('div');dzSrchWrap.style.cssText='margin-bottom:5px;';
+    var dzSrch=document.createElement('input');
+    dzSrch.placeholder='🔍 Search...';
+    dzSrch.style.cssText='width:100%;box-sizing:border-box;border:1px solid '+borderC+';border-radius:6px;padding:3px 7px;font-size:10px;outline:none;background:#fff;color:#333;';
+    dzSrchWrap.appendChild(dzSrch);
+    body.appendChild(dzSrchWrap);
+    var dzContentEl=document.createElement('div');
+    if(!list.length){dzContentEl.innerHTML='<div style="text-align:center;font-size:10px;color:#bbb;padding:6px;">Drag staff here</div>';}
     else{
       var roleGrps={};
       ROLES.forEach(function(r){roleGrps[r]=[];});
@@ -481,11 +489,12 @@ function drawDZ(){
         var c2=cc(r);
         var rh2=document.createElement('div');
         rh2.style.cssText='font-size:8px;font-weight:800;text-transform:uppercase;color:'+c2+';padding:4px 2px 2px;border-bottom:1px solid '+c2+'22;margin-bottom:2px;margin-top:3px;';
-        rh2.textContent=r;body.appendChild(rh2);
+        rh2.textContent=r;dzContentEl.appendChild(rh2);
         var grpGrid=document.createElement('div');grpGrid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:2px;';
         roleGrps[r].forEach(function(a){
           var alE=annualLeave.find(function(x){return x.id===a.emp.id;});
           var cell=document.createElement('div');
+          cell.setAttribute('data-dzname',a.emp.name);
           cell.style.cssText='background:'+c2+'15;border-left:3px solid '+c2+';padding:3px 4px;display:flex;align-items:center;gap:3px;min-width:0;border-radius:3px;';
           var nm=document.createElement('div');nm.style.cssText='font-size:8.5px;font-weight:700;color:#111;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
           nm.textContent=a.emp.name;nm.title=a.emp.name;cell.appendChild(nm);
@@ -521,9 +530,17 @@ function drawDZ(){
           };})(a.emp.id));
           cell.appendChild(rm);grpGrid.appendChild(cell);
         });
-        body.appendChild(grpGrid);
+        dzContentEl.appendChild(grpGrid);
       });
     }
+    body.appendChild(dzContentEl);
+    // Wire DZ search
+    dzSrch.addEventListener('input',function(){
+      var q=this.value.toLowerCase().trim();
+      dzContentEl.querySelectorAll('[data-dzname]').forEach(function(el3){
+        el3.style.display=(q&&el3.getAttribute('data-dzname').toLowerCase().indexOf(q)<0)?'none':'';
+      });
+    });
     box.appendChild(body);
     // Toggle collapse on header click
     hdr.addEventListener('click',function(){
@@ -577,10 +594,10 @@ function showPeriodLeave(eid,ename){
 function wireVenueSearch(){
   var inp=g('VSRCH'),dd=g('VDD');if(!inp||!dd)return;
   inp.oninput=function(){
-    var q=this.value.toLowerCase();dd.innerHTML='';
+    var q=this.value.trim();dd.innerHTML='';
     if(!q){dd.style.display='none';return;}
-    var matches=allV.filter(function(v){return v.name.toLowerCase().indexOf(q)>=0&&activeVids.indexOf(v.id)<0;}).slice(0,10);
-    if(!matches.length){dd.style.display='none';return;}
+    var ql=q.toLowerCase();
+    var matches=allV.filter(function(v){return v.name.toLowerCase().indexOf(ql)>=0&&activeVids.indexOf(v.id)<0;}).slice(0,10);
     matches.forEach(function(v){
       var item=document.createElement('div');item.className='vdd-item';item.textContent=v.name;
       item.addEventListener('mousedown',function(ev){
@@ -600,6 +617,31 @@ function wireVenueSearch(){
       });
       dd.appendChild(item);
     });
+    // "Create new venue" option if no exact match exists
+    var exactMatch=allV.find(function(v){return v.name.toLowerCase()===ql;});
+    if(!exactMatch){
+      var createItem=document.createElement('div');
+      createItem.className='vdd-item';
+      createItem.style.cssText='color:#1565c0;font-weight:700;'+(matches.length?'border-top:1px solid #e8eaf6;':'');
+      createItem.textContent='+ Create "'+q+'" as new venue';
+      createItem.addEventListener('mousedown',function(ev){
+        ev.preventDefault();
+        var newV={id:mkId(),name:q,vip:false};
+        allV.push(newV);
+        activeVids.push(newV.id);
+        asgn[newV.id]={};
+        var d2=_lastDate||getD();
+        if(!dlog[d2])dlog[d2]={};
+        if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
+        dlog[d2].manualVids.push(newV.id);
+        db.collection('gavs_data').doc('main').update({venues:allV}).catch(function(){});
+        var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
+        db.collection('gavs_data').doc('dlog').set(imPayload,{merge:true});
+        inp.value='';dd.style.display='none';
+        drawGrid();save();
+      });
+      dd.appendChild(createItem);
+    }
     dd.style.display='block';
   };
   inp.onblur=function(){setTimeout(function(){dd.style.display='none';},150);};
@@ -868,26 +910,27 @@ g('BPDF').addEventListener('click',function(){
   var curCol=0,colY=[startY,startY];
   var ac=h2r(PCOLOR);
 
-  // Header
+  // Header — matches main app event sheet style
   doc.setFillColor(ac[0],ac[1],ac[2]);doc.rect(0,0,pw,24,'F');
+  // Jai Guruji
+  doc.setTextColor(255,215,100);doc.setFontSize(11);doc.setFont('helvetica','bold');
+  doc.text('|| Jai Guruji ||',pw/2,8,{align:'center'});
+  // Logo
   try{
     var img=g('logoImg');
     if(img&&img.complete&&img.naturalWidth>0){
       var cv=document.createElement('canvas');
-      var lh=20,lw=Math.round(lh*(img.naturalWidth/img.naturalHeight));
-      if(lw>32){lw=32;lh=Math.round(lw*(img.naturalHeight/img.naturalWidth));}
-      var scale=lw/img.naturalWidth;
-      cv.width=Math.round(img.naturalWidth*scale*2);
-      cv.height=Math.round(img.naturalHeight*scale*2);
-      var ctx=cv.getContext('2d');
-      ctx.clearRect(0,0,cv.width,cv.height); // preserve transparency
-      ctx.drawImage(img,0,0,cv.width,cv.height);
-      doc.addImage(cv.toDataURL('image/png'),'PNG',mg,2+Math.round((20-lh)/2),lw,lh);
+      var _lscale=280/img.naturalWidth;
+      cv.width=280;cv.height=Math.round(img.naturalHeight*_lscale);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      var lh=12,lw=Math.round(lh*(img.naturalWidth/img.naturalHeight));
+      doc.addImage(cv.toDataURL('image/png'),'PNG',mg,11,lw,lh);
     }
   }catch(e){}
-  doc.setTextColor(255,255,255);doc.setFontSize(12);doc.setFont('helvetica','bold');
-  doc.text(PLABEL.toUpperCase()+' — EVENT SHEET',pw/2,10,{align:'center'});
-  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(fd(getD()),pw/2,17,{align:'center'});
+  // Title + Date on same line
+  doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text(PLABEL.toUpperCase()+' — EVENT SHEET',pw/2,20,{align:'center'});
+  doc.text(fd(getD()),pw-mg,20,{align:'right'});
 
   function nextCol(){if(curCol===0){curCol=1;}else{doc.addPage();colY=[startY,startY];curCol=0;}}
   function ensureSpace(n){if(colY[curCol]+n>pageH)nextCol();}

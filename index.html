@@ -1203,15 +1203,8 @@ function loadLiveFromDlog(date){
 function switchToDate(newDate){
   if(!DB_LOADED)return;
   if(newDate===_lastLoadedDate)return; // already on this date
-  // Fetch this date's daily doc if not in memory yet, then switch
-  if(dlog[newDate]===undefined){
-    fetchDlogDate(newDate,function(){_doSwitchToDate(newDate);});
-    return;
-  }
-  _doSwitchToDate(newDate);
-}
-
-function _doSwitchToDate(newDate){
+  // 1. Save the date we're LEAVING into its OWN dlog entry, then persist.
+  //    Use _lastLoadedDate (old date) — getD() already shows newDate.
   if(_lastLoadedDate){
     // Cancel any pending debounced save — it would fire AFTER _lastLoadedDate
     // and asgn have already been updated to the new date, causing it to call
@@ -2960,12 +2953,10 @@ function showCopyFrom(){
   g('m-yes').onclick=function(){
     var dt=g('CFDATE').value;
     if(!dt){toast('Select a date','w');return;}
-    // Fetch daily doc for source date if not in memory
-    fetchDlogDate(dt,function(){
-      var log=dlog[dt];
-      if(!log||((!Object.keys(log.venues||{}).length)&&(!log.leave||!log.leave.length)&&(!log.office||!log.office.length)&&(!log.godown||!log.godown.length))){
-        toast('No duties saved for '+fd(dt),'w');closeModal();return;
-      }
+    var log=dlog[dt];
+    if(!log||((!Object.keys(log.venues||{}).length)&&(!log.leave||!log.leave.length)&&(!log.office||!log.office.length)&&(!log.godown||!log.godown.length))){
+      toast('No duties saved for '+fd(dt),'w');closeModal();return;
+    }
     // Copy venue assignments
     Object.keys(log.venues||{}).forEach(function(vid){
       if(!asgn[vid])asgn[vid]={};
@@ -3008,7 +2999,6 @@ function showCopyFrom(){
     if(log.godown&&log.godown.length)copied.push(log.godown.length+' godown team');
     toast('Copied from '+fd(dt)+': '+copied.join(', '));
     drawStaffPanel();drawVenueGrid();drawStats();saveCloud();
-    }); // end fetchDlogDate callback
   };
   g('m-no').onclick=closeModal;
 }
@@ -3903,24 +3893,16 @@ function saveAttendance(){
 }
 
 function _saveAttendanceWithRetry(d,attnPayload,attempt){
-  if(!dlog[d])dlog[d]={};
-  dlog[d].attendance=attnPayload;
-  var dlogUpdate={updatedAt:new Date().toISOString()};
-  dlogUpdate['dlog.'+d]=dlog[d];
-  dailyRef(d).update(dlogUpdate).then(function(){
+  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attnPayload};
+  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true}).then(function(){
     _atnOfflineQueue=null;
   }).catch(function(e){
-    var sp={updatedAt:new Date().toISOString()};sp['dlog.'+d]=dlog[d];
-    dailyRef(d).set(sp,{merge:true}).then(function(){
-      _atnOfflineQueue=null;
-    }).catch(function(e2){
-      console.warn('Attendance save error (attempt '+attempt+'):',e2.message||e2);
-      _atnOfflineQueue={d:d,attn:attnPayload};
-      if(attempt<5){
-        var delay=Math.min(1500*Math.pow(2,attempt),30000);
-        _atnRetryTimer=setTimeout(function(){_saveAttendanceWithRetry(d,attnPayload,attempt+1);},delay);
-      }
-    });
+    console.warn('Attendance save error (attempt '+attempt+'):',e.message||e);
+    _atnOfflineQueue={d:d,attn:attnPayload};
+    if(attempt<5){
+      var delay=Math.min(1500*Math.pow(2,attempt),30000);
+      _atnRetryTimer=setTimeout(function(){_saveAttendanceWithRetry(d,attnPayload,attempt+1);},delay);
+    }
   });
 }
 
@@ -6817,60 +6799,22 @@ function saveDlogSeparate(attempt){
   var d=_lastLoadedDate||getD();
   var payload={updatedAt:new Date().toISOString()};
   payload['dlog.'+d]=dlog[d]||{};
-  dailyRef(d).update(payload).then(function(){
+  db.collection('gavs_data').doc('dlog').update(payload).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
-    // Daily doc doesn't exist yet — create it
-    var sp={updatedAt:new Date().toISOString()};sp['dlog.'+d]=dlog[d]||{};
-    dailyRef(d).set(sp,{merge:true}).then(function(){
-      _dlogMigrated=true;
-    }).catch(function(e2){
-      console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
-      setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
-    });
-  });
-}
-
-// ── DAILY DLOG HELPERS ─────────────────────────────────────
-function dailyDocId(dateStr){return 'dlog_'+(dateStr||getD()).replace(/-/g,'_');}
-function dailyRef(dateStr){return db.collection('gavs_data').doc(dailyDocId(dateStr));}
-
-// Fetch a specific date's data into memory if not already loaded
-// Returns a Promise that resolves when data is ready
-function fetchDlogDate(dateStr,cb){
-  if(dlog[dateStr]!==undefined){if(cb)cb();return;} // already in memory
-  dailyRef(dateStr).get().then(function(doc){
-    if(doc.exists&&doc.data()&&doc.data().dlog&&doc.data().dlog[dateStr]){
-      dlog[dateStr]=doc.data().dlog[dateStr];
+    if(e.code==='not-found'||String(e.message||e).indexOf('No document')>=0){
+      var sp={dlog:{},updatedAt:new Date().toISOString()};
+      sp.dlog[d]=dlog[d]||{};
+      db.collection('gavs_data').doc('dlog').set(sp,{merge:true}).then(function(){
+        _dlogMigrated=true;
+      }).catch(function(e2){
+        console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
+        setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
+      });
     } else {
-      dlog[dateStr]={}; // no data for this date
+      console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
+      setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
     }
-    if(cb)cb();
-  }).catch(function(e){
-    console.warn('fetchDlogDate error for '+dateStr+':',e.message||e);
-    dlog[dateStr]={};
-    if(cb)cb();
-  });
-}
-
-// One-time background migration: split old gavs_data/dlog into daily docs
-var _dailyMigDone=false;
-function migrateToDailyDocs(){
-  if(_dailyMigDone)return;
-  _dailyMigDone=true;
-  var allDates=Object.keys(dlog);
-  if(!allDates.length){console.log('[DailyMig] Nothing to migrate.');return;}
-  console.log('[DailyMig] Migrating '+allDates.length+' dates to daily docs...');
-  var done=0;
-  allDates.forEach(function(d){
-    var payload={updatedAt:new Date().toISOString()};
-    payload['dlog.'+d]=dlog[d];
-    dailyRef(d).set(payload,{merge:true}).then(function(){
-      done++;
-      if(done===allDates.length){
-        console.log('[DailyMig] COMPLETE. '+done+' daily docs created. Safe to switch in Deploy 2.');
-      }
-    }).catch(function(e){console.warn('[DailyMig] Error on '+d+':',e.message||e);done++;});
   });
 }
 
@@ -6882,35 +6826,34 @@ function loadFromCloud(callback){
   // Unsubscribe any previous listener before creating a new one
   if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){} _snapshotUnsub=null;}
   if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
-  // Set up dlog listener — listens to today's daily doc e.g. gavs_data/dlog_2026_07_26
-  var _todayDocId=dailyDocId(getD());
-  _dlogSnapshotUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
+  // Set up dlog listener — reads from gavs_data/dlog (separate document)
+  _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      var incoming=dlogDoc.data().dlog;
-      // Merge incoming into dlog (only updates keys present in this doc)
-      Object.keys(incoming).forEach(function(d){dlog[d]=incoming[d];});
-      _dlogMigrated=true;
-      if(!DB_LOADED){
-        // First load — fetch yesterday too so copy-prev-day works immediately
-        var _yd=new Date(getD());_yd.setDate(_yd.getDate()-1);
-        fetchDlogDate(_yd.toISOString().slice(0,10));
-        loadLiveFromDlog(getD());
-      }
+      var newDlog=dlogDoc.data().dlog;
+      // Only re-render venue grid if duty data changed (not just attendance)
+      var needsRedraw=false;
       if(DB_LOADED){
         var _cd=_lastLoadedDate||getD();
-        var needsRedraw=incoming[_cd]!==undefined;
-        if(needsRedraw){loadLiveFromDlog(_cd);drawVenueGrid();drawStaffPanel();drawStats();}
+        var oldEntry=dlog[_cd]||{};var newEntry=newDlog[_cd]||{};
+        var oldVenues=JSON.stringify(oldEntry.venues||{});var newVenues=JSON.stringify(newEntry.venues||{});
+        var oldLeave=JSON.stringify(oldEntry.leave||[]);var newLeave=JSON.stringify(newEntry.leave||[]);
+        needsRedraw=(oldVenues!==newVenues||oldLeave!==newLeave);
       }
-    } else if(!_dlogMigrated){
-      // Daily doc empty — seed it from in-memory dlog if available
-      var _td=getD();
-      if(dlog[_td]){
-        var sp={updatedAt:new Date().toISOString()};sp['dlog.'+_td]=dlog[_td];
-        dailyRef(_td).set(sp,{merge:true}).then(function(){_dlogMigrated=true;}).catch(function(e){console.warn('Seed error:',e);});
-      } else {
-        _dlogMigrated=true; // no data for today yet, that's fine
+      dlog=newDlog;
+      _dlogMigrated=true;
+      if(DB_LOADED&&needsRedraw){
+        var _cd2=_lastLoadedDate||getD();
+        loadLiveFromDlog(_cd2);
+        drawVenueGrid();drawStaffPanel();drawStats();
       }
+    } else if(_mainDlogCache&&!_dlogMigrated){
+      console.log('Migrating dlog to separate document...');
+      db.collection('gavs_data').doc('dlog').set({dlog:_mainDlogCache,updatedAt:new Date().toISOString()}).then(function(){
+        _dlogMigrated=true;dlog=_mainDlogCache;
+        _mainDlogCache=null; // Fix 5: clear cache after migration
+        console.log('Dlog migration complete.');
+      }).catch(function(e){console.error('Dlog migration error:',e);});
     }
   },function(e){console.warn('Dlog listener error:',e);});
   var initialLoad=true;

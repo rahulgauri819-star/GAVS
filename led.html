@@ -65,8 +65,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pink-bar{background:#fce4ec;color:#880e4f;font-size:11px;font-weight:700;padding:5px 8px;border-bottom:2px solid #f48fb1;word-break:break-word;}
 .hdr-right{display:flex;gap:8px;align-items:center;}
 </style>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
@@ -149,6 +149,24 @@ g('MO').addEventListener('click',function(ev){if(ev.target===this)cm();});
 g('LBTN').addEventListener('click',doLogin);
 g('LP').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 
+
+var _PORTAL_SESSION_KEY='gavs_portal_session_led_v1';
+// Auto-login if session exists
+(function(){
+  try{
+    var s=localStorage.getItem(_PORTAL_SESSION_KEY);
+    if(!s)return;
+    var sess=JSON.parse(s);
+    if(!sess||!sess.u||!sess.p)return;
+    // Verify credentials still valid
+    var ok=(sess.u===DUSER&&sess.p===DPASS)||(AUSER&&sess.u===AUSER&&sess.p===APASS);
+    if(!ok)return;
+    g('LS').style.display='none';g('APP').style.display='flex';
+    g('DP').value=nd(todayIST());
+    _lastDate=g('DP').value;
+    loadData();
+  }catch(e){}
+})();
 // Pre-load portal credentials from Firebase before login
 var _portalDlogLoaded=false;
 db.collection('gavs_data').doc('main').get().then(function(doc){
@@ -166,6 +184,7 @@ function doLogin(){
   var ok=(u===DUSER&&p===DPASS)||(AUSER&&u===AUSER&&p===APASS);
   if(!ok){g('LERR').style.display='block';g('LP').value='';return;}
   g('LS').style.display='none';g('APP').style.display='flex';
+  try{localStorage.setItem(_PORTAL_SESSION_KEY,JSON.stringify({u:u,p:p}));}catch(e){}
   g('DP').value=nd(todayIST());
   _lastDate=g('DP').value;
   loadData();
@@ -314,6 +333,11 @@ function updateStats(){
   var l=g('SL');if(l)l.innerHTML=parts.join('');
 }
 
+
+// Tab-close / background protection — flush any pending save immediately
+window.addEventListener('beforeunload',function(){save();});
+window.addEventListener('pagehide',function(){save();});
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')save();});
 g('BSAVE').addEventListener('click',save);
 g('BMULTI')&&g('BMULTI').addEventListener('click',function(){
   _multiView=!_multiView;
@@ -322,6 +346,7 @@ g('BMULTI')&&g('BMULTI').addEventListener('click',function(){
 });
 g('SRCH').addEventListener('input',function(){if(curTab==='staff')drawSP();else drawVP();});
 g('DP').addEventListener('change',function(){
+  save(); // save current date before switching
   _lastDate=getD();
   loadDateData(getD());drawSP();drawDZ();drawGrid();updateStats();
 });

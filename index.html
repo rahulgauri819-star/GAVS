@@ -6895,8 +6895,9 @@ function migrateDlogToMonthly(){
       done++;
       if(done===months.length){
         console.log('Dlog migration: complete! All dates now in monthly docs.');
-        // Mark old dlog doc as migrated (don't delete it — keep as backup)
         db.collection('gavs_data').doc('dlog').update({_migratedToMonthly:true,updatedAt:new Date().toISOString()}).catch(function(){});
+        // Re-subscribe to monthly doc now that data is there
+        if(typeof _subscribeDlogMonthly==='function')_subscribeDlogMonthly();
       }
     }).catch(function(e){console.warn('Dlog migration error for '+monthKey+':',e.message||e);});
   });
@@ -6910,12 +6911,14 @@ function loadFromCloud(callback){
   // Unsubscribe any previous listener before creating a new one
   if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){} _snapshotUnsub=null;}
   if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
-  // Set up dlog listener — reads from monthly doc e.g. gavs_data/dlog_2026_07
+  // Set up dlog listener — first tries monthly doc, falls back to old dlog doc
   var _curMonthDocId=dlogDocId(getD());
-  _dlogSnapshotUnsub=db.collection('gavs_data').doc(_curMonthDocId).onSnapshot(function(dlogDoc){
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
-    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      var newDlog=dlogDoc.data().dlog;
+  function _subscribeDlogMonthly(){
+    if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){}}
+    _dlogSnapshotUnsub=db.collection('gavs_data').doc(_curMonthDocId).onSnapshot(function(dlogDoc){
+      if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
+      if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+        var newDlog=dlogDoc.data().dlog;
       // Only re-render venue grid if duty data changed (not just attendance)
       var needsRedraw=false;
       if(DB_LOADED){
@@ -6933,18 +6936,26 @@ function loadFromCloud(callback){
         loadLiveFromDlog(_cd2);
         drawVenueGrid();drawStaffPanel();drawStats();
       }
-    } else if(_mainDlogCache&&!_dlogMigrated){
-      console.log('Seeding monthly dlog from main cache...');
-      var _seedDate=getD();
-      var _seedPayload={updatedAt:new Date().toISOString()};
-      Object.keys(_mainDlogCache).forEach(function(d){_seedPayload['dlog.'+d]=_mainDlogCache[d];});
-      dlogRef(_seedDate).set(_seedPayload,{merge:true}).then(function(){
-        _dlogMigrated=true;dlog=_mainDlogCache;
-        _mainDlogCache=null;
-        console.log('Monthly dlog seed complete.');
-      }).catch(function(e){console.error('Monthly dlog seed error:',e);});
-    }
-  },function(e){console.warn('Dlog listener error:',e);});
+      } else {
+        // Monthly doc empty — fall back to reading old dlog doc
+        db.collection('gavs_data').doc('dlog').get().then(function(oldDoc){
+          if(oldDoc.exists&&oldDoc.data()&&oldDoc.data().dlog){
+            dlog=oldDoc.data().dlog;
+            _dlogMigrated=false;
+            _mainDlogCache=dlog;
+            console.log('Loaded from old dlog doc, migration pending...');
+            if(DB_LOADED){
+              var _cd2=_lastLoadedDate||getD();
+              loadLiveFromDlog(_cd2);
+              drawVenueGrid();drawStaffPanel();drawStats();
+            }
+            setTimeout(migrateDlogToMonthly,2000);
+          }
+        }).catch(function(e){console.warn('Old dlog fallback error:',e);});
+      }
+    },function(e){console.warn('Dlog listener error:',e);});
+  }
+  _subscribeDlogMonthly();
   var initialLoad=true;
   var timeout=setTimeout(function(){
     console.warn('Firebase timeout');

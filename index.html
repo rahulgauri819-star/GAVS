@@ -802,7 +802,13 @@ input,select,button{font-family:inherit;}
       <button class="bigbtn" id="btnDownloadBackup">⬇ Download Full Backup</button>
     </div>
     <div style="background:#fff;border-radius:14px;border:1.5px solid #e3eaff;padding:20px;margin-bottom:16px;">
-      <div style="font-size:14px;color:#888;">Grover Audio Visual Services — Staff Deployment System v84</div>
+      <div style="font-size:14px;font-weight:800;color:#b71c1c;margin-bottom:8px;">🧹 Fix Drag Issue (Clean Old Data)</div>
+      <div style="font-size:12px;color:#888;margin-bottom:14px;">Removes duty history older than 60 days from Firebase to fix the "too many index entries" error that causes dragging to revert. Your recent data (last 60 days) is kept. Run this once.</div>
+      <div id="dlogCleanStatus" style="font-size:12px;margin-bottom:10px;display:none;padding:10px;border-radius:8px;"></div>
+      <button class="bigbtn" id="btnDlogClean" style="background:#c62828;">🧹 Clean Old Dlog Data</button>
+    </div>
+    <div style="background:#fff;border-radius:14px;border:1.5px solid #e3eaff;padding:20px;margin-bottom:16px;">
+      <div style="font-size:14px;color:#888;">Grover Audio Visual Services — Staff Deployment System v85</div>
     </div>
     <button id="btnLogout" style="display:block;width:100%;max-width:600px;background:#ffebee;border:1.5px solid #ffcdd2;color:#c62828;border-radius:11px;padding:13px 0;font-size:15px;font-weight:700;cursor:pointer;">🚪 Logout</button>
   </div>
@@ -3893,11 +3899,8 @@ function saveAttendance(){
 }
 
 function _saveAttendanceWithRetry(d,attnPayload,attempt){
-  // Merge attendance into in-memory dlog entry then stringify for Firestore
-  if(!dlog[d])dlog[d]={};
-  dlog[d].attendance=attnPayload;
-  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]=JSON.stringify(dlog[d]);
-  db.collection('gavs_data').doc('dlog').update(dlogUpdate).then(function(){
+  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attnPayload};
+  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true}).then(function(){
     _atnOfflineQueue=null;
   }).catch(function(e){
     console.warn('Attendance save error (attempt '+attempt+'):',e.message||e);
@@ -5086,6 +5089,47 @@ g('btnChgPass').addEventListener('click',function(){
   toast('Password updated!');
 });
 g('btnLogout').addEventListener('click',doLogout);
+
+// Dlog cleanup button
+g('btnDlogClean')&&g('btnDlogClean').addEventListener('click',function(){
+  var btn=g('btnDlogClean');var st=g('dlogCleanStatus');
+  if(!confirm('This will remove duty history older than 60 days from Firebase to fix dragging. Recent data is kept. Continue?'))return;
+  btn.disabled=true;btn.textContent='Cleaning...';
+  st.style.display='block';st.style.background='#e3f2fd';st.style.color='#0d47a1';
+  st.textContent='Reading dlog from Firebase...';
+  db.collection('gavs_data').doc('dlog').get().then(function(doc){
+    var fullDlog=(doc.exists&&doc.data()&&doc.data().dlog)||dlog;
+    var cutoff=new Date();cutoff.setDate(cutoff.getDate()-60);
+    var cutoffStr=cutoff.toISOString().slice(0,10);
+    var allDates=Object.keys(fullDlog);
+    var toKeep={};var removed=0;
+    allDates.forEach(function(d){
+      if(d>=cutoffStr){toKeep[d]=fullDlog[d];}
+      else{removed++;}
+    });
+    st.textContent='Found '+allDates.length+' dates. Removing '+removed+' old dates, keeping '+Object.keys(toKeep).length+'...';
+    if(removed===0){
+      st.style.background='#e8f5e9';st.style.color='#1b5e20';
+      st.textContent='Nothing to remove — dlog is already clean!';
+      btn.disabled=false;btn.textContent='🧹 Clean Old Dlog Data';return;
+    }
+    // Write trimmed dlog back
+    db.collection('gavs_data').doc('dlog').set({dlog:toKeep,updatedAt:new Date().toISOString()}).then(function(){
+      dlog=toKeep; // update in-memory too
+      st.style.background='#e8f5e9';st.style.color='#1b5e20';
+      st.textContent='✅ Done! Removed '+removed+' old dates. Dragging should now work correctly.';
+      btn.disabled=false;btn.textContent='✅ Done';
+    }).catch(function(e){
+      st.style.background='#ffebee';st.style.color='#c62828';
+      st.textContent='Error: '+( e.message||e)+'. Please try again.';
+      btn.disabled=false;btn.textContent='🧹 Clean Old Dlog Data';
+    });
+  }).catch(function(e){
+    st.style.background='#ffebee';st.style.color='#c62828';
+    st.textContent='Error reading Firebase: '+(e.message||e);
+    btn.disabled=false;btn.textContent='🧹 Clean Old Dlog Data';
+  });
+});
 g('btnDownloadBackup')&&g('btnDownloadBackup').addEventListener('click',function(){
   try{
     db.collection('gavs_data').doc('dlog').get().then(function(dlogDoc){
@@ -6799,15 +6843,15 @@ function doSaveWithRetry(payload,attempt){
 
 function saveDlogSeparate(attempt){
   if(attempt>5)return;
-  // Stringify each date value so Firestore indexes only a flat string — avoids "too many index entries"
+  // Write only current date entry using dot-notation to minimise index entries
   var d=_lastLoadedDate||getD();
   var payload={updatedAt:new Date().toISOString()};
-  payload['dlog.'+d]=JSON.stringify(dlog[d]||{});
+  payload['dlog.'+d]=dlog[d]||{};
   db.collection('gavs_data').doc('dlog').update(payload).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
     if(e.code==='not-found'||String(e.message||e).indexOf('No document')>=0){
-      var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d]=JSON.stringify(dlog[d]||{});
+      var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d]=dlog[d]||{};
       db.collection('gavs_data').doc('dlog').set(sp,{merge:true}).then(function(){_dlogMigrated=true;}).catch(function(e2){
         console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
         setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
@@ -6835,11 +6879,8 @@ function pruneDlogFirestore(){
   var trimmedDlog={};
   Object.keys(dlog).forEach(function(d){if(d>=cutoffStr)trimmedDlog[d]=dlog[d];});
   oldDates.forEach(function(d){delete dlog[d];});
-  // Stringify each date value and rewrite entire document — eliminates all nested indexing
-  var stringifiedDlog={};
-  Object.keys(trimmedDlog).forEach(function(d){stringifiedDlog[d]=JSON.stringify(trimmedDlog[d]);});
-  db.collection('gavs_data').doc('dlog').set({dlog:stringifiedDlog,updatedAt:new Date().toISOString()}).then(function(){
-    console.log('Dlog prune+stringify: SUCCESS. Kept '+Object.keys(stringifiedDlog).length+' dates.');
+  db.collection('gavs_data').doc('dlog').set({dlog:trimmedDlog,updatedAt:new Date().toISOString()}).then(function(){
+    console.log('Dlog prune: SUCCESS. Kept '+Object.keys(trimmedDlog).length+' dates.');
   }).catch(function(e){console.warn('Dlog prune error:',e.message||e);});
 }
 
@@ -6855,13 +6896,7 @@ function loadFromCloud(callback){
   _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      var rawDlog=dlogDoc.data().dlog;
-      // Parse stringified date entries (new format) — fall back to object if already parsed
-      var newDlog={};
-      Object.keys(rawDlog).forEach(function(d){
-        var v=rawDlog[d];
-        newDlog[d]=(typeof v==='string')?JSON.parse(v):v;
-      });
+      var newDlog=dlogDoc.data().dlog;
       // Only re-render venue grid if duty data changed (not just attendance)
       var needsRedraw=false;
       if(DB_LOADED){

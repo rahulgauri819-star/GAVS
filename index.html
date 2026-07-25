@@ -6796,25 +6796,54 @@ function doSaveWithRetry(payload,attempt){
 
 function saveDlogSeparate(attempt){
   if(attempt>5)return;
-  var d=_lastLoadedDate||getD();
-  var payload={updatedAt:new Date().toISOString()};
-  payload['dlog.'+d]=dlog[d]||{};
-  db.collection('gavs_data').doc('dlog').update(payload).then(function(){
+  db.collection('gavs_data').doc('dlog').set({dlog:dlog,updatedAt:new Date().toISOString()}).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
-    if(e.code==='not-found'||String(e.message||e).indexOf('No document')>=0){
-      var sp={dlog:{},updatedAt:new Date().toISOString()};
-      sp.dlog[d]=dlog[d]||{};
-      db.collection('gavs_data').doc('dlog').set(sp,{merge:true}).then(function(){
-        _dlogMigrated=true;
-      }).catch(function(e2){
-        console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
-        setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
-      });
+    console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
+    setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
+  });
+}
+
+// ── DAILY DLOG HELPERS ─────────────────────────────────────
+function dailyDocId(dateStr){return 'dlog_'+(dateStr||getD()).replace(/-/g,'_');}
+function dailyRef(dateStr){return db.collection('gavs_data').doc(dailyDocId(dateStr));}
+
+// Fetch a specific date's data into memory if not already loaded
+// Returns a Promise that resolves when data is ready
+function fetchDlogDate(dateStr,cb){
+  if(dlog[dateStr]!==undefined){if(cb)cb();return;} // already in memory
+  dailyRef(dateStr).get().then(function(doc){
+    if(doc.exists&&doc.data()&&doc.data().dlog&&doc.data().dlog[dateStr]){
+      dlog[dateStr]=doc.data().dlog[dateStr];
     } else {
-      console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
-      setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
+      dlog[dateStr]={}; // no data for this date
     }
+    if(cb)cb();
+  }).catch(function(e){
+    console.warn('fetchDlogDate error for '+dateStr+':',e.message||e);
+    dlog[dateStr]={};
+    if(cb)cb();
+  });
+}
+
+// One-time background migration: split old gavs_data/dlog into daily docs
+var _dailyMigDone=false;
+function migrateToDailyDocs(){
+  if(_dailyMigDone)return;
+  _dailyMigDone=true;
+  var allDates=Object.keys(dlog);
+  if(!allDates.length){console.log('[DailyMig] Nothing to migrate.');return;}
+  console.log('[DailyMig] Migrating '+allDates.length+' dates to daily docs...');
+  var done=0;
+  allDates.forEach(function(d){
+    var payload={updatedAt:new Date().toISOString()};
+    payload['dlog.'+d]=dlog[d];
+    dailyRef(d).set(payload,{merge:true}).then(function(){
+      done++;
+      if(done===allDates.length){
+        console.log('[DailyMig] COMPLETE. '+done+' daily docs created. Safe to switch in Deploy 2.');
+      }
+    }).catch(function(e){console.warn('[DailyMig] Error on '+d+':',e.message||e);done++;});
   });
 }
 
@@ -6842,6 +6871,7 @@ function loadFromCloud(callback){
       }
       dlog=newDlog;
       _dlogMigrated=true;
+      if(!DB_LOADED){setTimeout(migrateToDailyDocs,5000);} // Deploy 1: background migration only
       if(DB_LOADED&&needsRedraw){
         var _cd2=_lastLoadedDate||getD();
         loadLiveFromDlog(_cd2);

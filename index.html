@@ -3893,8 +3893,8 @@ function saveAttendance(){
 }
 
 function _saveAttendanceWithRetry(d,attnPayload,attempt){
-  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attnPayload};
-  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true}).then(function(){
+  var dlogUpdate={updatedAt:new Date().toISOString()};dlogUpdate['dlog.'+d]={attendance:attnPayload};
+  dlogRef(d).update(dlogUpdate).then(function(){
     _atnOfflineQueue=null;
   }).catch(function(e){
     console.warn('Attendance save error (attempt '+attempt+'):',e.message||e);
@@ -6796,13 +6796,24 @@ function doSaveWithRetry(payload,attempt){
 
 function saveDlogSeparate(attempt){
   if(attempt>5)return;
-  db.collection('gavs_data').doc('dlog').set({dlog:dlog,updatedAt:new Date().toISOString()}).then(function(){
+  var d=_lastLoadedDate||getD();
+  var payload={updatedAt:new Date().toISOString()};
+  payload['dlog.'+d]=dlog[d]||{};
+  dlogRef(d).update(payload).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
-    console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
-    setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
+    // Monthly doc missing — create it
+    var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d]=dlog[d]||{};
+    dlogRef(d).set(sp,{merge:true}).then(function(){_dlogMigrated=true;}).catch(function(e2){
+      console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
+      setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
+    });
   });
 }
+
+// Monthly dlog helpers
+function dlogDocId(dateStr){var parts=(dateStr||getD()).split('-');return 'dlog_'+parts[0]+'_'+parts[1];}
+function dlogRef(dateStr){return db.collection('gavs_data').doc(dlogDocId(dateStr));}
 
 // ── MONTHLY DLOG MIGRATION (background only, does not affect reads/writes) ──
 // Copies gavs_data/dlog into monthly docs e.g. gavs_data/dlog_2026_07
@@ -6849,8 +6860,9 @@ function loadFromCloud(callback){
   // Unsubscribe any previous listener before creating a new one
   if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){} _snapshotUnsub=null;}
   if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
-  // Set up dlog listener — reads from gavs_data/dlog (separate document)
-  _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+  // Set up dlog listener — reads from monthly doc e.g. gavs_data/dlog_2026_07
+  var _curMonthDocId=dlogDocId(getD());
+  _dlogSnapshotUnsub=db.collection('gavs_data').doc(_curMonthDocId).onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var newDlog=dlogDoc.data().dlog;

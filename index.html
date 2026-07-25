@@ -6816,25 +6816,35 @@ function saveDlogSeparate(attempt){
   });
 }
 
-// One-time cleanup: delete dlog entries older than 90 days from Firestore to fix index entry limit
+// One-time cleanup: rewrite dlog keeping only last 90 days to fix Firestore index entry limit
 var _dlogCleanupDone=false;
 function pruneDlogFirestore(){
   if(_dlogCleanupDone)return;
   _dlogCleanupDone=true;
-  var cutoff=new Date();cutoff.setDate(cutoff.getDate()-90);
-  var cutoffStr=cutoff.toISOString().slice(0,10); // YYYY-MM-DD
-  var oldDates=Object.keys(dlog).filter(function(d){return d<cutoffStr;});
-  if(!oldDates.length){console.log('Dlog prune: nothing to remove');return;}
-  console.log('Dlog prune: removing '+oldDates.length+' old date(s) from Firestore');
-  var delPayload={};
-  oldDates.forEach(function(d){
-    delPayload['dlog.'+d]=firebase.firestore.FieldValue.delete();
-    delete dlog[d]; // also remove from in-memory dlog
+  // Keep only last 60 days — aggressive enough to clear the index limit
+  var cutoff=new Date();cutoff.setDate(cutoff.getDate()-60);
+  var cutoffStr=cutoff.toISOString().slice(0,10);
+  var allDates=Object.keys(dlog);
+  var oldDates=allDates.filter(function(d){return d<cutoffStr;});
+  if(!oldDates.length){console.log('Dlog prune: nothing to remove ('+allDates.length+' dates total)');return;}
+  console.log('Dlog prune: total dates='+allDates.length+', removing '+oldDates.length+' old dates');
+  // Build trimmed dlog
+  var trimmedDlog={};
+  Object.keys(dlog).forEach(function(d){if(d>=cutoffStr)trimmedDlog[d]=dlog[d];});
+  oldDates.forEach(function(d){delete dlog[d];});
+  // set() replaces entire document — bypasses index entry limit on old fields
+  db.collection('gavs_data').doc('dlog').set({dlog:trimmedDlog,updatedAt:new Date().toISOString()}).then(function(){
+    console.log('Dlog prune: SUCCESS. Kept '+Object.keys(trimmedDlog).length+' dates.');
+  }).catch(function(e){
+    console.warn('Dlog prune error:',e.message||e);
+    // If even trimmed set fails, try last 30 days only
+    var cutoff2=new Date();cutoff2.setDate(cutoff2.getDate()-30);
+    var cutoffStr2=cutoff2.toISOString().slice(0,10);
+    var trimmed2={};Object.keys(dlog).forEach(function(d){if(d>=cutoffStr2)trimmed2[d]=dlog[d];});
+    db.collection('gavs_data').doc('dlog').set({dlog:trimmed2,updatedAt:new Date().toISOString()}).then(function(){
+      console.log('Dlog prune (30d fallback): SUCCESS. Kept '+Object.keys(trimmed2).length+' dates.');
+    }).catch(function(e2){console.warn('Dlog prune fallback error:',e2.message||e2);});
   });
-  delPayload.updatedAt=new Date().toISOString();
-  db.collection('gavs_data').doc('dlog').update(delPayload).then(function(){
-    console.log('Dlog prune: done, removed '+oldDates.length+' dates');
-  }).catch(function(e){console.warn('Dlog prune error:',e.message||e);});
 }
 
 var _snapshotUnsub=null; // holds the onSnapshot unsubscribe handle

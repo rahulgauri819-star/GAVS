@@ -3893,8 +3893,11 @@ function saveAttendance(){
 }
 
 function _saveAttendanceWithRetry(d,attnPayload,attempt){
-  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attnPayload};
-  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true}).then(function(){
+  // Merge attendance into in-memory dlog entry then stringify for Firestore
+  if(!dlog[d])dlog[d]={};
+  dlog[d].attendance=attnPayload;
+  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]=JSON.stringify(dlog[d]);
+  db.collection('gavs_data').doc('dlog').update(dlogUpdate).then(function(){
     _atnOfflineQueue=null;
   }).catch(function(e){
     console.warn('Attendance save error (attempt '+attempt+'):',e.message||e);
@@ -6796,15 +6799,15 @@ function doSaveWithRetry(payload,attempt){
 
 function saveDlogSeparate(attempt){
   if(attempt>5)return;
-  // Write only the current date entry with dot-notation update to avoid Firestore index entry limit
+  // Stringify each date value so Firestore indexes only a flat string — avoids "too many index entries"
   var d=_lastLoadedDate||getD();
   var payload={updatedAt:new Date().toISOString()};
-  payload['dlog.'+d]=dlog[d]||{};
+  payload['dlog.'+d]=JSON.stringify(dlog[d]||{});
   db.collection('gavs_data').doc('dlog').update(payload).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
     if(e.code==='not-found'||String(e.message||e).indexOf('No document')>=0){
-      var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d]=dlog[d]||{};
+      var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d]=JSON.stringify(dlog[d]||{});
       db.collection('gavs_data').doc('dlog').set(sp,{merge:true}).then(function(){_dlogMigrated=true;}).catch(function(e2){
         console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
         setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
@@ -6832,19 +6835,12 @@ function pruneDlogFirestore(){
   var trimmedDlog={};
   Object.keys(dlog).forEach(function(d){if(d>=cutoffStr)trimmedDlog[d]=dlog[d];});
   oldDates.forEach(function(d){delete dlog[d];});
-  // set() replaces entire document — bypasses index entry limit on old fields
-  db.collection('gavs_data').doc('dlog').set({dlog:trimmedDlog,updatedAt:new Date().toISOString()}).then(function(){
-    console.log('Dlog prune: SUCCESS. Kept '+Object.keys(trimmedDlog).length+' dates.');
-  }).catch(function(e){
-    console.warn('Dlog prune error:',e.message||e);
-    // If even trimmed set fails, try last 30 days only
-    var cutoff2=new Date();cutoff2.setDate(cutoff2.getDate()-30);
-    var cutoffStr2=cutoff2.toISOString().slice(0,10);
-    var trimmed2={};Object.keys(dlog).forEach(function(d){if(d>=cutoffStr2)trimmed2[d]=dlog[d];});
-    db.collection('gavs_data').doc('dlog').set({dlog:trimmed2,updatedAt:new Date().toISOString()}).then(function(){
-      console.log('Dlog prune (30d fallback): SUCCESS. Kept '+Object.keys(trimmed2).length+' dates.');
-    }).catch(function(e2){console.warn('Dlog prune fallback error:',e2.message||e2);});
-  });
+  // Stringify each date value and rewrite entire document — eliminates all nested indexing
+  var stringifiedDlog={};
+  Object.keys(trimmedDlog).forEach(function(d){stringifiedDlog[d]=JSON.stringify(trimmedDlog[d]);});
+  db.collection('gavs_data').doc('dlog').set({dlog:stringifiedDlog,updatedAt:new Date().toISOString()}).then(function(){
+    console.log('Dlog prune+stringify: SUCCESS. Kept '+Object.keys(stringifiedDlog).length+' dates.');
+  }).catch(function(e){console.warn('Dlog prune error:',e.message||e);});
 }
 
 var _snapshotUnsub=null; // holds the onSnapshot unsubscribe handle
@@ -6859,7 +6855,13 @@ function loadFromCloud(callback){
   _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      var newDlog=dlogDoc.data().dlog;
+      var rawDlog=dlogDoc.data().dlog;
+      // Parse stringified date entries (new format) — fall back to object if already parsed
+      var newDlog={};
+      Object.keys(rawDlog).forEach(function(d){
+        var v=rawDlog[d];
+        newDlog[d]=(typeof v==='string')?JSON.parse(v):v;
+      });
       // Only re-render venue grid if duty data changed (not just attendance)
       var needsRedraw=false;
       if(DB_LOADED){

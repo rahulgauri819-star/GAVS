@@ -6796,11 +6796,25 @@ function doSaveWithRetry(payload,attempt){
 
 function saveDlogSeparate(attempt){
   if(attempt>5)return;
-  db.collection('gavs_data').doc('dlog').set({dlog:dlog,updatedAt:new Date().toISOString()}).then(function(){
+  var d=_lastLoadedDate||getD();
+  var payload={updatedAt:new Date().toISOString()};
+  payload['dlog.'+d]=dlog[d]||{};
+  db.collection('gavs_data').doc('dlog').update(payload).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
-    console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
-    setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
+    if(e.code==='not-found'||String(e.message||e).indexOf('No document')>=0){
+      var sp={dlog:{},updatedAt:new Date().toISOString()};
+      sp.dlog[d]=dlog[d]||{};
+      db.collection('gavs_data').doc('dlog').set(sp,{merge:true}).then(function(){
+        _dlogMigrated=true;
+      }).catch(function(e2){
+        console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
+        setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
+      });
+    } else {
+      console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
+      setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
+    }
   });
 }
 

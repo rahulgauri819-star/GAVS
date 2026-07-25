@@ -6877,7 +6877,11 @@ function loadFromCloud(callback){
       }
       dlog=newDlog;
       _dlogMigrated=true;
-      if(!DB_LOADED){setTimeout(migrateToMonthlyDocs,5000);} // background migration, runs once
+      if(!DB_LOADED){
+        setTimeout(migrateToMonthlyDocs,5000); // background migration, runs once
+        // Dlog arrived before main doc — pre-load live data so grid renders immediately
+        loadLiveFromDlog(getD());
+      }
       if(DB_LOADED&&needsRedraw){
         var _cd2=_lastLoadedDate||getD();
         loadLiveFromDlog(_cd2);

@@ -868,15 +868,15 @@ var activeVids=[];
 var deskRole='All';
 
 function mkId(){return '_'+Math.random().toString(36).slice(2,9);}
-// Default venues are only used as a fallback if Firebase returns no venues (new installation).
-// They are NOT pre-loaded here to avoid random IDs clashing with Firebase-stored venue IDs.
+// Init default venues
+DEFAULT_VENUES.forEach(function(n){venues.push({id:mkId(),name:n,vip:false});});
 
 // ── HELPERS ───────────────────────────────────────────────────
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function cc(r){if(r==='Manager')return '#1a237e';var i=ROLES.indexOf(r);return CLRS[i>=0?i%CLRS.length:0]||'#1565c0';}
 function ini(n){var p=(n||'').trim().split(' ');return((p[0]||'?')[0]||'').toUpperCase()+(((p[1]||'')[0])||'').toUpperCase();}
-function nd(d){var x=new Date((d||'')+'T00:00:00');x.setDate(x.getDate()+1);return x.toISOString().slice(0,10);}
-function fd(d){try{return new Date((d||'')+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});}catch(e){return d||'';}}
+function nd(d){var x=new Date(d);x.setDate(x.getDate()+1);return x.toISOString().slice(0,10);}
+function fd(d){try{return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});}catch(e){return d||'';}}
 // IST (UTC+5:30) — all today/now logic uses Indian Standard Time
 function nowIST(){var n=new Date();return new Date(n.getTime()+((n.getTimezoneOffset()+330)*60000));}
 function todayIST(){return nowIST().toISOString().slice(0,10);}
@@ -940,15 +940,6 @@ function doLogin(){
 function doLogout(){
   curUser='';
   try{localStorage.removeItem(_SESSION_KEY);}catch(e){}
-  // Reset all in-memory state so re-login starts clean
-  staff=[];venues=[];asgn={};lvMap={};offMap={};gdnMap={};dlog={};vdlog={};
-  annualLeave=[];activeVids=[];venueOrder=[];vendorAsgn={};vendorCompanies={};
-  ihcAsgn={};jaipurAsgn={};ihcLog={};jaipurLog={};ihcHalls=[];jaipurHalls=[];
-  drafts=[];curDraftId=null;curDraftVer=0;
-  _lastLoadedDate='';DB_LOADED=false;_dlogReady=false;_mainReady=false;
-  // Unsubscribe Firebase listeners
-  if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){}_snapshotUnsub=null;}
-  if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){}_dlogSnapshotUnsub=null;}
   g('LS').style.display='flex';
   g('AH').style.display='none';
   g('AB').style.display='none';
@@ -994,8 +985,7 @@ function checkAdminPass(onSuccess){
   g('ADMIN_PASS_IN').addEventListener('keydown',function(e){if(e.key==='Enter')g('m-yes').click();});
   g('m-yes').onclick=function(){
     var val=(g('ADMIN_PASS_IN').value||'').trim();
-    // Only accept the admin or grover password — not portal team passwords
-    var ok=CREDS.some(function(c){return(c.u==='admin'||c.u==='grover')&&c.p===val;});
+    var ok=CREDS.some(function(c){return c.p===val;});
     if(!ok){
       g('ADMIN_PASS_IN').style.borderColor='#c62828';g('ADMIN_PASS_IN').style.background='#ffebee';
       g('ADMIN_PASS_IN').value='';g('ADMIN_PASS_IN').focus();
@@ -1213,7 +1203,6 @@ function loadLiveFromDlog(date){
 function switchToDate(newDate){
   if(!DB_LOADED)return;
   if(newDate===_lastLoadedDate)return; // already on this date
-  if(dlog[newDate]===undefined){fetchDlogDate(newDate,function(){switchToDate(newDate);});return;}
   // 1. Save the date we're LEAVING into its OWN dlog entry, then persist.
   //    Use _lastLoadedDate (old date) — getD() already shows newDate.
   if(_lastLoadedDate){
@@ -1228,8 +1217,6 @@ function switchToDate(newDate){
     actuallySaveCloud();
   }
   _lastLoadedDate=newDate;
-  // Re-subscribe dlog real-time listener to the new date's daily doc
-  if(typeof _subscribeDlogForDate==='function')_subscribeDlogForDate(newDate);
   // 2. Reset contracted venues to ALL hidden on every date switch.
   contractedHiddenVids=new Set();
   contractedHiddenVids._initialized=true;
@@ -1446,15 +1433,6 @@ function onGreyStaffClick(eid){
     );
     g('m-yes').onclick=function(){unGodown(eid);closeModal();};
     g('m-no').onclick=closeModal;
-  } else if(gids.indexOf(eid)>=0){
-    showModal(
-      '<div class="mt" style="color:#f57f17;">Godown Team</div>'+
-      '<div style="text-align:center;font-size:15px;color:#333;margin-bottom:18px;"><strong>'+esc(e.name)+'</strong> is currently in Godown Team.<br>Remove from Godown Team?</div>'+
-      '<button class="mbtn grn" id="m-yes">Yes, Remove from Godown</button>'+
-      '<button class="mcancel" id="m-no">Cancel</button>'
-    );
-    g('m-yes').onclick=function(){unGdn(eid);closeModal();};
-    g('m-no').onclick=closeModal;
   } else if(aids.indexOf(eid)>=0){
     var depVid='',depVname='';
     Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid]){depVid=vid;var v=getV(vid);if(v)depVname=v.name;}});
@@ -1653,7 +1631,7 @@ function drawVenueGrid(){
   offBox.addEventListener('drop',function(ev){
     ev.preventDefault();this.style.borderColor='#ffcc80';this.style.background='#fff8f0';
     var eid=ev.dataTransfer.getData('text/plain')||touchDragEid;
-    if(eid)markOffice(eid);
+    if(eid)markGodown(eid);
   });
   dropZoneWrap.appendChild(offBox);
 
@@ -1780,12 +1758,13 @@ function drawVenueGrid(){
         hdr2.addEventListener('touchstart',function(ev){
           _tStart=ev.touches[0];_tMoved=false;
           touchVenueDragId=vid2;
-          if(touchVenueGhost){try{document.body.removeChild(touchVenueGhost);}catch(x){}touchVenueGhost=null;}
+          if(!touchVenueGhost){
             touchVenueGhost=document.createElement('div');
             touchVenueGhost.style.cssText='position:fixed;z-index:9999;pointer-events:none;background:#1565c0;color:#fff;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;opacity:0.85;box-shadow:0 4px 16px rgba(0,0,0,0.25);white-space:nowrap;';
             var v2=getV(vid2);
             touchVenueGhost.textContent=(v2?v2.name:'Venue');
             document.body.appendChild(touchVenueGhost);
+          }
           touchVenueGhost.style.left=(_tStart.clientX-10)+'px';
           touchVenueGhost.style.top=(_tStart.clientY-20)+'px';
           box2.style.opacity='0.4';
@@ -1938,7 +1917,7 @@ function makeVenueBox(v,hasPinned,viewData){
   vipBtn.style.cssText='background:'+(_vipOn?'#f9a825':'rgba(255,255,255,0.15)')+';border:1px solid '+(_vipOn?'#f9a825':'rgba(255,255,255,0.4)')+';color:#fff;border-radius:6px;padding:2px 6px;font-size:9px;font-weight:700;cursor:pointer;flex-shrink:0;';
   vipBtn.textContent='VIP';
   vipBtn.title='Toggle VIP for today only';
-  vipBtn.addEventListener('click',(function(vid2){return function(){if(_dateVip[vid2])delete _dateVip[vid2];else _dateVip[vid2]=true;saveCloud();drawVenueGrid();};})(v.id));
+  vipBtn.addEventListener('click',(function(vid2){return function(){_dateVip[vid2]=!_dateVip[vid2];if(_dateVip[vid2]===undefined)delete _dateVip[vid2];saveCloud();drawVenueGrid();};})(v.id));
   hdr.appendChild(vipBtn);
   // Halls badge/button
   var hallsCount=(_dateHalls[v.id]||0);
@@ -2481,8 +2460,8 @@ function showBulkVendorTime(vid){
 
 function showCopyPrevDay(vid){
   var v=getV(vid);if(!v)return;
-  var curDate=_lastLoadedDate||getD();
-  var cur=new Date(curDate+'T00:00:00');cur.setDate(cur.getDate()-1);
+  var curDate=getD();
+  var cur=new Date(curDate);cur.setDate(cur.getDate()-1);
   var prevDate=cur.toISOString().slice(0,10);
   var prevLog=dlog[prevDate];
   var prevVenue=prevLog&&prevLog.venues?prevLog.venues[vid]:null;
@@ -2943,7 +2922,6 @@ function showResetDuties(){
     // Clear only current date's data
     var currentDate=getD();
     asgn={};lvMap={};offMap={};gdnMap={};vendorAsgn={};
-    _dateVip={};_dateHalls={};_dateComments={}; // also clear venue metadata for this date
     applyPinned(); // restore pinned staff base layer
     // Save cleared state to this date's log only
     saveLog(currentDate);saveVendorLog(currentDate);
@@ -2975,32 +2953,11 @@ function showCopyFrom(){
   g('m-yes').onclick=function(){
     var dt=g('CFDATE').value;
     if(!dt){toast('Select a date','w');return;}
-    fetchDlogDate(dt,function(){
-      var log=dlog[dt];
-      if(!log||((!Object.keys(log.venues||{}).length)&&(!log.leave||!log.leave.length)&&(!log.office||!log.office.length)&&(!log.godown||!log.godown.length))){
-        toast('No duties saved for '+fd(dt),'w');closeModal();return;
-      }
-      // Warn if today already has assignments
-      var hasToday=Object.keys(asgn).some(function(vid){return asgn[vid]&&Object.keys(asgn[vid]).length>0;})||
-        Object.keys(lvMap).length>0||Object.keys(offMap).length>0||Object.keys(gdnMap).length>0;
-      if(hasToday){
-        showModal(
-          '<div class="mt" style="color:#e65100;">⚠️ Existing Duties Will Be Merged</div>'+
-          '<div style="text-align:center;font-size:13px;color:#555;margin-bottom:18px;">Today already has assignments.<br>Copied duties will be added on top. Staff already deployed will not be moved.</div>'+
-          '<button class="mbtn blue" id="m-cf-yes">Continue — Copy Anyway</button>'+
-          '<button class="mcancel" id="m-no">Cancel</button>'
-        );
-        g('m-cf-yes').onclick=function(){closeModal();_doCopyFrom(log,dt);};
-        g('m-no').onclick=closeModal;
-        return;
-      }
-      _doCopyFrom(log,dt);
-    });
-  };
-  g('m-no').onclick=closeModal;
-}
-
-function _doCopyFrom(log,dt){
+    var log=dlog[dt];
+    if(!log||((!Object.keys(log.venues||{}).length)&&(!log.leave||!log.leave.length)&&(!log.office||!log.office.length)&&(!log.godown||!log.godown.length))){
+      toast('No duties saved for '+fd(dt),'w');closeModal();return;
+    }
+    // Copy venue assignments
     Object.keys(log.venues||{}).forEach(function(vid){
       if(!asgn[vid])asgn[vid]={};
       Object.keys(log.venues[vid]).forEach(function(eid){
@@ -3018,7 +2975,7 @@ function _doCopyFrom(log,dt){
         lvMap[l.id]={emp:emp,duty:l.duty||'6:00 AM'};
       }
     });
-    // Copy office duty
+    // Copy godown duty
     (log.office||[]).forEach(function(o){
       var emp=getS(o.id);
       if(emp){
@@ -3042,6 +2999,8 @@ function _doCopyFrom(log,dt){
     if(log.godown&&log.godown.length)copied.push(log.godown.length+' godown team');
     toast('Copied from '+fd(dt)+': '+copied.join(', '));
     drawStaffPanel();drawVenueGrid();drawStats();saveCloud();
+  };
+  g('m-no').onclick=closeModal;
 }
 
 // ── MANAGE ────────────────────────────────────────────────────
@@ -3636,7 +3595,7 @@ function drawLeave(){
 if(g('LSR'))g('LSR').addEventListener('input',drawLeave);
 
 // ── GAVS GODOWN DUTY ───────────────────────────────────────────────
-function markOffice(eid){
+function markGodown(eid){
   var e=getS(eid);if(!e)return;
   Object.keys(asgn).forEach(function(vid){if(asgn[vid])delete asgn[vid][eid];});
   Object.keys(ihcAsgn).forEach(function(hid){if(ihcAsgn[hid])delete ihcAsgn[hid][eid];});
@@ -3728,7 +3687,7 @@ function buildLoPanel(el,list,type){
     } else {
       btn.style.cssText='background:#e65100;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;';
       btn.textContent='Mark Office';
-      btn.addEventListener('click',(function(eid){return function(){markOffice(eid);};})(e.id));
+      btn.addEventListener('click',(function(eid){return function(){markGodown(eid);};})(e.id));
     }
     row.appendChild(info);row.appendChild(btn);
     el.appendChild(row);
@@ -3876,7 +3835,7 @@ function buildLoMarkPanel(el,list,type){
       TIMES.forEach(function(t){var o=document.createElement('option');o.textContent=t;if(t===a.duty)o.selected=true;sel.appendChild(o);});
       var capturedEid=a.emp.id;
       if(type==='leave'){
-        sel.addEventListener('change',function(){if(lvMap[capturedEid]){lvMap[capturedEid].duty=this.value;saveCloud();}});
+        sel.addEventListener('change',function(){if(lvMap[capturedEid])lvMap[capturedEid].duty=this.value;});
       } else if(type==='godown'){
         sel.addEventListener('change',function(){if(gdnMap[capturedEid]){gdnMap[capturedEid].duty=this.value;saveCloud();}});
       } else {
@@ -3934,9 +3893,8 @@ function saveAttendance(){
 }
 
 function _saveAttendanceWithRetry(d,attnPayload,attempt){
-  if(!dlog[d])dlog[d]={};dlog[d].attendance=attnPayload;
-  var dlogUpdate={updatedAt:new Date().toISOString()};dlogUpdate['dlog.'+d]=dlog[d];
-  dailyRef(d).update(dlogUpdate).then(function(){
+  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attnPayload};
+  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true}).then(function(){
     _atnOfflineQueue=null;
   }).catch(function(e){
     console.warn('Attendance save error (attempt '+attempt+'):',e.message||e);
@@ -4210,10 +4168,6 @@ function saveLog(forDate){
     var isContracted=staff.some(function(e){return e.pv===vid;});
     return !hasStaff&&!isContracted;
   });
-  // Preserve contractedVisible — which contracted venues are currently expanded.
-  // Rebuild from live contractedHiddenVids so it always reflects the current state.
-  var _cvids=venues.filter(function(v){return staff.some(function(e){return e.pv===v.id;})&&!contractedHiddenVids.has(v.id);}).map(function(v){return v.id;});
-  if(_cvids.length)log.contractedVisible=_cvids;
   dlog[d]=log;
 }
 
@@ -4667,7 +4621,7 @@ function drawSR(){
   var ss=g('SRS'),sb=g('SRB'),btn=g('SRPB');
   if(!eid){if(ss)ss.innerHTML='';if(sb)sb.innerHTML='';if(btn)btn.classList.add('hide');return;}
   var emp=getS(eid);if(!emp)return;
-  var dim=new Date(year,month+1,0).getDate(),dep=0,lvD=0,offD=0,gdnD=0,frD=0,rows='';
+  var dim=new Date(year,month+1,0).getDate(),dep=0,lvD=0,offD=0,frD=0,rows='';
   var today=todayIST();
   for(var day=1;day<=dim;day++){
     var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
@@ -4675,17 +4629,15 @@ function drawSR(){
     if(log){
       var inL=null;if(log.leave){for(var j=0;j<log.leave.length;j++){if(log.leave[j].id===eid){inL=log.leave[j];break;}}}
       var inO=null;if(log.office){for(var j=0;j<log.office.length;j++){if(log.office[j].id===eid){inO=log.office[j];break;}}}
-      var inG=null;if(log.godown){for(var j=0;j<log.godown.length;j++){if(log.godown[j].id===eid){inG=log.godown[j];break;}}}
       if(inL){status='leave';detail='On Leave';duty=inL.duty;lvD++;}
       else if(inO){status='office';detail='Office Duty';duty=inO.duty;offD++;}
-      else if(inG){status='godown';detail='Godown Team';duty=inG.duty;gdnD++;}
       else{Object.keys(log.venues||{}).forEach(function(vid){if(log.venues[vid]&&log.venues[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=log.venues[vid][eid];status='deployed';dep++;}});if(status==='free')frD++;}
     } else {
-      if(ds===today){var ft2=false;Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=asgn[vid][eid].duty;status='deployed';dep++;ft2=true;}});if(!ft2&&lvMap[eid]){status='leave';detail='On Leave';lvD++;}else if(!ft2&&offMap[eid]){status='office';detail='Office Duty';offD++;}else if(!ft2&&gdnMap[eid]){status='godown';detail='Godown Team';gdnD++;}else if(!ft2)frD++;}
+      if(ds===today){var ft2=false;Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=asgn[vid][eid].duty;status='deployed';dep++;ft2=true;}});if(!ft2&&lvMap[eid]){status='leave';detail='On Leave';lvD++;}else if(!ft2&&offMap[eid]){status='office';detail='Office Duty';offD++;}else if(!ft2)frD++;}
       else frD++;
     }
-    var dc=status==='deployed'?'#1565c0':status==='leave'?'#c62828':status==='office'?'#e65100':status==='godown'?'#f57f17':'#ccc';
-    var bg=status==='deployed'?'#f0f4ff':status==='leave'?'#fff5f5':status==='office'?'#fff8f0':status==='godown'?'#fffde7':'#fff';
+    var dc=status==='deployed'?'#1565c0':status==='leave'?'#c62828':status==='office'?'#e65100':'#ccc';
+    var bg=status==='deployed'?'#f0f4ff':status==='leave'?'#fff5f5':status==='office'?'#fff8f0':'#fff';
     var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,day).getDay()];
     rows+='<div style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;margin-bottom:3px;font-size:12px;background:'+bg+';">'+
       '<div style="font-weight:800;color:#1565c0;width:24px;flex-shrink:0;">'+day+'</div>'+
@@ -4706,7 +4658,6 @@ function drawSR(){
     '<div style="background:#f0f4ff;border:1.5px solid #bbdefb;border-radius:9px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-size:18px;font-weight:800;color:#1565c0;">'+dep+'</div><div style="font-size:10px;color:#888;">Deployed</div></div>'+
     '<div style="background:#fff5f5;border:1.5px solid #ffcdd2;border-radius:9px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-size:18px;font-weight:800;color:#c62828;">'+lvD+'</div><div style="font-size:10px;color:#888;">Leave</div></div>'+
     '<div style="background:#fff8f0;border:1.5px solid #ffe0b2;border-radius:9px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-size:18px;font-weight:800;color:#e65100;">'+offD+'</div><div style="font-size:10px;color:#888;">Office</div></div>'+
-    (gdnD>0?'<div style="background:#fffde7;border:1.5px solid #ffd54f;border-radius:9px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-size:18px;font-weight:800;color:#f57f17;">'+gdnD+'</div><div style="font-size:10px;color:#888;">Godown</div></div>':'')+
     '<div style="background:#f5f5f5;border:1.5px solid #ddd;border-radius:9px;padding:8px 12px;text-align:center;flex:1;min-width:60px;"><div style="font-size:18px;font-weight:800;color:#888;">'+frD+'</div><div style="font-size:10px;color:#888;">Free</div></div>'+
     '</div></div>';
   if(sb)sb.innerHTML='<div style="background:#fff;border-radius:12px;border:1.5px solid #e3eaff;padding:16px;"><div style="font-size:10px;font-weight:800;color:#1565c0;letter-spacing:0.1em;margin-bottom:10px;">DAY BY DAY</div>'+rows+'</div>';
@@ -4857,29 +4808,23 @@ function makeStaffPDF(){
   doc.setTextColor(13,71,161);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(emp.name,mg+5,y+10);
   doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(80,80,80);doc.text(emp.role,mg+5,y+17);if(emp.phone)doc.text('Ph: '+emp.phone,mg+5,y+22);
   doc.setTextColor(13,71,161);doc.setFontSize(12);doc.setFont('helvetica','bold');doc.text(MONS[month]+' '+year,pw-mg-5,y+12,{align:'right'});y+=28;
-  var dim=new Date(year,month+1,0).getDate(),dep=0,lvD=0,offD=0,gdnD=0,frD=0,rows2=[];
+  var dim=new Date(year,month+1,0).getDate(),dep=0,lvD=0,offD=0,frD=0,rows2=[];
   for(var day=1;day<=dim;day++){
     var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
     var log2=dlog[ds],status='free',detail='Unassigned',duty='';
     if(log2){
       var inL2=null;if(log2.leave)for(var j=0;j<log2.leave.length;j++){if(log2.leave[j].id===eid){inL2=log2.leave[j];break;}}
       var inO2=null;if(log2.office)for(var j=0;j<log2.office.length;j++){if(log2.office[j].id===eid){inO2=log2.office[j];break;}}
-      var inG2=null;if(log2.godown)for(var j=0;j<log2.godown.length;j++){if(log2.godown[j].id===eid){inG2=log2.godown[j];break;}}
       if(inL2){status='leave';detail='On Leave';duty=inL2.duty;lvD++;}
       else if(inO2){status='office';detail='Office Duty';duty=inO2.duty;offD++;}
-      else if(inG2){status='godown';detail='Godown Team';duty=inG2.duty;gdnD++;}
       else{Object.keys(log2.venues||{}).forEach(function(vid){if(log2.venues[vid]&&log2.venues[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=log2.venues[vid][eid];status='deployed';dep++;}});if(status==='free')frD++;}
     }else frD++;
     var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,day).getDay()];
     rows2.push({day:day,dn:dn,status:status,detail:detail,duty:duty});
   }
-  var sc=[mg+4,52,100,148],slbl=['Deployed','Leave','Office','Godown','Free'],sv=[dep,lvD,offD,gdnD,frD],scl=[[21,101,192],[198,40,40],[230,81,0],[245,127,23],[150,150,150]];
+  var sc=[mg+4,60,105,152],slbl=['Deployed','Leave','Godown','Free'],sv=[dep,lvD,offD,frD],scl=[[21,101,192],[198,40,40],[230,81,0],[150,150,150]];
   doc.setFillColor(240,244,255);doc.roundedRect(mg,y,pw-mg*2,16,3,3,'F');
-  slbl.forEach(function(l,i){
-    var xp=mg+4+i*((pw-mg*2-4)/5);
-    doc.setTextColor(120,120,120);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(l,xp,y+6);
-    doc.setFontSize(12);doc.setFont('helvetica','bold');doc.setTextColor(scl[i][0],scl[i][1],scl[i][2]);doc.text(String(sv[i]),xp,y+14);
-  });y+=22;
+  slbl.forEach(function(l,i){doc.setTextColor(120,120,120);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text(l,sc[i],y+6);doc.setFontSize(12);doc.setFont('helvetica','bold');doc.setTextColor(scl[i][0],scl[i][1],scl[i][2]);doc.text(String(sv[i]),sc[i],y+14);});y+=22;
   doc.setFillColor(21,101,192);doc.rect(mg,y,pw-mg*2,7,'F');doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','bold');
   doc.text('Day',mg+2,y+5);doc.text('Date',mg+12,y+5);doc.text('Status / Venue',mg+35,y+5);doc.text('Duty',pw-mg-3,y+5,{align:'right'});y+=8;
   rows2.forEach(function(row){
@@ -4919,9 +4864,7 @@ function showSaveDraft(){
     });
     var lvSnap={};Object.keys(lvMap).forEach(function(eid){lvSnap[eid]=Object.assign({},lvMap[eid]);});
     var offSnap={};Object.keys(offMap).forEach(function(eid){offSnap[eid]=Object.assign({},offMap[eid]);});
-    var gdnSnap={};Object.keys(gdnMap).forEach(function(eid){gdnSnap[eid]=Object.assign({},gdnMap[eid]);});
-    var vAsgnSnap=JSON.parse(JSON.stringify(vendorAsgn));
-    var snap={v:1,savedAt:new Date().toISOString(),asgn:asgnSnap,lvMap:lvSnap,offMap:offSnap,gdnMap:gdnSnap,vendorAsgn:vAsgnSnap};
+    var snap={v:1,savedAt:new Date().toISOString(),asgn:asgnSnap,lvMap:lvSnap,offMap:offSnap};
     var ex=null;
     for(var i=0;i<drafts.length;i++){if(drafts[i].name===name&&drafts[i].date===d2){ex=drafts[i];break;}}
     if(ex){snap.v=ex.versions.length+1;ex.versions.push(snap);toast('Draft updated to v'+snap.v);}
@@ -5027,23 +4970,16 @@ g('btnActivate').addEventListener('click',function(){
   var dr=null;for(var i=0;i<drafts.length;i++){if(drafts[i].id===curDraftId){dr=drafts[i];break;}}
   if(!dr)return;
   var ver=dr.versions[curDraftVer];
-  // Clear existing live state completely before applying draft (clean replace, not merge)
-  asgn={};lvMap={};offMap={};gdnMap={};vendorAsgn={};activeVids=[];
-  // Apply draft assignments
   Object.keys(ver.asgn||{}).forEach(function(vid){
     asgn[vid]={};
     Object.keys(ver.asgn[vid]).forEach(function(eid){
       var emp=getS(eid);
       if(emp)asgn[vid][eid]={emp:emp,duty:ver.asgn[vid][eid].duty||'6:00 AM',pinned:emp.pv===vid,isFixed:emp.pv===vid};
     });
-    if(Object.keys(asgn[vid]).length&&activeVids.indexOf(vid)<0)activeVids.push(vid);
+    if(activeVids.indexOf(vid)<0)activeVids.push(vid);
   });
   if(ver.lvMap)Object.keys(ver.lvMap).forEach(function(eid){var emp=getS(eid);if(emp)lvMap[eid]={emp:emp,duty:ver.lvMap[eid].duty||'6:00 AM'};});
   if(ver.offMap)Object.keys(ver.offMap).forEach(function(eid){var emp=getS(eid);if(emp)offMap[eid]={emp:emp,duty:ver.offMap[eid].duty||'6:00 AM'};});
-  if(ver.gdnMap)Object.keys(ver.gdnMap).forEach(function(eid){var emp=getS(eid);if(emp)gdnMap[eid]={emp:emp,duty:ver.gdnMap[eid].duty||'6:00 AM'};});
-  if(ver.vendorAsgn)vendorAsgn=JSON.parse(JSON.stringify(ver.vendorAsgn));
-  // Re-apply pinned staff base layer
-  applyPinned();
   dr.activated=true;
   toast('Draft activated for '+fd(dr.date));
   drawStats();
@@ -5215,24 +5151,10 @@ document.querySelectorAll('[data-atb-screen]').forEach(function(btn){
 // DP2 sync back to DP
 var dp2el=document.getElementById('DP2');
 if(dp2el){dp2el.addEventListener('change',function(){
-  var newVal=this.value;
-  var prevVal=_lastLoadedDate||todayIST();
   var dp=document.getElementById('DP');
-  // Require password for past dates — same guard as desktop DP
-  if(newVal<todayIST()){
-    var _dp2=this;
-    checkAdminPass(function(){
-      if(dp){dp.value=newVal;}
-      updateADate();switchToDate(newVal);drawStats();updateATBStats();
-      drawStaffPanel();drawVenueGrid();
-    });
-    _dp2.value=prevVal;
-    if(dp){dp.value=prevVal;}
-    return;
-  }
-  if(dp){dp.value=newVal;}
+  if(dp){dp.value=this.value;}
   updateADate();
-  switchToDate(newVal);
+  switchToDate(this.value);
   drawStats();updateATBStats();
   drawStaffPanel();drawVenueGrid();
 });}
@@ -5303,7 +5225,7 @@ function drawLOHistory(){
     if(names2.length){
       h+=names2.map(function(n){return'<span style="display:inline-block;background:#fff3e0;border-radius:4px;padding:1px 8px;margin:1px;font-size:11px;color:#e65100;">'+esc(n)+'</span>';}).join('');
     }else{
-      h+='<span style="color:#bbb;font-size:11px;">No one on office duty</span>';
+      h+='<span style="color:#bbb;font-size:11px;">No one on godown duty</span>';
     }
     h+='</div></div>';
     cur2.setDate(cur2.getDate()+1);ri2++;
@@ -5372,11 +5294,11 @@ function makeLOPDF(){
     y+=3;cur.setDate(cur.getDate()+1);ri++;
   }
   y+=8;
-  // OFFICE DUTY section
+  // GAVS GODOWN DUTY section
   cp(16);
   doc.setFillColor(230,81,0);doc.rect(mg,y,pw-mg*2,10,'F');
   doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont('helvetica','bold');
-  doc.text('GAVS OFFICE DUTY',mg+5,y+7);y+=11;
+  doc.text('GAVS GODOWN DUTY',mg+5,y+7);y+=11;
   doc.setFillColor(220,230,255);doc.rect(mg,y,pw-mg*2,7,'F');
   doc.setTextColor(13,71,161);doc.setFontSize(7);doc.setFont('helvetica','bold');
   doc.text('Date',mg+3,y+5);doc.text('Staff on Office Duty',mg+55,y+5);y+=8;
@@ -5396,7 +5318,7 @@ function makeLOPDF(){
     doc.setDrawColor(255,224,178);doc.setLineWidth(0.2);doc.rect(mg,y,pw-mg*2,dateRowH2,'S');doc.setLineWidth(0);
     doc.setTextColor(230,81,0);doc.setFontSize(8);doc.setFont('helvetica','bold');
     doc.text(dn2+' '+fd(ds2),mg+3,y+5);
-    if(!names2.length){doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont('helvetica','italic');doc.text('No one on office duty',mg+55,y+5);}
+    if(!names2.length){doc.setTextColor(150,150,150);doc.setFontSize(7);doc.setFont('helvetica','italic');doc.text('No one on godown duty',mg+55,y+5);}
     y+=dateRowH2;
     // 2-column name grid
     for(var _gi=0;_gi<names2.length;_gi+=2){
@@ -5713,9 +5635,7 @@ document.addEventListener('touchstart',function(ev){
 document.addEventListener('touchend',function(ev){
   if(!touchVCardPayload)return;
   if(touchGhost){try{document.body.removeChild(touchGhost);}catch(x){}touchGhost=null;}
-  var _cardSel='#VT_LIST .scard[data-company="'+touchVCardPayload.company+'"][data-vtid="'+touchVCardPayload.typeId+'"]';
-  if(touchVCardPayload.service)_cardSel+='[data-service="'+touchVCardPayload.service+'"]';
-  var card=document.querySelector(_cardSel);
+  var card=document.querySelector('#VT_LIST .scard[data-company="'+touchVCardPayload.company+'"][data-vtid="'+touchVCardPayload.typeId+'"]');
   if(card)card.style.opacity='';
   var touch=ev.changedTouches[0];
   document.querySelectorAll('.vbox').forEach(function(b){b.classList.remove('drag-over');});
@@ -5954,7 +5874,7 @@ var btnVRVPDF=document.getElementById('btnVRVPDF');
 if(btnVRVPDF)btnVRVPDF.addEventListener('click',makeVenueVendorHistoryPDF);
 
 function getVenueVendorEntriesForDate(vid,ds){
-  var today=todayIST();
+  var today=getD();
   var entries=[];
   if(ds===today){
     var vm=vendorAsgn[vid];if(!vm)return entries;
@@ -6106,7 +6026,7 @@ function getCompanyMonthData(company,typeId,month,year){
   var rows=[];var totalQty=0;
   for(var day=1;day<=dim;day++){
     var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    var today=todayIST();
+    var today=getD();
     var venuesUsed=[];
     var src=null;
     if(ds===today){src=vendorAsgn;}
@@ -6614,36 +6534,27 @@ var touchDragEid = null;
 var touchGhost = null;
 var touchVenueDragId = null;
 var touchVenueGhost = null;
-var _touchDragTimer = null; // long-press timer for staff drag
 
 document.addEventListener('touchstart', function(ev) {
   var card = ev.target.closest('.scard.avail');
   if(!card) return;
-  var eid = card.getAttribute('data-eid');
-  var e = getS(eid);
+  touchDragEid = card.getAttribute('data-eid');
+  var e = getS(touchDragEid);
   if(!e) return;
   var c = cc(e.role);
   var touch = ev.touches[0];
-  var startX = touch.clientX, startY = touch.clientY;
-  // Wait 200ms before activating drag — allows normal scrolling on a staff card
-  _touchDragTimer = setTimeout(function(){
-    _touchDragTimer = null;
-    touchDragEid = eid;
-    // Create ghost element
-    touchGhost = document.createElement('div');
-    touchGhost.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;background:#fff;border:2px solid '+c+';border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 6px 22px rgba(0,0,0,0.2);font-family:sans-serif;font-size:13px;color:#111;white-space:nowrap;opacity:0.9;';
-    touchGhost.innerHTML = '<div style="width:28px;height:28px;border-radius:7px;background:'+c+'22;color:'+c+';display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;">'+ini(e.name)+'</div><div><div style="font-weight:700;">'+esc(e.name)+'</div><div style="font-size:11px;color:'+c+';">'+esc(e.role)+'</div></div>';
-    touchGhost.style.left = (startX - 50) + 'px';
-    touchGhost.style.top = (startY - 30) + 'px';
-    document.body.appendChild(touchGhost);
-    if(navigator.vibrate) navigator.vibrate(30);
-    card.style.opacity = '0.3';
-  }, 200);
-}, {passive: false});
+  // Create ghost element
+  touchGhost = document.createElement('div');
+  touchGhost.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;background:#fff;border:2px solid '+c+';border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 6px 22px rgba(0,0,0,0.2);font-family:sans-serif;font-size:13px;color:#111;white-space:nowrap;opacity:0.9;';
+  touchGhost.innerHTML = '<div style="width:28px;height:28px;border-radius:7px;background:'+c+'22;color:'+c+';display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0;">'+ini(e.name)+'</div><div><div style="font-weight:700;">'+esc(e.name)+'</div><div style="font-size:11px;color:'+c+';">'+esc(e.role)+'</div></div>';
+  touchGhost.style.left = (touch.clientX - 50) + 'px';
+  touchGhost.style.top = (touch.clientY - 30) + 'px';
+  document.body.appendChild(touchGhost);
+  if(navigator.vibrate) navigator.vibrate(30);
+  card.style.opacity = '0.3';
+}, {passive: true});
 
 document.addEventListener('touchmove', function(ev) {
-  // If finger moved before the long-press threshold fired, cancel the drag attempt
-  if(_touchDragTimer){clearTimeout(_touchDragTimer);_touchDragTimer=null;}
   if(!touchDragEid || !touchGhost) return;
   ev.preventDefault();
   var touch = ev.touches[0];
@@ -6660,7 +6571,6 @@ document.addEventListener('touchmove', function(ev) {
 
 // Shared cleanup for touch drag — called on touchend AND touchcancel
 function _cleanupStaffDrag(){
-  if(_touchDragTimer){clearTimeout(_touchDragTimer);_touchDragTimer=null;}
   if(touchGhost){try{document.body.removeChild(touchGhost);}catch(x){}touchGhost=null;}
   if(touchDragEid){
     // Restore all staff cards in case of re-render during drag
@@ -6695,7 +6605,7 @@ document.addEventListener('touchend', function(ev) {
     if(lvZone){ markLeave(eid); if(navigator.vibrate)navigator.vibrate([20,10,20]); return; }
     // Check office drop zone
     var offZone = el.closest('#drop-office');
-    if(offZone){ markOffice(eid); if(navigator.vibrate)navigator.vibrate([20,10,20]); return; }
+    if(offZone){ markGodown(eid); if(navigator.vibrate)navigator.vibrate([20,10,20]); return; }
     var gdnZone = el.closest('#drop-godown');
     if(gdnZone){ markGdn(eid); if(navigator.vibrate)navigator.vibrate([20,10,20]); return; }
     // Check venue box
@@ -6795,6 +6705,7 @@ window.addEventListener('online',function(){
 
 function saveCloud(){
   if(!DB_LOADED)return;
+  SAVE_PENDING++;
   showSaveIndicator('saving');
   clearTimeout(SAVE_DEBOUNCE_TIMER);
   // Cancel any stale retry so its old payload doesn't overwrite fresh data
@@ -6802,6 +6713,7 @@ function saveCloud(){
   _offlineQueue=null;
   // 50ms debounce — practically immediate but batches rapid consecutive actions
   SAVE_DEBOUNCE_TIMER=setTimeout(function(){
+    SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
     actuallySaveCloud();
   },50);
 }
@@ -6887,87 +6799,63 @@ function saveDlogSeparate(attempt){
   var d=_lastLoadedDate||getD();
   var payload={updatedAt:new Date().toISOString()};
   payload['dlog.'+d]=dlog[d]||{};
-  dailyRef(d).update(payload).then(function(){
+  db.collection('gavs_data').doc('dlog').update(payload).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
-    var sp={updatedAt:new Date().toISOString()};sp['dlog.'+d]=dlog[d]||{};
-    dailyRef(d).set(sp,{merge:true}).then(function(){
-      _dlogMigrated=true;
-    }).catch(function(e2){
-      console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
+    if(e.code==='not-found'||String(e.message||e).indexOf('No document')>=0){
+      var sp={dlog:{},updatedAt:new Date().toISOString()};
+      sp.dlog[d]=dlog[d]||{};
+      db.collection('gavs_data').doc('dlog').set(sp,{merge:true}).then(function(){
+        _dlogMigrated=true;
+      }).catch(function(e2){
+        console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
+        setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
+      });
+    } else {
+      console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
       setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
-    });
+    }
   });
-}
-
-// ── DAILY DLOG HELPERS ─────────────────────────────────────
-function dailyDocId(dateStr){return 'dlog_'+(dateStr||getD()).replace(/-/g,'_');}
-function dailyRef(dateStr){return db.collection('gavs_data').doc(dailyDocId(dateStr));}
-function fetchDlogDate(dateStr,cb){
-  if(dlog[dateStr]!==undefined){if(cb)cb();return;}
-  dailyRef(dateStr).get().then(function(doc){
-    dlog[dateStr]=(doc.exists&&doc.data()&&doc.data().dlog&&doc.data().dlog[dateStr])?doc.data().dlog[dateStr]:{};
-    if(cb)cb();
-  }).catch(function(e){console.warn('fetchDlogDate error:',e.message||e);dlog[dateStr]={};if(cb)cb();});
 }
 
 var _snapshotUnsub=null; // holds the onSnapshot unsubscribe handle
 var _dlogSnapshotUnsub=null; // separate listener for dlog document
 var _dlogMigrated=false; // true once dlog has been written to gavs_data/dlog
 var _mainDlogCache=null; // holds dlog from main doc for migration
-var _dlogReady=false; // true once dlog snapshot has arrived
-var _mainReady=false; // true once main snapshot has arrived
-function _tryInitialRender(){
-  // Only render venue grid once BOTH main doc and dlog doc have loaded
-  if(!_dlogReady||!_mainReady)return;
-  var d=_lastLoadedDate||getD();
-  loadLiveFromDlog(d);
-  drawVenueGrid();drawStaffPanel();drawStats();
-}
 function loadFromCloud(callback){
   // Unsubscribe any previous listener before creating a new one
   if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){} _snapshotUnsub=null;}
   if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
-  // Set up dlog listener — subscribes to the given date's daily doc.
-  // Called once at startup and again whenever the viewed date changes.
-  function _subscribeDlogForDate(dateStr){
-    if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
-    // Timeout: if daily doc never arrives (network issue), mark dlogReady after 10s
-    var _dlogTimeout=setTimeout(function(){
-      if(!_dlogReady){
-        console.warn('Dlog listener timeout for',dateStr,'— proceeding without it');
-        _dlogMigrated=true;_dlogReady=true;_tryInitialRender();
+  // Set up dlog listener — reads from gavs_data/dlog (separate document)
+  _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
+    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+      var newDlog=dlogDoc.data().dlog;
+      // Only re-render venue grid if duty data changed (not just attendance)
+      var needsRedraw=false;
+      if(DB_LOADED){
+        var _cd=_lastLoadedDate||getD();
+        var oldEntry=dlog[_cd]||{};var newEntry=newDlog[_cd]||{};
+        var oldVenues=JSON.stringify(oldEntry.venues||{});var newVenues=JSON.stringify(newEntry.venues||{});
+        var oldLeave=JSON.stringify(oldEntry.leave||[]);var newLeave=JSON.stringify(newEntry.leave||[]);
+        needsRedraw=(oldVenues!==newVenues||oldLeave!==newLeave);
       }
-    },10000);
-    _dlogSnapshotUnsub=dailyRef(dateStr).onSnapshot(function(dlogDoc){
-      clearTimeout(_dlogTimeout);
-      if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
-      if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-        var incoming=dlogDoc.data().dlog;
-        Object.keys(incoming).forEach(function(d){dlog[d]=incoming[d];});
-        _dlogMigrated=true;
-        if(!_dlogReady){
-          // Pre-fetch yesterday so copy-prev-day works
-          var _yd=new Date(dateStr+'T00:00:00');_yd.setDate(_yd.getDate()-1);
-          fetchDlogDate(_yd.toISOString().slice(0,10));
-          _dlogReady=true;_tryInitialRender();
-        }
-        if(DB_LOADED){
-          var _cd=_lastLoadedDate||getD();
-          if(incoming[_cd]!==undefined){loadLiveFromDlog(_cd);drawVenueGrid();drawStaffPanel();drawStats();}
-        }
-      } else {
-        // No data in daily doc yet — still mark ready so app doesn't hang
-        _dlogMigrated=true;
-        if(!_dlogReady){_dlogReady=true;_tryInitialRender();}
+      dlog=newDlog;
+      _dlogMigrated=true;
+      if(DB_LOADED&&needsRedraw){
+        var _cd2=_lastLoadedDate||getD();
+        loadLiveFromDlog(_cd2);
+        drawVenueGrid();drawStaffPanel();drawStats();
       }
-    },function(e){
-      clearTimeout(_dlogTimeout);
-      console.warn('Dlog listener error:',e);
-      if(!_dlogReady){_dlogReady=true;_tryInitialRender();}
-    });
-  }
-  _subscribeDlogForDate(getD());
+    } else if(_mainDlogCache&&!_dlogMigrated){
+      console.log('Migrating dlog to separate document...');
+      db.collection('gavs_data').doc('dlog').set({dlog:_mainDlogCache,updatedAt:new Date().toISOString()}).then(function(){
+        _dlogMigrated=true;dlog=_mainDlogCache;
+        _mainDlogCache=null; // Fix 5: clear cache after migration
+        console.log('Dlog migration complete.');
+      }).catch(function(e){console.error('Dlog migration error:',e);});
+    }
+  },function(e){console.warn('Dlog listener error:',e);});
   var initialLoad=true;
   var timeout=setTimeout(function(){
     console.warn('Firebase timeout');
@@ -6978,10 +6866,8 @@ function loadFromCloud(callback){
     clearTimeout(timeout);
     var _onlyStaticChangedFlag=false;
     // Ignore snapshots that come from our own pending write (hasPendingWrites = local)
-    // IMPORTANT: do NOT call _tryInitialRender here — staff/venues haven't been loaded
-    // from doc.data() yet. Just mark flags and wait for the real server snapshot.
     if(doc.metadata&&doc.metadata.hasPendingWrites){
-      if(initialLoad){initialLoad=false;DB_LOADED=true;showLoad(false);if(callback){callback();callback=null;}}
+      if(initialLoad){initialLoad=false;applyPinned();DB_LOADED=true;showLoad(false);if(callback){callback();callback=null;}}
       return;
     }
     if(doc.exists){
@@ -6993,9 +6879,6 @@ function loadFromCloud(callback){
       // Restore venues
       if(d.venues&&d.venues.length){
         venues=d.venues.map(function(v){return{id:v.id,name:v.name,vip:v.vip||false,address:v.address||'',locUrl:v.locUrl||''};});
-      } else if(!venues.length){
-        // First-time install only: seed with default venues
-        DEFAULT_VENUES.forEach(function(n){venues.push({id:mkId(),name:n,vip:false});});
       }
       // Restore roles
       if(d.roles&&d.roles.length)ROLES=d.roles;

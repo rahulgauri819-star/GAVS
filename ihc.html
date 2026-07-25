@@ -48,8 +48,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .deployed-tag{font-size:8px;color:#888;font-style:italic;}
 /* Right panel */
 .rp{flex:1;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;padding:10px 12px;}
-.halls-grid{column-width:280px;column-gap:12px;}
-.halls-grid>*{break-inside:avoid;display:inline-block;width:100%;margin-bottom:12px;}
+.halls-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-items:start;}
+.halls-grid>*{break-inside:avoid;width:100%;margin-bottom:0;}
 .hall-box{background:#fff;border:2px solid #e3eaff;border-radius:14px;overflow:visible;}
 .hall-hdr{background:linear-gradient(90deg,#1565c0,#283593);color:#fff;padding:8px 10px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:6px;}
 .hall-name{font-size:13px;font-weight:800;flex:1;}

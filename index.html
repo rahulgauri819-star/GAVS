@@ -3899,8 +3899,8 @@ function saveAttendance(){
 }
 
 function _saveAttendanceWithRetry(d,attnPayload,attempt){
-  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attnPayload};
-  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true}).then(function(){
+  var dlogUpdate={};dlogUpdate['dlog.'+d]={attendance:attnPayload};dlogUpdate.updatedAt=new Date().toISOString();
+  dlogRef(d).update(dlogUpdate).then(function(){
     _atnOfflineQueue=null;
   }).catch(function(e){
     console.warn('Attendance save error (attempt '+attempt+'):',e.message||e);
@@ -5097,7 +5097,7 @@ g('btnDlogClean')&&g('btnDlogClean').addEventListener('click',function(){
   btn.disabled=true;btn.textContent='Cleaning...';
   st.style.display='block';st.style.background='#e3f2fd';st.style.color='#0d47a1';
   st.textContent='Reading dlog from Firebase...';
-  db.collection('gavs_data').doc('dlog').get().then(function(doc){
+  dlogRef(getD()).get().then(function(doc){
     var fullDlog=(doc.exists&&doc.data()&&doc.data().dlog)||dlog;
     var cutoff=new Date();cutoff.setDate(cutoff.getDate()-60);
     var cutoffStr=cutoff.toISOString().slice(0,10);
@@ -5114,7 +5114,7 @@ g('btnDlogClean')&&g('btnDlogClean').addEventListener('click',function(){
       btn.disabled=false;btn.textContent='🧹 Clean Old Dlog Data';return;
     }
     // Write trimmed dlog back
-    db.collection('gavs_data').doc('dlog').set({dlog:toKeep,updatedAt:new Date().toISOString()}).then(function(){
+    dlogRef(getD()).set({dlog:toKeep,updatedAt:new Date().toISOString()}).then(function(){
       dlog=toKeep; // update in-memory too
       st.style.background='#e8f5e9';st.style.color='#1b5e20';
       st.textContent='✅ Done! Removed '+removed+' old dates. Dragging should now work correctly.';
@@ -5132,7 +5132,8 @@ g('btnDlogClean')&&g('btnDlogClean').addEventListener('click',function(){
 });
 g('btnDownloadBackup')&&g('btnDownloadBackup').addEventListener('click',function(){
   try{
-    db.collection('gavs_data').doc('dlog').get().then(function(dlogDoc){
+    // Read current month doc for backup
+    dlogRef(getD()).get().then(function(dlogDoc){
       var fullDlog=dlogDoc.exists&&dlogDoc.data()?dlogDoc.data().dlog||dlog:dlog;
       var backup={exportDate:new Date().toISOString(),version:'gavs-v84',staff:staff,venues:venues,roles:ROLES,annualLeave:annualLeave,portalAccess:portalAccess,dlog:fullDlog,vdlog:vdlog};
       var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
@@ -6841,47 +6842,64 @@ function doSaveWithRetry(payload,attempt){
   });
 }
 
+
+// Monthly dlog helpers — each month stored in gavs_data/dlog_YYYY_MM
+function dlogDocId(dateStr){
+  // dateStr = YYYY-MM-DD, returns e.g. dlog_2026_07
+  var parts=(dateStr||getD()).split('-');
+  return 'dlog_'+parts[0]+'_'+parts[1];
+}
+function dlogRef(dateStr){
+  return db.collection('gavs_data').doc(dlogDocId(dateStr));
+}
 function saveDlogSeparate(attempt){
   if(attempt>5)return;
-  // Write only current date entry using dot-notation to minimise index entries
   var d=_lastLoadedDate||getD();
   var payload={updatedAt:new Date().toISOString()};
   payload['dlog.'+d]=dlog[d]||{};
-  db.collection('gavs_data').doc('dlog').update(payload).then(function(){
+  // Write to monthly document e.g. gavs_data/dlog_2026_07
+  dlogRef(d).update(payload).then(function(){
     _dlogMigrated=true;
   }).catch(function(e){
-    if(e.code==='not-found'||String(e.message||e).indexOf('No document')>=0){
-      var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d]=dlog[d]||{};
-      db.collection('gavs_data').doc('dlog').set(sp,{merge:true}).then(function(){_dlogMigrated=true;}).catch(function(e2){
-        console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
-        setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
-      });
-    } else {
-      console.warn('Dlog save error (attempt '+attempt+'):',e.message||e);
+    // Doc doesn't exist yet for this month — create it
+    var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d]=dlog[d]||{};
+    dlogRef(d).set(sp,{merge:true}).then(function(){_dlogMigrated=true;}).catch(function(e2){
+      console.warn('Dlog save error (attempt '+attempt+'):',e2.message||e2);
       setTimeout(function(){saveDlogSeparate(attempt+1);},Math.min(2000*Math.pow(2,attempt),30000));
-    }
+    });
   });
 }
 
-// One-time cleanup: rewrite dlog keeping only last 90 days to fix Firestore index entry limit
-var _dlogCleanupDone=false;
-function pruneDlogFirestore(){
-  if(_dlogCleanupDone)return;
-  _dlogCleanupDone=true;
-  // Keep only last 60 days — aggressive enough to clear the index limit
-  var cutoff=new Date();cutoff.setDate(cutoff.getDate()-60);
-  var cutoffStr=cutoff.toISOString().slice(0,10);
+// One-time migration: split gavs_data/dlog into monthly documents
+var _dlogMigrationDone=false;
+function migrateDlogToMonthly(){
+  if(_dlogMigrationDone)return;
+  _dlogMigrationDone=true;
   var allDates=Object.keys(dlog);
-  var oldDates=allDates.filter(function(d){return d<cutoffStr;});
-  if(!oldDates.length){console.log('Dlog prune: nothing to remove ('+allDates.length+' dates total)');return;}
-  console.log('Dlog prune: total dates='+allDates.length+', removing '+oldDates.length+' old dates');
-  // Build trimmed dlog
-  var trimmedDlog={};
-  Object.keys(dlog).forEach(function(d){if(d>=cutoffStr)trimmedDlog[d]=dlog[d];});
-  oldDates.forEach(function(d){delete dlog[d];});
-  db.collection('gavs_data').doc('dlog').set({dlog:trimmedDlog,updatedAt:new Date().toISOString()}).then(function(){
-    console.log('Dlog prune: SUCCESS. Kept '+Object.keys(trimmedDlog).length+' dates.');
-  }).catch(function(e){console.warn('Dlog prune error:',e.message||e);});
+  if(!allDates.length){console.log('Dlog migration: no dates to migrate');return;}
+  // Group dates by YYYY_MM
+  var byMonth={};
+  allDates.forEach(function(d){
+    var key=dlogDocId(d);
+    if(!byMonth[key])byMonth[key]={};
+    byMonth[key][d]=dlog[d];
+  });
+  var months=Object.keys(byMonth);
+  console.log('Dlog migration: splitting '+allDates.length+' dates into '+months.length+' monthly docs');
+  var done=0;
+  months.forEach(function(monthKey){
+    var monthDates=byMonth[monthKey];
+    var payload={updatedAt:new Date().toISOString()};
+    Object.keys(monthDates).forEach(function(d){payload['dlog.'+d]=monthDates[d];});
+    db.collection('gavs_data').doc(monthKey).set(payload,{merge:true}).then(function(){
+      done++;
+      if(done===months.length){
+        console.log('Dlog migration: complete! All dates now in monthly docs.');
+        // Mark old dlog doc as migrated (don't delete it — keep as backup)
+        db.collection('gavs_data').doc('dlog').update({_migratedToMonthly:true,updatedAt:new Date().toISOString()}).catch(function(){});
+      }
+    }).catch(function(e){console.warn('Dlog migration error for '+monthKey+':',e.message||e);});
+  });
 }
 
 var _snapshotUnsub=null; // holds the onSnapshot unsubscribe handle
@@ -6892,8 +6910,9 @@ function loadFromCloud(callback){
   // Unsubscribe any previous listener before creating a new one
   if(_snapshotUnsub){try{_snapshotUnsub();}catch(e){} _snapshotUnsub=null;}
   if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){} _dlogSnapshotUnsub=null;}
-  // Set up dlog listener — reads from gavs_data/dlog (separate document)
-  _dlogSnapshotUnsub=db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+  // Set up dlog listener — reads from monthly doc e.g. gavs_data/dlog_2026_07
+  var _curMonthDocId=dlogDocId(getD());
+  _dlogSnapshotUnsub=db.collection('gavs_data').doc(_curMonthDocId).onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return; // skip our own writes
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var newDlog=dlogDoc.data().dlog;
@@ -6908,19 +6927,22 @@ function loadFromCloud(callback){
       }
       dlog=newDlog;
       _dlogMigrated=true;
-      if(!DB_LOADED){setTimeout(pruneDlogFirestore,3000);} // prune old dates once on first load
+      if(!DB_LOADED){setTimeout(migrateDlogToMonthly,3000);} // migrate to monthly docs on first load
       if(DB_LOADED&&needsRedraw){
         var _cd2=_lastLoadedDate||getD();
         loadLiveFromDlog(_cd2);
         drawVenueGrid();drawStaffPanel();drawStats();
       }
     } else if(_mainDlogCache&&!_dlogMigrated){
-      console.log('Migrating dlog to separate document...');
-      db.collection('gavs_data').doc('dlog').set({dlog:_mainDlogCache,updatedAt:new Date().toISOString()}).then(function(){
+      console.log('Seeding monthly dlog from main cache...');
+      var _seedDate=getD();
+      var _seedPayload={updatedAt:new Date().toISOString()};
+      Object.keys(_mainDlogCache).forEach(function(d){_seedPayload['dlog.'+d]=_mainDlogCache[d];});
+      dlogRef(_seedDate).set(_seedPayload,{merge:true}).then(function(){
         _dlogMigrated=true;dlog=_mainDlogCache;
-        _mainDlogCache=null; // Fix 5: clear cache after migration
-        console.log('Dlog migration complete.');
-      }).catch(function(e){console.error('Dlog migration error:',e);});
+        _mainDlogCache=null;
+        console.log('Monthly dlog seed complete.');
+      }).catch(function(e){console.error('Monthly dlog seed error:',e);});
     }
   },function(e){console.warn('Dlog listener error:',e);});
   var initialLoad=true;

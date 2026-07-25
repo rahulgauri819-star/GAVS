@@ -192,7 +192,9 @@ function loadData(){
     if(firstLoad){firstLoad=false;buildTabs();}else{drawSP();drawDZ();drawGrid();updateStats();}
     sv('saved');
   },function(e){console.error(e);sv('error');});
-  db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+  // Listen to current month's doc
+  var _pMonthDocId=dlogDocId(getD());
+  db.collection('gavs_data').doc(_pMonthDocId).onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var newDlog=dlogDoc.data().dlog;
@@ -204,6 +206,10 @@ function loadData(){
   },function(e){console.warn('Portal dlog listener error:',e);});
 }
 
+
+// Monthly dlog helpers
+function dlogDocId(dateStr){var parts=(dateStr||getD()).split('-');return 'dlog_'+parts[0]+'_'+parts[1];}
+function dlogRef(dateStr){return db.collection('gavs_data').doc(dlogDocId(dateStr));}
 function myS(){return allS.filter(function(e){return myAccess.roles&&myAccess.roles.indexOf(e.role)>=0;});}
 function myVTs(){return VTS.filter(function(vt){return myAccess.vendors&&myAccess.vendors.indexOf(vt.id)>=0;});}
 
@@ -298,9 +304,13 @@ function save(){
   ST=setTimeout(function(){
     saveLog();
     var d=_lastDate||getD();
-    var dlogPayload={dlog:{}};dlogPayload.dlog[d]=dlog[d];
-    db.collection('gavs_data').doc('dlog').set(dlogPayload,{merge:true})
-      .then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
+    var dlogPayload={};dlogPayload['dlog.'+d]=dlog[d];dlogPayload.updatedAt=new Date().toISOString();
+    dlogRef(d).update(dlogPayload)
+      .then(function(){sv('saved');}).catch(function(e){
+        // Doc doesn't exist yet for this month
+        var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d]=dlog[d];
+        dlogRef(d).set(sp,{merge:true}).then(function(){sv('saved');}).catch(function(e2){console.warn('Portal dlog save error:',e2);sv('error');});
+      });
     db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
   },400);
 }
@@ -610,8 +620,8 @@ function wireVenueSearch(){
         if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
         if(dlog[d2].manualVids.indexOf(v.id)<0)dlog[d2].manualVids.push(v.id);
         // Write IMMEDIATELY to Firebase (not debounced)
-        var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
-        db.collection('gavs_data').doc('dlog').set(imPayload,{merge:true});
+        var imPayload={};imPayload['dlog.'+d2]=dlog[d2];imPayload.updatedAt=new Date().toISOString();
+        dlogRef(d2).update(imPayload).catch(function(){var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d2]=dlog[d2];dlogRef(d2).set(sp,{merge:true});});
         inp.value='';dd.style.display='none';
         drawGrid();save();
       });
@@ -635,8 +645,8 @@ function wireVenueSearch(){
         if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
         dlog[d2].manualVids.push(newV.id);
         db.collection('gavs_data').doc('main').update({venues:allV}).catch(function(){});
-        var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
-        db.collection('gavs_data').doc('dlog').set(imPayload,{merge:true});
+        var imPayload={};imPayload['dlog.'+d2]=dlog[d2];imPayload.updatedAt=new Date().toISOString();
+        dlogRef(d2).update(imPayload).catch(function(){var sp={dlog:{},updatedAt:new Date().toISOString()};sp.dlog[d2]=dlog[d2];dlogRef(d2).set(sp,{merge:true});});
         inp.value='';dd.style.display='none';
         drawGrid();save();
       });
@@ -1125,7 +1135,8 @@ function savePortalAttendance(d,attn){
   _savePortalAtnWithRetry(dlogUpdate,0);
 }
 function _savePortalAtnWithRetry(payload,attempt){
-  db.collection('gavs_data').doc('dlog').set(payload,{merge:true}).catch(function(e){
+  var _atnKey='dlog.'+d2;var _atnP={updatedAt:new Date().toISOString()};_atnP[_atnKey]=payload.dlog[d2];
+  dlogRef(d2).update(_atnP).catch(function(e){
     console.warn('Portal attendance save error (attempt '+attempt+'):',e.message||e);
     if(attempt<4)setTimeout(function(){_savePortalAtnWithRetry(payload,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
   });

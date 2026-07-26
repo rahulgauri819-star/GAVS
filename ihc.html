@@ -190,7 +190,7 @@ var _atnView=false,_ihcAtnDate='',_ihcAtnCollapsed={};
 function g(id){return document.getElementById(id);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function getD(){return g('DP').value||todayIST();}
-function nd(d){var x=new Date(d);x.setDate(x.getDate()+1);return x.toISOString().slice(0,10);}
+function nd(d){var p=d.split('-');var dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+1);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}
 function fd(d){if(!d)return '';var x=new Date(d+'T00:00:00');return x.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][x.getMonth()]+' '+x.getFullYear();}
 function mkId(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function shortTime(t){return (t||'').replace(':00 ',' ');}
@@ -280,6 +280,7 @@ function doLogin(){
   g('login-screen').style.display='none';
   g('app').style.display='flex';
   g('DP').value=nd(todayIST());
+  subscribeIHCDlog();
   loadFromCloud();
 }
 
@@ -989,6 +990,7 @@ document.addEventListener('touchend',function(ev){
 
 // Date change
 g('DP').addEventListener('change',function(){
+  subscribeIHCDlog();
   loadDateData(getD());
   var _lde2=dlog[getD()]||{};_hallVip=_lde2.hallVip||{};_hallComments=_lde2.hallComments||{};
   drawHalls();drawStaffPanel();drawLeaveZone();
@@ -998,13 +1000,17 @@ g('DP').addEventListener('change',function(){
 function dailyDocId(ds){return 'dlog_'+(ds||getD()).replace(/-/g,'_');}
 function dailyRef(ds){return db.collection('gavs_data').doc(dailyDocId(ds));}
 // Listen to today's daily doc for attendance + main app pool data
-var _ihcDlogUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
-  if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-    var incoming=dlogDoc.data().dlog;
-    Object.keys(incoming).forEach(function(dk){mainDlog[dk]=incoming[dk];});
-    if(DB_LOADED){drawMainPool();}
-  }
-},function(e){console.warn('IHC dlog listener error:',e);});
+var _ihcDlogUnsub=null;
+function subscribeIHCDlog(){
+  if(_ihcDlogUnsub){try{_ihcDlogUnsub();}catch(e){}}_ihcDlogUnsub=null;
+  _ihcDlogUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
+    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+      var incoming=dlogDoc.data().dlog;
+      Object.keys(incoming).forEach(function(dk){mainDlog[dk]=incoming[dk];});
+      if(DB_LOADED){drawMainPool();}
+    }
+  },function(e){console.warn('IHC dlog listener error:',e);});
+}
 
 function drawMainPool(){
   var wrap=g('MAIN_POOL_WRAP');if(!wrap)return;

@@ -187,8 +187,13 @@ var _PORTAL_SESSION_KEY='gavs_portal_session_'+PID;
 })();
 function _launchApp(){
   g('LS').style.display='none';g('APP').style.display='flex';
-  g('DP').value=nd(todayIST());
-  _lastDate=g('DP').value;
+  var tomorrow=nd(todayIST());
+  g('DP').value=tomorrow;
+  _lastDate=tomorrow;
+  // Force the date picker to show tomorrow in case browser cached a value
+  setTimeout(function(){
+    if(g('DP').value!==tomorrow){g('DP').value=tomorrow;_lastDate=tomorrow;}
+  },0);
   loadData();
 }
 function doLogin(){
@@ -220,7 +225,7 @@ function loadData(){
     if(d.portalAccess&&d.portalAccess[PID])myAccess=d.portalAccess[PID];
     if(d.portalPasswords&&d.portalPasswords[PID]){var _pw2=d.portalPasswords[PID];APASS=(typeof _pw2==='object'?_pw2.password:_pw2)||DPASS;AUSER=(typeof _pw2==='object'?_pw2.username:DUSER)||DUSER;}
     DBL=true;
-    if(_portalDlogLoaded){loadDateData(getD());}
+    if(_portalDlogLoaded){loadDateData(_lastDate||getD());}
     if(firstLoad){firstLoad=false;buildTabs();}else{drawSP();drawDZ();drawGrid();updateStats();}
     sv('saved');
   },function(e){console.error(e);sv('error');});
@@ -231,7 +236,7 @@ function loadData(){
       var incoming=dlogDoc.data().dlog;
       Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});
       _portalDlogLoaded=true;
-      if(DBL){loadDateData(getD());drawDZ();drawGrid();drawSP();updateStats();}
+      if(DBL){loadDateData(_lastDate||getD());drawDZ();drawGrid();drawSP();updateStats();}
     }
   },function(e){console.warn('Portal dlog listener error:',e);});
 }

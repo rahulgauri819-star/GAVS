@@ -996,10 +996,10 @@ g('BPDF').addEventListener('click',function(){
       var lh=20,lw=Math.round(lh*(img.naturalWidth/img.naturalHeight));
       if(lw>32){lw=32;lh=Math.round(lw*(img.naturalHeight/img.naturalWidth));}
       var scale=lw/img.naturalWidth;
-      cv.width=Math.round(img.naturalWidth*scale*2);
-      cv.height=Math.round(img.naturalHeight*scale*2);
+      cv.width=Math.round(img.naturalWidth*scale*4);
+      cv.height=Math.round(img.naturalHeight*scale*4);
       var ctx=cv.getContext('2d');
-      ctx.clearRect(0,0,cv.width,cv.height); // preserve transparency
+      ctx.clearRect(0,0,cv.width,cv.height);
       ctx.drawImage(img,0,0,cv.width,cv.height);
       doc.addImage(cv.toDataURL('image/png'),'PNG',mg,2+Math.round((20-lh)/2),lw,lh);
     }
@@ -1070,7 +1070,7 @@ g('BPDF').addEventListener('click',function(){
   });
 
   // Sections: Office Duty, Godown, Leave
-  function renderSection(title,list,hdrR,hdrG,hdrB,acR,acG,acB){
+  function renderSection(title,list,hdrR,hdrG,hdrB,acR,acG,acB,hideTime){
     if(!list.length)return;
     var srH=rowH;var hdrHs=9;
     if(colY[curCol]+hdrHs+srH>pageH)nextCol();
@@ -1093,7 +1093,7 @@ g('BPDF').addEventListener('click',function(){
       doc.setFillColor(acR,acG,acB);doc.rect(x3,y3,2,srH,'F');
       var nmw2=Math.floor((colW-14)/1.65);var sn2=a.emp.name.length>nmw2?a.emp.name.slice(0,nmw2-1)+'...':a.emp.name;
       doc.setTextColor(20,20,20);doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.text(sn2,x3+4,y3+srH-2);
-      doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(st(a.duty||'6:00 AM'),x3+colW-1,y3+srH-2,{align:'right'});
+      if(!hideTime){doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(st(a.duty||'6:00 AM'),x3+colW-1,y3+srH-2,{align:'right'});}
       colY[curCol]+=srH;
     });
     colY[curCol]+=2;
@@ -1102,9 +1102,9 @@ g('BPDF').addEventListener('click',function(){
   var offList=Object.values(offMap).filter(function(a){return msids2.has(a.emp.id);}).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
   var gdnList=Object.values(gdnMap).filter(function(a){return msids2.has(a.emp.id);}).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
   var lvList=Object.values(lvMap).filter(function(a){return msids2.has(a.emp.id);}).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
-  if(offList.length)renderSection('OFFICE DUTY',offList,180,80,20,230,100,20);
-  if(gdnList.length)renderSection('GODOWN TEAM',gdnList,180,140,0,220,170,0);
-  if(lvList.length)renderSection('ON LEAVE',lvList,160,30,30,200,50,50);
+  if(offList.length)renderSection('OFFICE DUTY',offList,180,80,20,230,100,20,false);
+  if(gdnList.length)renderSection('GODOWN TEAM',gdnList,180,140,0,220,170,0,false);
+  if(lvList.length)renderSection('ON LEAVE',lvList,160,30,30,200,50,50,true);
 
   // Footer
   var pc=doc.internal.getNumberOfPages();

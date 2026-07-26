@@ -354,14 +354,10 @@ function save(){
   ST=setTimeout(function(){
     saveLog();
     var d=_lastDate||getD();
-    // Use dot-notation key so only this date's data is updated, not the whole dlog map
+    // set with merge so we never wipe other portals data on the same daily doc
     var _sd=d;
-    var dotPayload={};dotPayload['dlog.'+d]=dlog[d];
-    dailyRef(_sd).update(dotPayload).then(function(){sv('saved');}).catch(function(){
-      // Doc doesn't exist yet — use set with merge
-      var setPayload={dlog:{}};setPayload.dlog[d]=dlog[d];
-      dailyRef(_sd).set(setPayload,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
-    });
+    var setPayload={dlog:{}};setPayload.dlog[d]=dlog[d];
+    dailyRef(_sd).set(setPayload,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
     db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
   },400);
 }

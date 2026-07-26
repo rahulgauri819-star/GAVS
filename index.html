@@ -2351,6 +2351,13 @@ function makeV3Card(a,vid,c){
     if(asgn[capturedVid]&&asgn[capturedVid][capturedEid]){
       asgn[capturedVid][capturedEid].duty=this.value;
       asgn[capturedVid][capturedEid].isFixed=false;
+      // If this staff is in an IHC/Jaipur hall, sync duty time there too
+      var _newDuty=this.value;
+      [ihcAsgn,jaipurAsgn].forEach(function(hAsgn){
+        Object.keys(hAsgn||{}).forEach(function(hid){
+          if(hAsgn[hid]&&hAsgn[hid][capturedEid]){hAsgn[hid][capturedEid].duty=_newDuty;}
+        });
+      });
       saveCloud();
     }
   });

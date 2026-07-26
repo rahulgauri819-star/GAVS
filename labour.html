@@ -358,10 +358,10 @@ function save(){
     // FieldPath avoids hyphen-in-key issue with dot notation
     var _sd=d;
     var portalVenues=(dlog[d]||{}).venues||{};
-    var fp=new firebase.firestore.FieldPath('dlog',d,'portalVenues');
+    var fp=new firebase.firestore.FieldPath('dlog',d,'venues');
     dailyRef(_sd).update(fp,portalVenues).then(function(){sv('saved');}).catch(function(){
       // Doc doesn't exist yet - create it
-      var setPayload={dlog:{}};setPayload.dlog[d]={portalVenues:portalVenues};
+      var setPayload={dlog:{}};setPayload.dlog[d]={venues:portalVenues};
       dailyRef(_sd).set(setPayload,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
     });
     db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});

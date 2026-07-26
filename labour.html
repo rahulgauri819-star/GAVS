@@ -1091,7 +1091,7 @@ function _savePortalAtnWithRetry(payload,attempt){
   var _atd=_lastDate||getD();dailyRef(_atd).update(payload).catch(function(){dailyRef(_atd).set(payload,{merge:true}).catch(function(e){
     console.warn('Portal attendance save error (attempt '+attempt+'):',e.message||e);
     if(attempt<4)setTimeout(function(){_savePortalAtnWithRetry(payload,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
-  });
+  });});
 }
 function pAtnBuildDutyMaps(d){
   var sv={},st2={},lm={},om={},gm={};

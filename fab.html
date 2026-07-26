@@ -129,8 +129,6 @@ var asgn={},vAsgn={},lvMap={},offMap={},gdnMap={};
 var dlog={},vdlog={},annualLeave=[];
 var activeVids=[],_dateComments={},_dateVip={};
 var _collapsed={},_lastDate='',_roleFilter='',_multiView=false;
-// Always default to tomorrow on load/refresh
-(function(){var dp=document.getElementById('DP');if(dp&&!dp.value){var t=new Date();t.setDate(t.getDate()+1);dp.value=t.toISOString().slice(0,10);_lastDate=dp.value;}})();
 
 function g(id){return document.getElementById(id);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -163,14 +161,42 @@ db.collection('gavs_data').doc('main').get().then(function(doc){
   }
 }).catch(function(){});
 
-function doLogin(){
-  var u=(g('LU').value||'').trim().toLowerCase(),p=(g('LP').value||'').trim();
-  var ok=(u===DUSER&&p===DPASS)||(AUSER&&u===AUSER&&p===APASS);
-  if(!ok){g('LERR').style.display='block';g('LP').value='';return;}
+var _PORTAL_SESSION_KEY='gavs_portal_session_'+PID;
+// Auto-login on refresh if session exists
+(function(){
+  try{
+    var s=localStorage.getItem(_PORTAL_SESSION_KEY);
+    if(!s)return;
+    var sess=JSON.parse(s);
+    if(!sess||!sess.u||!sess.p)return;
+    // Re-fetch credentials from Firebase then verify
+    db.collection('gavs_data').doc('main').get().then(function(doc){
+      if(doc.exists&&doc.data().portalPasswords&&doc.data().portalPasswords[PID]){
+        var _pw=doc.data().portalPasswords[PID];
+        APASS=(typeof _pw==='object'?_pw.password:_pw)||DPASS;
+        AUSER=(typeof _pw==='object'?_pw.username:DUSER)||DUSER;
+      }
+      var ok=(sess.u===DUSER&&sess.p===DPASS)||(AUSER&&sess.u===AUSER&&sess.p===APASS);
+      if(ok){_launchApp();}else{try{localStorage.removeItem(_PORTAL_SESSION_KEY);}catch(e){}}
+    }).catch(function(){
+      // Fallback: verify against defaults only
+      var ok=(sess.u===DUSER&&sess.p===DPASS);
+      if(ok)_launchApp();
+    });
+  }catch(e){}
+})();
+function _launchApp(){
   g('LS').style.display='none';g('APP').style.display='flex';
   g('DP').value=nd(todayIST());
   _lastDate=g('DP').value;
   loadData();
+}
+function doLogin(){
+  var u=(g('LU').value||'').trim().toLowerCase(),p=(g('LP').value||'').trim();
+  var ok=(u===DUSER&&p===DPASS)||(AUSER&&u===AUSER&&p===APASS);
+  if(!ok){g('LERR').style.display='block';g('LP').value='';return;}
+  try{localStorage.setItem(_PORTAL_SESSION_KEY,JSON.stringify({u:u,p:p}));}catch(e){}
+  _launchApp();
 }
 
 var _fbUnsub=null;

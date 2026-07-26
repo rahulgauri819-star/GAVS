@@ -328,15 +328,9 @@ function loadFromCloud(){
       // Find IHC venue
       var v=venues.find(function(v){return v.name===VENUE_NAME;});
       jaipurVenueId=v?v.id:'';
-      // Staff = pinned to IHC + any staff Admin temporarily deployed to IHC venue today
-      var adminDeployedToVenue={};
-      var adminAsgn=d.asgn||{};
-      if(jaipurVenueId&&adminAsgn[jaipurVenueId]){
-        Object.keys(adminAsgn[jaipurVenueId]).forEach(function(eid){adminDeployedToVenue[eid]=true;});
-      }
+      // Staff = only pinned to this venue (incoming staff handled by ownVenuePool from daily doc)
       staff=allStaff.filter(function(e){
-        var atVenue=e.pv===jaipurVenueId||adminDeployedToVenue[e.id];
-        if(!atVenue)return false;
+        if(e.pv!==jaipurVenueId)return false;
         if(myAccess.roles&&myAccess.roles.length>0)return myAccess.roles.indexOf(e.role)>=0;
         return true;
       });

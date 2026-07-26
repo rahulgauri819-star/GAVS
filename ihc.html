@@ -136,7 +136,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="rp" id="RP">
       <div id="ATN_PANEL_IHC" style="display:none;padding:14px;overflow-y:auto;flex:1;"></div>
       <div id="LEAVE_ZONE_WRAP" style="min-height:60px;margin-bottom:10px;"></div>
-      <div id="MAIN_POOL_WRAP" style="margin-bottom:10px;"></div>
       <div class="halls-grid" id="HALLS_GRID"></div>
     </div>
   </div>
@@ -280,7 +279,6 @@ function doLogin(){
   g('login-screen').style.display='none';
   g('app').style.display='flex';
   g('DP').value=nd(todayIST());
-  subscribeIHCDlog();
   loadFromCloud();
 }
 
@@ -347,7 +345,6 @@ function loadFromCloud(){
       drawStaffPanel();
       drawHalls();
       drawLeaveZone();
-      drawMainPool();
     }
     showSaveInd('saved');
   },function(e){console.error(e);showSaveInd('error');});
@@ -663,12 +660,11 @@ function makeHallBox(h){
     ev.preventDefault();box.classList.remove('drag-over');
     var eid=ev.dataTransfer.getData('text/plain');
     if(!eid)return;
-    var emp=getS(eid)||(allStaff&&allStaff.find(function(e){return e.id===eid;}));if(!emp)return;
-    var duty=ev.dataTransfer.getData('text/duty')||emp.fixedDuty||'6:00 AM';
+    var emp=getS(eid);if(!emp)return;
     // Remove from any other hall first
     Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
     if(!asgn[h.id])asgn[h.id]={};
-    asgn[h.id][eid]={emp:emp,duty:duty,isFixed:false};
+    asgn[h.id][eid]={duty:emp.fixedDuty||'6:00 AM',isFixed:false}; // never pin to sub-halls
     if(navigator.vibrate)navigator.vibrate([20,10,20]);
     drawHalls();drawStaffPanel();saveCloud();
   });
@@ -990,7 +986,6 @@ document.addEventListener('touchend',function(ev){
 
 // Date change
 g('DP').addEventListener('change',function(){
-  subscribeIHCDlog();
   loadDateData(getD());
   var _lde2=dlog[getD()]||{};_hallVip=_lde2.hallVip||{};_hallComments=_lde2.hallComments||{};
   drawHalls();drawStaffPanel();drawLeaveZone();
@@ -1000,58 +995,12 @@ g('DP').addEventListener('change',function(){
 function dailyDocId(ds){return 'dlog_'+(ds||getD()).replace(/-/g,'_');}
 function dailyRef(ds){return db.collection('gavs_data').doc(dailyDocId(ds));}
 // Listen to today's daily doc for attendance + main app pool data
-var _ihcDlogUnsub=null;
-function subscribeIHCDlog(){
-  if(_ihcDlogUnsub){try{_ihcDlogUnsub();}catch(e){}}_ihcDlogUnsub=null;
-  _ihcDlogUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
-    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      var incoming=dlogDoc.data().dlog;
-      Object.keys(incoming).forEach(function(dk){mainDlog[dk]=incoming[dk];});
-      if(DB_LOADED){drawMainPool();}
-    }
-  },function(e){console.warn('IHC dlog listener error:',e);});
-}
-
-function drawMainPool(){
-  var wrap=g('MAIN_POOL_WRAP');if(!wrap)return;
-  wrap.innerHTML='';
-  if(!ihcVenueId)return;
-  var today=getD();
-  var log=mainDlog[today]||{};
-  var venueStaff=log.venues&&log.venues[ihcVenueId]?log.venues[ihcVenueId]:{};
-  // Get eids assigned from main app/portals to IHC venue
-  var poolEntries=[];
-  Object.keys(venueStaff).forEach(function(eid){
-    var emp=getS(eid);
-    if(!emp)emp=allStaff.find(function(e){return e.id===eid;});
-    if(emp)poolEntries.push({emp:emp,duty:venueStaff[eid]||'6:00 AM'});
-  });
-  if(!poolEntries.length)return;
-  // Build pool UI
-  var box=document.createElement('div');
-  box.style.cssText='background:#fff;border:2px solid #bbdefb;border-radius:14px;margin-bottom:4px;overflow:hidden;';
-  var hdr=document.createElement('div');
-  hdr.style.cssText='background:linear-gradient(90deg,#1565c0,#1976d2);color:#fff;padding:8px 12px;display:flex;align-items:center;gap:8px;';
-  hdr.innerHTML='<span style="font-size:13px;">📋</span><span style="font-size:12px;font-weight:700;flex:1;">Assigned to IHC (from Main App)</span><span style="background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;">'+poolEntries.length+' staff</span>';
-  box.appendChild(hdr);
-  var body=document.createElement('div');
-  body.style.cssText='padding:8px;display:flex;flex-wrap:wrap;gap:6px;';
-  poolEntries.forEach(function(a){
-    var c=cc(a.emp.role);
-    var chip=document.createElement('div');
-    chip.style.cssText='background:'+c+'15;border:1.5px solid '+c+'40;border-radius:8px;padding:4px 8px;font-size:10px;font-weight:700;color:#111;cursor:grab;display:flex;align-items:center;gap:4px;';
-    chip.draggable=true;
-    chip.innerHTML='<span style="width:6px;height:6px;border-radius:50%;background:'+c+';flex-shrink:0;display:inline-block;"></span>'+esc(a.emp.name)+'<span style="color:#888;font-weight:400;font-size:9px;">'+a.duty+'</span>';
-    chip.addEventListener('dragstart',function(ev){
-      ev.dataTransfer.setData('text/plain',a.emp.id);
-      ev.dataTransfer.setData('text/duty',a.duty);
-      ev.dataTransfer.effectAllowed='move';
-    });
-    body.appendChild(chip);
-  });
-  box.appendChild(body);
-  wrap.appendChild(box);
-}
+var _ihcDlogUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
+  if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+    var incoming=dlogDoc.data().dlog;
+    Object.keys(incoming).forEach(function(dk){mainDlog[dk]=incoming[dk];});
+  }
+},function(e){console.warn('IHC dlog listener error:',e);});
 
 // ── IHC ATTENDANCE ────────────────────────────────────────────
 function getIHCAttendance(d){

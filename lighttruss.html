@@ -242,7 +242,7 @@ function loadData(){
   },function(e){console.error(e);sv('error');});
   // v86: listen to today's daily doc
   _dlogUnsub=dailyRef(_lastDate||getD()).onSnapshot(function(dlogDoc){
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites&&!_portalDlogLoaded)return;
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var incoming=dlogDoc.data().dlog;
       Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});
@@ -390,7 +390,7 @@ g('DP').addEventListener('change',function(){
   if(_dlogUnsub){try{_dlogUnsub();}catch(e){}_dlogUnsub=null;}
   _portalDlogLoaded=false;
   _dlogUnsub=dailyRef(_lastDate).onSnapshot(function(dlogDoc){
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites&&!_portalDlogLoaded)return;
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var incoming=dlogDoc.data().dlog;
       Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});

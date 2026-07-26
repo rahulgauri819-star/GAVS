@@ -1217,6 +1217,18 @@ function switchToDate(newDate){
     actuallySaveCloud();
   }
   _lastLoadedDate=newDate;
+  // Re-subscribe daily doc listener to the new date's doc for real-time updates
+  if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){}_dlogSnapshotUnsub=null;}
+  _dlogSnapshotUnsub=dailyRef(newDate).onSnapshot(function(dlogDoc){
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites&&!_dlogReady)return;
+    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+      var incoming=dlogDoc.data().dlog;
+      Object.keys(incoming).forEach(function(d){dlog[d]=incoming[d];});
+      if(DB_LOADED&&_lastLoadedDate){
+        if(incoming[_lastLoadedDate]!==undefined){loadLiveFromDlog(_lastLoadedDate);drawVenueGrid();drawStaffPanel();drawStats();}
+      }
+    }
+  },function(e){console.warn('Dlog listener error (date switch):',e);});
   // 2. Reset contracted venues to ALL hidden on every date switch.
   contractedHiddenVids=new Set();
   contractedHiddenVids._initialized=true;

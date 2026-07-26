@@ -1082,15 +1082,25 @@ function buildPoolMaps(){
   var asgnChanged=false;
   Object.keys(asgn).forEach(function(hid){
     Object.keys(asgn[hid]||{}).forEach(function(eid){
-      // Use allStaff (not getS) so we find non-pinned staff too
       var emp=allStaff.find(function(e){return e.id===eid;});
-      // If non-pinned (came from pool) and no longer in pool → remove from hall
       if(emp&&emp.pv!==ihcVenueId&&!ownVenuePool[eid]){
         delete asgn[hid][eid];asgnChanged=true;
       }
     });
   });
-  if(asgnChanged){drawHalls();saveCloud();}
+  if(asgnChanged){
+    // Build clean asgn and save IMMEDIATELY (no debounce) so main snapshot reload gets updated data
+    var asgnData={};
+    Object.keys(asgn).forEach(function(hid){
+      asgnData[hid]={};
+      Object.keys(asgn[hid]||{}).forEach(function(eid){
+        var a=asgn[hid][eid];asgnData[hid][eid]={duty:a.duty||'6:00 AM',isFixed:a.isFixed||false};
+      });
+    });
+    var immediatePayload={};immediatePayload[ASGN_KEY]=asgnData;
+    db.collection('gavs_data').doc('main').update(immediatePayload).catch(function(e){console.warn('Auto-remove save error:',e);});
+    drawHalls();
+  }
 }
 
 

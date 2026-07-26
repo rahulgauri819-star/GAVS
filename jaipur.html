@@ -539,8 +539,10 @@ function drawStaffPanel(){
       });
     });
   }
-  // All own staff shown below incoming
-  renderGroup(staff,null);
+  // All own staff shown below incoming — skip anyone already in pool
+  var poolIds=new Set(Object.keys(ownVenuePool));
+  var regularStaff=staff.filter(function(e){return !poolIds.has(e.id);});
+  renderGroup(regularStaff,null);
 
   if(!el.children.length){
     el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px;font-size:12px;">No staff found</div>';

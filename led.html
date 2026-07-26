@@ -129,6 +129,8 @@ var asgn={},vAsgn={},lvMap={},offMap={},gdnMap={};
 var dlog={},vdlog={},annualLeave=[];
 var activeVids=[],_dateComments={},_dateVip={};
 var _collapsed={},_lastDate='',_roleFilter='',_multiView=false;
+// Always default to tomorrow on load/refresh
+(function(){var dp=document.getElementById('DP');if(dp&&!dp.value){var t=new Date();t.setDate(t.getDate()+1);dp.value=t.toISOString().slice(0,10);_lastDate=dp.value;}})();
 
 function g(id){return document.getElementById(id);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}

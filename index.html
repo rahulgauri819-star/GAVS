@@ -6835,7 +6835,8 @@ function loadFromCloud(callback){
   _dlogReady=false;_mainReady=false;
   // Set up listener for TODAY's daily doc
   _dlogSnapshotUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
+    // Only skip hasPendingWrites on initial load — real-time updates from other portals must always process
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites&&!_dlogReady)return;
     var today=getD();
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var incoming=dlogDoc.data().dlog;

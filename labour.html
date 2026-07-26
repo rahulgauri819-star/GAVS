@@ -596,20 +596,18 @@ function wireVenueSearch(){
   inp.oninput=function(){
     var q=this.value.toLowerCase();dd.innerHTML='';
     if(!q){dd.style.display='none';return;}
+    var rawQ=inp.value.trim();
     var matches=allV.filter(function(v){return v.name.toLowerCase().indexOf(q)>=0&&activeVids.indexOf(v.id)<0;}).slice(0,10);
-    if(!matches.length){dd.style.display='none';return;}
     matches.forEach(function(v){
       var item=document.createElement('div');item.className='vdd-item';item.textContent=v.name;
       item.addEventListener('mousedown',function(ev){
         ev.preventDefault();
         if(activeVids.indexOf(v.id)<0)activeVids.push(v.id);
         if(!asgn[v.id])asgn[v.id]={};
-        // Persist via manualVids in dlog
         var d2=_lastDate||getD();
         if(!dlog[d2])dlog[d2]={};
         if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
         if(dlog[d2].manualVids.indexOf(v.id)<0)dlog[d2].manualVids.push(v.id);
-        // Write IMMEDIATELY to Firebase (not debounced)
         var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
         dailyRef(d2).set(imPayload,{merge:true});
         inp.value='';dd.style.display='none';
@@ -617,7 +615,33 @@ function wireVenueSearch(){
       });
       dd.appendChild(item);
     });
-    dd.style.display='block';
+    // Show "+ Create 'X'" option if typed name doesn't exactly exist
+    var exactMatch=allV.some(function(v){return v.name.toLowerCase()===q;});
+    if(rawQ&&!exactMatch){
+      var createItem=document.createElement('div');
+      createItem.className='vdd-item';
+      createItem.style.cssText='color:#c62828;font-weight:700;border-top:'+(matches.length?'1px solid #fce4ec':'none')+';';
+      createItem.textContent='+ Create "'+rawQ+'"';
+      createItem.addEventListener('mousedown',function(ev){
+        ev.preventDefault();
+        var newId='v_'+Date.now();
+        var newV={id:newId,name:rawQ,address:'',locUrl:''};
+        allV.push(newV);
+        db.collection('gavs_data').doc('main').update({venues:allV}).catch(function(){});
+        if(activeVids.indexOf(newId)<0)activeVids.push(newId);
+        if(!asgn[newId])asgn[newId]={};
+        var d2=_lastDate||getD();
+        if(!dlog[d2])dlog[d2]={};
+        if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
+        if(dlog[d2].manualVids.indexOf(newId)<0)dlog[d2].manualVids.push(newId);
+        var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
+        dailyRef(d2).set(imPayload,{merge:true});
+        inp.value='';dd.style.display='none';
+        drawGrid();save();
+      });
+      dd.appendChild(createItem);
+    }
+    if(matches.length||rawQ){dd.style.display='block';}else{dd.style.display='none';}
   };
   inp.onblur=function(){setTimeout(function(){dd.style.display='none';},150);};
 }

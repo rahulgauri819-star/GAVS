@@ -197,7 +197,7 @@ function loadData(){
     sv('saved');
   },function(e){console.error(e);sv('error');});
   // v86: listen to today's daily doc
-  _dlogUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
+  _dlogUnsub=dailyRef(_lastDate||getD()).onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var incoming=dlogDoc.data().dlog;
@@ -329,7 +329,18 @@ g('BMULTI')&&g('BMULTI').addEventListener('click',function(){
 g('SRCH').addEventListener('input',function(){if(curTab==='staff')drawSP();else drawVP();});
 g('DP').addEventListener('change',function(){
   _lastDate=getD();
-  loadDateData(getD());drawSP();drawDZ();drawGrid();updateStats();
+  // Re-subscribe dlog listener to new date's daily doc
+  if(_dlogUnsub){try{_dlogUnsub();}catch(e){}_dlogUnsub=null;}
+  _portalDlogLoaded=false;
+  _dlogUnsub=dailyRef(_lastDate).onSnapshot(function(dlogDoc){
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
+    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+      var incoming=dlogDoc.data().dlog;
+      Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});
+      _portalDlogLoaded=true;
+    }
+    loadDateData(_lastDate);drawSP();drawDZ();drawGrid();updateStats();
+  },function(e){console.warn('Portal dlog listener error:',e);loadDateData(_lastDate);drawSP();drawDZ();drawGrid();updateStats();});
 });
 
 function drawRolePills(){

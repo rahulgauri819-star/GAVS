@@ -92,6 +92,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="hbtn" id="BMULTI" style="background:rgba(255,255,255,0.15);">🔀 Multi</button>
       <button class="hbtn" id="BSAVE">☁️ Save</button>
       <button class="hbtn" id="BPDF">📄 PDF</button>
+      <button class="hbtn" id="BLOGOUT" style="background:rgba(255,255,255,0.15);">🚪 Logout</button>
     </div>
   </div>
   <div class="main">
@@ -148,6 +149,13 @@ function sv(state){var l=g('SL');if(!l)return;if(state==='saving')l.textContent=
 g('MO').addEventListener('click',function(ev){if(ev.target===this)cm();});
 g('LBTN').addEventListener('click',doLogin);
 g('LP').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+g('BLOGOUT')&&g('BLOGOUT').addEventListener('click',function(){
+  try{localStorage.removeItem(_PORTAL_SESSION_KEY);}catch(e){}
+  if(_fbUnsub){try{_fbUnsub();}catch(e){}}_fbUnsub=null;
+  if(_dlogUnsub){try{_dlogUnsub();}catch(e){}}_dlogUnsub=null;
+  g('APP').style.display='none';g('LS').style.display='flex';
+  g('LU').value='';g('LP').value='';
+});
 
 // Pre-load portal credentials from Firebase before login
 var _portalDlogLoaded=false;
@@ -188,13 +196,16 @@ var _PORTAL_SESSION_KEY='gavs_portal_session_'+PID;
 function _launchApp(){
   g('LS').style.display='none';g('APP').style.display='flex';
   var tomorrow=nd(todayIST());
-  g('DP').value=tomorrow;
+  // Set date AFTER app is visible (browsers may ignore value on hidden date inputs)
+  var dp=g('DP');
+  dp.setAttribute('value',tomorrow);
+  dp.value=tomorrow;
   _lastDate=tomorrow;
-  // Force the date picker to show tomorrow in case browser cached a value
   setTimeout(function(){
-    if(g('DP').value!==tomorrow){g('DP').value=tomorrow;_lastDate=tomorrow;}
-  },0);
-  loadData();
+    dp.value=tomorrow;
+    _lastDate=tomorrow;
+    loadData();
+  },50);
 }
 function doLogin(){
   var u=(g('LU').value||'').trim().toLowerCase(),p=(g('LP').value||'').trim();

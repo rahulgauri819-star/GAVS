@@ -1054,18 +1054,19 @@ function buildPoolMaps(){
   if(!ihcVenueId)return;
   var today=getD();
   var log=mainDlog[today]||{};
-  var venuesLog=log.venues||{};
-  if(venuesLog[ihcVenueId]){
-    Object.keys(venuesLog[ihcVenueId]).forEach(function(eid){
+  var portalVenuesLog=log.portalVenues||{};
+  if(portalVenuesLog[ihcVenueId]){
+    Object.keys(portalVenuesLog[ihcVenueId]).forEach(function(eid){
       var emp=allStaff.find(function(e){return e.id===eid;});
       if(emp&&emp.pv!==ihcVenueId){
-        ownVenuePool[eid]={emp:emp,duty:venuesLog[ihcVenueId][eid]||'6:00 AM'};
+        ownVenuePool[eid]={emp:emp,duty:portalVenuesLog[ihcVenueId][eid]||'6:00 AM'};
       }
     });
   }
   // Auto-remove from halls if LED took back the staff member
   var asgnChanged=false;
-  // Out: own pinned staff deployed elsewhere — build BEFORE auto-remove
+  // Out: own pinned staff deployed elsewhere — check main app venues
+  var venuesLog=log.venues||{};
   Object.keys(venuesLog).forEach(function(vid){
     if(vid===ihcVenueId)return;
     var vObj=(window._allV||[]).find(function(v){return v.id===vid;});

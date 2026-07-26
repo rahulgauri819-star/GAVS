@@ -357,11 +357,11 @@ function save(){
     // Use FieldPath to safely update nested venues without wiping other data
     // FieldPath avoids hyphen-in-key issue with dot notation
     var _sd=d;
-    var venues=(dlog[d]||{}).venues||{};
-    var fp=new firebase.firestore.FieldPath('dlog',d,'venues');
-    dailyRef(_sd).update(fp,venues).then(function(){sv('saved');}).catch(function(){
+    var portalVenues=(dlog[d]||{}).venues||{};
+    var fp=new firebase.firestore.FieldPath('dlog',d,'portalVenues');
+    dailyRef(_sd).update(fp,portalVenues).then(function(){sv('saved');}).catch(function(){
       // Doc doesn't exist yet - create it
-      var setPayload={dlog:{}};setPayload.dlog[d]={venues:venues};
+      var setPayload={dlog:{}};setPayload.dlog[d]={portalVenues:portalVenues};
       dailyRef(_sd).set(setPayload,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
     });
     db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});

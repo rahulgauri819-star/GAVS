@@ -1061,17 +1061,19 @@ function buildPoolMaps(){
   if(!ihcVenueId)return;
   var today=getD();
   var log=mainDlog[today]||{};
-  var venuesLog=log.venues||{};
+  // portalVenues: set by LED/Labour/Fab portals (separate from main app's venues)
+  var portalVenuesLog=log.portalVenues||{};
   // Pool: non-pinned staff assigned to our venue by other portals
-  if(venuesLog[ihcVenueId]){
-    Object.keys(venuesLog[ihcVenueId]).forEach(function(eid){
+  if(portalVenuesLog[ihcVenueId]){
+    Object.keys(portalVenuesLog[ihcVenueId]).forEach(function(eid){
       var emp=allStaff.find(function(e){return e.id===eid;});
       if(emp&&emp.pv!==ihcVenueId){
-        ownVenuePool[eid]={emp:emp,duty:venuesLog[ihcVenueId][eid]||'6:00 AM'};
+        ownVenuePool[eid]={emp:emp,duty:portalVenuesLog[ihcVenueId][eid]||'6:00 AM'};
       }
     });
   }
-  // Out: own pinned staff deployed elsewhere
+  // Out: own pinned staff deployed elsewhere (check main app's venues)
+  var venuesLog=log.venues||{};
   Object.keys(venuesLog).forEach(function(vid){
     if(vid===ihcVenueId)return;
     var vObj=(window._allV||[]).find(function(v){return v.id===vid;});

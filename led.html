@@ -354,10 +354,13 @@ function save(){
   ST=setTimeout(function(){
     saveLog();
     var d=_lastDate||getD();
-    var dlogPayload={dlog:{}};dlogPayload.dlog[d]=dlog[d];
+    // Use dot-notation key so only this date's data is updated, not the whole dlog map
     var _sd=d;
-    dailyRef(_sd).update(dlogPayload).then(function(){sv('saved');}).catch(function(){
-      dailyRef(_sd).set(dlogPayload,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
+    var dotPayload={};dotPayload['dlog.'+d]=dlog[d];
+    dailyRef(_sd).update(dotPayload).then(function(){sv('saved');}).catch(function(){
+      // Doc doesn't exist yet — use set with merge
+      var setPayload={dlog:{}};setPayload.dlog[d]=dlog[d];
+      dailyRef(_sd).set(setPayload,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
     });
     db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
   },400);

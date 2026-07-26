@@ -172,9 +172,13 @@ function doLogin(){
 }
 
 var _fbUnsub=null;
+var _dlogUnsub=null;
+function dailyDocId(ds){return 'dlog_'+(ds||getD()).replace(/-/g,'_');}
+function dailyRef(ds){return db.collection('gavs_data').doc(dailyDocId(ds));}
 function loadData(){
   sv('saving');
   if(_fbUnsub){try{_fbUnsub();}catch(e){}_fbUnsub=null;}
+  if(_dlogUnsub){try{_dlogUnsub();}catch(e){}_dlogUnsub=null;}
   var firstLoad=true;
   _fbUnsub=db.collection('gavs_data').doc('main').onSnapshot(function(doc){
     if(!firstLoad&&doc.metadata&&doc.metadata.hasPendingWrites)return;
@@ -192,12 +196,12 @@ function loadData(){
     if(firstLoad){firstLoad=false;buildTabs();}else{drawSP();drawDZ();drawGrid();updateStats();}
     sv('saved');
   },function(e){console.error(e);sv('error');});
-  db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+  // v86: listen to today's daily doc
+  _dlogUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      var newDlog=dlogDoc.data().dlog;
-      mainDlog=newDlog;
-      dlog=newDlog;
+      var incoming=dlogDoc.data().dlog;
+      Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});
       _portalDlogLoaded=true;
       if(DBL){loadDateData(getD());drawDZ();drawGrid();drawSP();updateStats();}
     }
@@ -299,8 +303,10 @@ function save(){
     saveLog();
     var d=_lastDate||getD();
     var dlogPayload={dlog:{}};dlogPayload.dlog[d]=dlog[d];
-    db.collection('gavs_data').doc('dlog').set(dlogPayload,{merge:true})
-      .then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
+    var _sd=d;
+    dailyRef(_sd).update(dlogPayload).then(function(){sv('saved');}).catch(function(){
+      dailyRef(_sd).set(dlogPayload,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
+    });
     db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
   },400);
 }
@@ -594,7 +600,7 @@ function wireVenueSearch(){
         if(dlog[d2].manualVids.indexOf(v.id)<0)dlog[d2].manualVids.push(v.id);
         // Write IMMEDIATELY to Firebase (not debounced)
         var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
-        db.collection('gavs_data').doc('dlog').set(imPayload,{merge:true});
+        dailyRef(d2).set(imPayload,{merge:true});
         inp.value='';dd.style.display='none';
         drawGrid();save();
       });
@@ -1082,7 +1088,7 @@ function savePortalAttendance(d,attn){
   _savePortalAtnWithRetry(dlogUpdate,0);
 }
 function _savePortalAtnWithRetry(payload,attempt){
-  db.collection('gavs_data').doc('dlog').set(payload,{merge:true}).catch(function(e){
+  var _atd=_lastDate||getD();dailyRef(_atd).update(payload).catch(function(){dailyRef(_atd).set(payload,{merge:true}).catch(function(e){
     console.warn('Portal attendance save error (attempt '+attempt+'):',e.message||e);
     if(attempt<4)setTimeout(function(){_savePortalAtnWithRetry(payload,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
   });

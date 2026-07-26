@@ -362,6 +362,7 @@ function loadFromCloud(){
       drawHalls();
       drawLeaveZone();
       buildPoolMaps();
+      // After daily doc loads, auto-remove will clean up any stale non-pinned staff
     }
     showSaveInd('saved');
   },function(e){console.error(e);showSaveInd('error');});
@@ -596,7 +597,21 @@ function makeHallBox(h){
     if(!slen){showModal('<div class="modal-title">No staff</div><button class="mbtn cancel" id="m-no">Close</button>');g('m-no').onclick=closeModal;return;}
     var opts=TIMES.map(function(t){return '<option value="'+t+'">'+shortTime(t)+'</option>';}).join('');
     showModal('<div class="modal-title">⏰ Set Same Time</div><div style="font-size:12px;color:#555;text-align:center;margin-bottom:12px;">Apply to all <strong>'+slen+'</strong> staff in <strong>'+esc(hname)+'</strong></div><select id="BULK_T" class="minp" style="padding:8px;">'+opts+'</select><button class="mbtn blue" id="MY">Apply to All</button><button class="mbtn cancel" id="MN">Cancel</button>');
-    g('MY').onclick=function(){var val=g('BULK_T').value;Object.keys(asgn[hid]||{}).forEach(function(eid){if(asgn[hid][eid])asgn[hid][eid].duty=val;});closeModal();drawHalls();saveCloud();};
+    g('MY').onclick=function(){var val=g('BULK_T').value;
+      Object.keys(asgn[hid]||{}).forEach(function(eid){
+        if(asgn[hid][eid]){
+          asgn[hid][eid].duty=val;
+          // Update daily doc for pool staff
+          if(ownVenuePool[eid]&&ihcVenueId){
+            ownVenuePool[eid].duty=val;
+            var d=getD();
+            var fp=new firebase.firestore.FieldPath('dlog',d,'venues',ihcVenueId,eid);
+            dailyRef(d).update(fp,val).catch(function(){});
+          }
+        }
+      });
+      closeModal();drawHalls();saveCloud();
+    };
     g('MN').onclick=closeModal;
   };})(h.id,h.name,staffInHall.length));
   var del=document.createElement('button');del.className='hall-close';del.textContent='✕';del.title='Delete hall';
@@ -692,7 +707,19 @@ function makeHallBox(h){
         row.appendChild(nm2);
         var sel=document.createElement('select');sel.className='hr-time';
         TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===a.duty)o.selected=true;sel.appendChild(o);});
-        sel.addEventListener('change',(function(hid,eid){return function(){if(asgn[hid]&&asgn[hid][eid]){asgn[hid][eid].duty=this.value;saveCloud();}};})(h.id,a.emp.id));
+        sel.addEventListener('change',(function(hid,eid){return function(){
+          if(asgn[hid]&&asgn[hid][eid]){
+            asgn[hid][eid].duty=this.value;
+            saveCloud();
+            // If this is a pool staff member, also update daily doc so LED/main see new time
+            if(ownVenuePool[eid]&&ihcVenueId){
+              ownVenuePool[eid].duty=this.value;
+              var d=getD();
+              var fp=new firebase.firestore.FieldPath('dlog',d,'venues',ihcVenueId,eid);
+              dailyRef(d).update(fp,this.value).catch(function(){});
+            }
+          }
+        };})(h.id,a.emp.id));
         row.appendChild(sel);
         var rm=document.createElement('button');rm.className='hr-rm';rm.textContent='✕';
         rm.addEventListener('click',(function(hid,eid,ename){return function(){
@@ -1059,7 +1086,21 @@ var _ihcDlogUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
   if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
     var incoming=dlogDoc.data().dlog;
     Object.keys(incoming).forEach(function(dk){mainDlog[dk]=incoming[dk];});
-    if(DB_LOADED){buildPoolMaps();drawStaffPanel();}
+    if(DB_LOADED){
+      buildPoolMaps();
+      // Sync hall duties for pool staff with their assigned duty times
+      var poolChanged=false;
+      Object.keys(asgn).forEach(function(hid){
+        Object.keys(asgn[hid]||{}).forEach(function(eid){
+          if(ownVenuePool[eid]){
+            asgn[hid][eid].duty=ownVenuePool[eid].duty;
+            poolChanged=true;
+          }
+        });
+      });
+      drawStaffPanel();
+      if(poolChanged)drawHalls();
+    }
   }
 },function(e){console.warn('IHC dlog listener error:',e);});
 

@@ -1089,7 +1089,10 @@ function buildPoolMaps(){
     Object.keys(asgn[hid]||{}).forEach(function(eid){
       var emp=allStaff.find(function(e){return e.id===eid;});
       // Remove from hall only if staff is non-pinned AND absent from ALL incoming sources
-      var stillAssigned=portalVenuesLog[ihcVenueId]&&portalVenuesLog[ihcVenueId][eid];
+      // Still assigned if present in ANY source
+      var stillAssigned=
+        (portalVenuesLog[ihcVenueId]&&portalVenuesLog[ihcVenueId][eid])||
+        (mainVenuesLog[ihcVenueId]&&mainVenuesLog[ihcVenueId][eid]);
       if(emp&&emp.pv!==ihcVenueId&&!stillAssigned){
         delete asgn[hid][eid];asgnChanged=true;
       }

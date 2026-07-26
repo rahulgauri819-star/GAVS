@@ -1061,16 +1061,22 @@ function buildPoolMaps(){
   if(!ihcVenueId)return;
   var today=getD();
   var log=mainDlog[today]||{};
-  // Pool comes ONLY from portalVenues (LED/Labour/Fab portals)
-  // Main app trading is handled separately via ihcAsgn
+  // Pool = any non-pinned staff assigned to this venue from ANY source
   var portalVenuesLog=log.portalVenues||{};
   var mainVenuesLog=log.venues||{};
-  if(portalVenuesLog[ihcVenueId]){
-    Object.keys(portalVenuesLog[ihcVenueId]).forEach(function(eid){
-      var emp=allStaff.find(function(e){return e.id===eid;});
-      if(emp&&emp.pv!==ihcVenueId){ownVenuePool[eid]={emp:emp,duty:portalVenuesLog[ihcVenueId][eid]||'6:00 AM'};}
-    });
+  function addToPool(eid,duty){
+    if(ownVenuePool[eid])return;
+    var emp=allStaff.find(function(e){return e.id===eid;});
+    if(emp&&emp.pv!==ihcVenueId){ownVenuePool[eid]={emp:emp,duty:duty||'6:00 AM'};}
   }
+  // From portals (LED etc)
+  Object.keys(portalVenuesLog[ihcVenueId]||{}).forEach(function(eid){
+    addToPool(eid,portalVenuesLog[ihcVenueId][eid]);
+  });
+  // From main app
+  Object.keys(mainVenuesLog[ihcVenueId]||{}).forEach(function(eid){
+    addToPool(eid,mainVenuesLog[ihcVenueId][eid]);
+  });
   // Out: own pinned staff deployed elsewhere (check main app's venues)
   var venuesLog=log.venues||{};
   Object.keys(venuesLog).forEach(function(vid){
@@ -1088,7 +1094,10 @@ function buildPoolMaps(){
     Object.keys(asgn[hid]||{}).forEach(function(eid){
       var emp=allStaff.find(function(e){return e.id===eid;});
       // Remove from hall only if staff is non-pinned AND absent from ALL incoming sources
-      var stillAssigned=portalVenuesLog[ihcVenueId]&&portalVenuesLog[ihcVenueId][eid];
+      // Still assigned if present in ANY source
+      var stillAssigned=
+        (portalVenuesLog[ihcVenueId]&&portalVenuesLog[ihcVenueId][eid])||
+        (mainVenuesLog[ihcVenueId]&&mainVenuesLog[ihcVenueId][eid]);
       if(emp&&emp.pv!==ihcVenueId&&!stillAssigned){
         delete asgn[hid][eid];asgnChanged=true;
       }

@@ -6878,6 +6878,15 @@ function loadFromCloud(callback){
     // Ignore snapshots that come from our own pending write (hasPendingWrites = local)
     if(doc.metadata&&doc.metadata.hasPendingWrites){
       if(initialLoad){initialLoad=false;applyPinned();DB_LOADED=true;showLoad(false);if(callback){callback();callback=null;}}
+      else if(DB_LOADED&&doc.exists){
+        // Still update portal hall assignments even during our own pending writes
+        var _pd=doc.data();
+        if(_pd.ihcAsgn)ihcAsgn=_pd.ihcAsgn;
+        if(_pd.jaipurAsgn)jaipurAsgn=_pd.jaipurAsgn;
+        if(_pd.ihcHalls)ihcHalls=_pd.ihcHalls;
+        if(_pd.jaipurHalls)jaipurHalls=_pd.jaipurHalls;
+        drawVenueGrid();
+      }
       return;
     }
     if(doc.exists){

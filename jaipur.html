@@ -175,6 +175,8 @@ var lvMap={};       // shared with admin - eid -> {emp, duty} for On Leave
 var lvCollapsed=false;
 var myAccess={roles:[],vendors:[]};
 var _hallVip={},_hallComments={};
+var ownVenuePool={};
+var outDeployed={};
 var TIMES=['5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM'];
 var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e','#37474f','#6a1b9a','#bf360c','#1565c0','#2e7d32'];
 var ROLES_LIST=[];
@@ -279,6 +281,7 @@ function doLogin(){
   g('login-screen').style.display='none';
   g('app').style.display='flex';
   g('DP').value=nd(todayIST());
+  subscribeIHCDlog();
   loadFromCloud();
 }
 
@@ -297,7 +300,7 @@ function loadFromCloud(){
     if(doc.exists){
       var d=doc.data();
       allStaff=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
-      venues=d.venues||[];
+      venues=d.venues||[];window._allV=venues;
       ROLES_LIST=d.roles||[];
       if(d.annualLeave)annualLeave=d.annualLeave;
       if(d.portalAccess&&d.portalAccess['jaipur'])myAccess=d.portalAccess['jaipur'];
@@ -345,6 +348,7 @@ function loadFromCloud(){
       drawStaffPanel();
       drawHalls();
       drawLeaveZone();
+      buildPoolMaps();
     }
     showSaveInd('saved');
   },function(e){console.error(e);showSaveInd('error');});
@@ -501,6 +505,39 @@ function drawStaffPanel(){
 
   // All IHC staff shown together — no sub-hall pinning
   renderGroup(staff,null);
+  // Incoming pool staff from other portals — shown with their role
+  var poolStaff=Object.values(ownVenuePool).map(function(a){return a.emp;});
+  if(poolStaff.length){
+    var sec=document.createElement('div');
+    sec.style.cssText='margin:10px 0 5px;padding:5px 6px;background:#1976d2;color:#fff;font-size:11px;font-weight:800;letter-spacing:0.05em;border-radius:6px;';
+    sec.textContent='INCOMING STAFF';
+    el.appendChild(sec);
+    var pGroups={};
+    poolStaff.forEach(function(e){
+      if(q&&e.name.toLowerCase().indexOf(q)<0)return;
+      if(!pGroups[e.role])pGroups[e.role]=[];
+      pGroups[e.role].push(e);
+    });
+    Object.keys(pGroups).forEach(function(r){
+      var c=cc(r);
+      var rhdr=document.createElement('div');
+      rhdr.className='role-hdr';rhdr.style.color=c;rhdr.textContent=r;
+      el.appendChild(rhdr);
+      pGroups[r].forEach(function(e){
+        var isDeployed=!!deps[e.id];
+        var card=document.createElement('div');
+        card.className='staff-card';
+        card.setAttribute('data-eid',e.id);
+        card.style.cssText='background:'+c+'12;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:grab;margin-bottom:2px;opacity:'+(isDeployed?'0.6':'1')+';';
+        card.draggable=true;
+        var nm=document.createElement('div');nm.className='sc-name';nm.textContent=e.name;
+        card.appendChild(nm);
+        if(isDeployed){var tag=document.createElement('span');tag.textContent='●';tag.style.color=c;card.appendChild(tag);}
+        card.addEventListener('dragstart',function(ev){ev.dataTransfer.setData('text/plain',e.id);ev.dataTransfer.setData('text/duty',(ownVenuePool[e.id]&&ownVenuePool[e.id].duty)||'6:00 AM');ev.dataTransfer.effectAllowed='move';});
+        el.appendChild(card);
+      });
+    });
+  }
 
   if(!el.children.length){
     el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px;font-size:12px;">No staff found</div>';
@@ -588,7 +625,9 @@ function makeHallBox(h){
     if(!q3){qaD.style.display='none';return;}
     var depEids=new Set(Object.keys(getDeployedEids()));
     var onLeaveEids=new Set(Object.keys(lvMap));
-    var matches=staff.filter(function(e){return !depEids.has(e.id)&&!onLeaveEids.has(e.id)&&e.name.toLowerCase().indexOf(q3)>=0;}).slice(0,8);
+    var poolList=Object.values(ownVenuePool).map(function(a){return a.emp;});
+    var allSearchable=staff.concat(poolList.filter(function(e){return !staff.some(function(s){return s.id===e.id;});}));
+    var matches=allSearchable.filter(function(e){return !depEids.has(e.id)&&!onLeaveEids.has(e.id)&&e.name.toLowerCase().indexOf(q3)>=0;}).slice(0,8);
     if(!matches.length){qaD.style.display='none';return;}
     matches.forEach(function(e){
       var itm=document.createElement('div');itm.style.cssText='padding:6px 10px;cursor:pointer;font-size:11px;border-bottom:1px solid #f0f4ff;display:flex;align-items:center;gap:6px;';
@@ -601,7 +640,8 @@ function makeHallBox(h){
         // Remove from other halls first
         Object.keys(asgn).forEach(function(h2){if(asgn[h2])delete asgn[h2][e.id];});
         if(!asgn[hid])asgn[hid]={};
-        asgn[hid][e.id]={duty:e.fixedDuty||'6:00 AM',isFixed:false};
+        var poolEntry=ownVenuePool[e.id];
+        asgn[hid][e.id]={duty:poolEntry?poolEntry.duty:(e.fixedDuty||'6:00 AM'),isFixed:false};
         qaI.value='';qaD.style.display='none';
         drawHalls();drawStaffPanel();saveCloud();
       });
@@ -660,11 +700,13 @@ function makeHallBox(h){
     ev.preventDefault();box.classList.remove('drag-over');
     var eid=ev.dataTransfer.getData('text/plain');
     if(!eid)return;
-    var emp=getS(eid);if(!emp)return;
-    // Remove from any other hall first
+    var duty=ev.dataTransfer.getData('text/duty')||'';
+    var emp=getS(eid)||(ownVenuePool[eid]&&ownVenuePool[eid].emp)||(allStaff&&allStaff.find(function(e){return e.id===eid;}));
+    if(!emp)return;
+    if(!duty)duty=emp.fixedDuty||'6:00 AM';
     Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
     if(!asgn[h.id])asgn[h.id]={};
-    asgn[h.id][eid]={duty:emp.fixedDuty||'6:00 AM',isFixed:false}; // never pin to sub-halls
+    asgn[h.id][eid]={duty:duty,isFixed:false};
     if(navigator.vibrate)navigator.vibrate([20,10,20]);
     drawHalls();drawStaffPanel();saveCloud();
   });
@@ -986,6 +1028,7 @@ document.addEventListener('touchend',function(ev){
 
 // Date change
 g('DP').addEventListener('change',function(){
+  subscribeIHCDlog();
   loadDateData(getD());
   var _lde2=dlog[getD()]||{};_hallVip=_lde2.hallVip||{};_hallComments=_lde2.hallComments||{};
   drawHalls();drawStaffPanel();drawLeaveZone();
@@ -999,8 +1042,48 @@ var _ihcDlogUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
   if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
     var incoming=dlogDoc.data().dlog;
     Object.keys(incoming).forEach(function(dk){mainDlog[dk]=incoming[dk];});
+    if(DB_LOADED){buildPoolMaps();drawStaffPanel();}
   }
 },function(e){console.warn('IHC dlog listener error:',e);});
+
+function buildPoolMaps(){
+  ownVenuePool={};outDeployed={};
+  if(!ihcVenueId)return;
+  var today=getD();
+  var log=mainDlog[today]||{};
+  var venuesLog=log.venues||{};
+  if(venuesLog[ihcVenueId]){
+    Object.keys(venuesLog[ihcVenueId]).forEach(function(eid){
+      var emp=allStaff.find(function(e){return e.id===eid;});
+      if(emp&&emp.pv!==ihcVenueId){
+        ownVenuePool[eid]={emp:emp,duty:venuesLog[ihcVenueId][eid]||'6:00 AM'};
+      }
+    });
+  }
+  // Auto-remove from halls if LED took back the staff member
+  var asgnChanged=false;
+  // Out: own pinned staff deployed elsewhere — build BEFORE auto-remove
+  Object.keys(venuesLog).forEach(function(vid){
+    if(vid===ihcVenueId)return;
+    var vObj=(window._allV||[]).find(function(v){return v.id===vid;});
+    var vName=vObj?vObj.name:vid;
+    Object.keys(venuesLog[vid]||{}).forEach(function(eid){
+      var emp=allStaff.find(function(e){return e.id===eid;});
+      if(emp&&emp.pv===ihcVenueId){outDeployed[eid]=vName;}
+    });
+  });
+  // Auto-remove from halls if LED took back the staff member
+  Object.keys(asgn).forEach(function(hid){
+    Object.keys(asgn[hid]||{}).forEach(function(eid){
+      var emp=getS(eid);
+      if(emp&&emp.pv!==ihcVenueId&&!ownVenuePool[eid]){
+        delete asgn[hid][eid];asgnChanged=true;
+      }
+    });
+  });
+  if(asgnChanged){drawHalls();saveCloud();}
+}
+
 
 // ── IHC ATTENDANCE ────────────────────────────────────────────
 function getIHCAttendance(d){

@@ -354,10 +354,16 @@ function save(){
   ST=setTimeout(function(){
     saveLog();
     var d=_lastDate||getD();
-    // set with merge so we never wipe other portals data on the same daily doc
+    // Use FieldPath to safely update nested venues without wiping other data
+    // FieldPath avoids hyphen-in-key issue with dot notation
     var _sd=d;
-    var setPayload={dlog:{}};setPayload.dlog[d]=dlog[d];
-    dailyRef(_sd).set(setPayload,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
+    var venues=(dlog[d]||{}).venues||{};
+    var fp=new firebase.firestore.FieldPath('dlog',d,'venues');
+    dailyRef(_sd).update(fp,venues).then(function(){sv('saved');}).catch(function(){
+      // Doc doesn't exist yet - create it
+      var setPayload={dlog:{}};setPayload.dlog[d]={venues:venues};
+      dailyRef(_sd).set(setPayload,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
+    });
     db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
   },400);
 }

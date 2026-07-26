@@ -511,7 +511,9 @@ function drawStaffPanel(){
     sec.textContent='INCOMING STAFF';
     el.appendChild(sec);
     var pGroups={};
+    var staffIds=new Set(staff.map(function(e){return e.id;}));
     poolStaff.forEach(function(e){
+      if(staffIds.has(e.id))return; // skip if already in regular staff list
       if(q&&e.name.toLowerCase().indexOf(q)<0)return;
       if(!pGroups[e.role])pGroups[e.role]=[];
       pGroups[e.role].push(e);

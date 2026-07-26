@@ -985,10 +985,14 @@ g('DP').addEventListener('change',function(){
   drawHalls();drawStaffPanel();drawLeaveZone();
 });
 
-// Listen to gavs_data/dlog for attendance data
-db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
+// v86: helpers for daily docs
+function dailyDocId(ds){return 'dlog_'+(ds||getD()).replace(/-/g,'_');}
+function dailyRef(ds){return db.collection('gavs_data').doc(dailyDocId(ds));}
+// Listen to today's daily doc for attendance data
+var _ihcDlogUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
   if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-    mainDlog=dlogDoc.data().dlog;
+    var incoming=dlogDoc.data().dlog;
+    Object.keys(incoming).forEach(function(dk){mainDlog[dk]=incoming[dk];});
   }
 },function(e){console.warn('IHC dlog listener error:',e);});
 
@@ -1007,9 +1011,13 @@ function saveIHCAttendance(d,attn){
   _saveIHCAtnWithRetry(dlogUpdate,0);
 }
 function _saveIHCAtnWithRetry(payload,attempt){
-  db.collection('gavs_data').doc('dlog').set(payload,{merge:true}).catch(function(e){
-    console.warn('IHC attendance save error (attempt '+attempt+'):',e.message||e);
-    if(attempt<4)setTimeout(function(){_saveIHCAtnWithRetry(payload,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
+  var d=Object.keys(payload.dlog||{})[0]||getD();
+  var flat={};flat['dlog.'+d+'.attendance']=(payload.dlog&&payload.dlog[d]&&payload.dlog[d].attendance)||{};
+  dailyRef(d).update(flat).catch(function(){
+    dailyRef(d).set(flat,{merge:true}).catch(function(e){
+      console.warn('IHC attendance save error (attempt '+attempt+'):',e.message||e);
+      if(attempt<4)setTimeout(function(){_saveIHCAtnWithRetry(payload,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
+    });
   });
 }
 function ihcAtnBuildMaps(d){

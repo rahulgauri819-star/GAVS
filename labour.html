@@ -186,13 +186,13 @@ function loadData(){
     var d=doc.data();
     allS=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM',pgdn:e.pgdn||false};});
     allV=d.venues||[];ROLES=d.roles||[];VTS=d.vendorTypesCustom||[];VCO=d.vendorCompanies||{};
-    if(d.dlog&&!_portalDlogLoaded){mainDlog=d.dlog;dlog=d.dlog;}
+    // v86: dlog loaded from daily doc only, not from main
     if(d.vdlog)vdlog=d.vdlog;
     if(d.annualLeave)annualLeave=d.annualLeave;
     if(d.portalAccess&&d.portalAccess[PID])myAccess=d.portalAccess[PID];
     if(d.portalPasswords&&d.portalPasswords[PID]){var _pw2=d.portalPasswords[PID];APASS=(typeof _pw2==='object'?_pw2.password:_pw2)||DPASS;AUSER=(typeof _pw2==='object'?_pw2.username:DUSER)||DUSER;}
     DBL=true;
-    loadDateData(getD());
+    if(_portalDlogLoaded){loadDateData(getD());}
     if(firstLoad){firstLoad=false;buildTabs();}else{drawSP();drawDZ();drawGrid();updateStats();}
     sv('saved');
   },function(e){console.error(e);sv('error');});

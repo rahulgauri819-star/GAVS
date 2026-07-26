@@ -272,6 +272,14 @@ function saveLog(){
   // Only update this portal's staff - preserve others
   if(!log.venues)log.venues={};
   if(!log.camTypes)log.camTypes={};
+  // First remove this portal's staff from ALL venues (handles unassignment)
+  Object.keys(log.venues).forEach(function(vid){
+    msids.forEach(function(eid){
+      delete log.venues[vid][eid];
+      if(log.camTypes[vid])delete log.camTypes[vid][eid];
+    });
+  });
+  // Then re-add currently assigned staff
   Object.keys(asgn).forEach(function(vid){
     if(!log.venues[vid])log.venues[vid]={};
     if(!log.camTypes[vid])log.camTypes[vid]={};

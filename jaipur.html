@@ -503,13 +503,11 @@ function drawStaffPanel(){
     });
   }
 
-  // All IHC staff shown together — no sub-hall pinning
-  renderGroup(staff,null);
-  // Incoming pool staff from other portals — shown with their role
+  // Incoming pool staff — shown FIRST at top of panel
   var poolStaff=Object.values(ownVenuePool).map(function(a){return a.emp;});
   if(poolStaff.length){
     var sec=document.createElement('div');
-    sec.style.cssText='margin:10px 0 5px;padding:5px 6px;background:#1976d2;color:#fff;font-size:11px;font-weight:800;letter-spacing:0.05em;border-radius:6px;';
+    sec.style.cssText='margin:0 0 5px;padding:5px 6px;background:#1976d2;color:#fff;font-size:11px;font-weight:800;letter-spacing:0.05em;border-radius:6px;';
     sec.textContent='INCOMING STAFF';
     el.appendChild(sec);
     var pGroups={};
@@ -538,6 +536,8 @@ function drawStaffPanel(){
       });
     });
   }
+  // All own staff shown below incoming
+  renderGroup(staff,null);
 
   if(!el.children.length){
     el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px;font-size:12px;">No staff found</div>';

@@ -1082,8 +1082,9 @@ function buildPoolMaps(){
   var asgnChanged=false;
   Object.keys(asgn).forEach(function(hid){
     Object.keys(asgn[hid]||{}).forEach(function(eid){
-      var emp=getS(eid);
-      // If non-pinned staff no longer in pool → LED took them back → remove from hall
+      // Use allStaff (not getS) so we find non-pinned staff too
+      var emp=allStaff.find(function(e){return e.id===eid;});
+      // If non-pinned (came from pool) and no longer in pool → remove from hall
       if(emp&&emp.pv!==ihcVenueId&&!ownVenuePool[eid]){
         delete asgn[hid][eid];asgnChanged=true;
       }

@@ -1075,7 +1075,7 @@ function buildPoolMaps(){
   // Auto-remove from halls if LED took back the staff member
   Object.keys(asgn).forEach(function(hid){
     Object.keys(asgn[hid]||{}).forEach(function(eid){
-      var emp=getS(eid);
+      var emp=allStaff.find(function(e){return e.id===eid;});
       if(emp&&emp.pv!==ihcVenueId&&!ownVenuePool[eid]){
         delete asgn[hid][eid];asgnChanged=true;
       }

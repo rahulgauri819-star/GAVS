@@ -64,6 +64,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .vdd-item:hover{background:#f0f4ff;}
 .pink-bar{background:#fce4ec;color:#880e4f;font-size:11px;font-weight:700;padding:5px 8px;border-bottom:2px solid #f48fb1;word-break:break-word;}
 .hdr-right{display:flex;gap:8px;align-items:center;}
+
+@media(max-width:700px){
+  .hdr{padding:7px 10px;gap:7px;flex-wrap:wrap;}
+  .hdr-logo{width:32px;height:32px;}
+  .hdr-t{font-size:12px;}
+  .hdr-s{font-size:9px;}
+  .hdr-d input{width:90px;font-size:12px;}
+  .hbtn{padding:5px 8px;font-size:10px;}
+  .hdr-right{gap:5px;}
+  .main{flex-direction:column;overflow:auto;}
+  .lp{width:100%;height:auto;max-height:45vh;border-right:none;border-bottom:2px solid #e3eaff;flex-shrink:0;}
+  .rp{flex:1;overflow-y:auto;padding:8px;}
+  .vgrid{column-width:100%;grid-template-columns:1fr;}
+  .dz-wrap{grid-template-columns:1fr;}
+  .vsrch-wrap{margin-bottom:8px;}
+  .lpl{max-height:calc(45vh - 120px);}
+}
+
+.lp-toggle{display:none;background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:2px 6px;margin-left:4px;}
+.lp-body{display:flex;flex-direction:column;flex:1;overflow:hidden;}
+@media(max-width:700px){
+  .lp-toggle{display:inline-block;}
+  .lp.collapsed .lp-body{display:none;}
+  .lp.collapsed{max-height:44px;}
+  .lp{max-height:45vh;transition:max-height 0.2s;}
+}
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -97,12 +123,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="main">
     <div class="lp">
-      <div class="lph"><span>🔧 Fabrication Team</span><span class="lpc" id="CNT">0</span></div>
-      <div class="lptabs" id="TABS"></div>
+      <div class="lph"><span>🔧 Fabrication Team</span><span class="lpc" id="CNT">0</span><button class="lp-toggle" id="LP_TOGGLE" onclick="var lp=document.querySelector('.lp');lp.classList.toggle('collapsed');this.textContent=lp.classList.contains('collapsed')?'▼':'▲';">▲</button></div>
+      </div><div class="lp-body"><div class="lptabs" id="TABS"></div>
       <div id="RPILLS" style="display:flex;flex-wrap:wrap;gap:3px;padding:5px 7px;border-bottom:1px solid #e3eaff;min-height:0;"></div>
       <div class="lps"><input id="SRCH" placeholder="Search..."/></div>
       <div class="lpl" id="LIST"></div>
-    </div>
+    </div></div>
     <div class="rp" id="RP">
       <div id="ATN_PANEL_P" style="display:none;padding:14px;overflow-y:auto;flex:1;"></div>
       <div id="DZ_AREA" class="dz-wrap"></div>
@@ -242,7 +268,8 @@ function loadData(){
   },function(e){console.error(e);sv('error');});
   // v86: listen to today's daily doc
   _dlogUnsub=dailyRef(_lastDate||getD()).onSnapshot(function(dlogDoc){
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites&&!_portalDlogLoaded)return;
+    // Skip hasPendingWrites entirely - let server-confirmed snapshots drive state
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var incoming=dlogDoc.data().dlog;
       Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});
@@ -390,7 +417,7 @@ g('DP').addEventListener('change',function(){
   if(_dlogUnsub){try{_dlogUnsub();}catch(e){}_dlogUnsub=null;}
   _portalDlogLoaded=false;
   _dlogUnsub=dailyRef(_lastDate).onSnapshot(function(dlogDoc){
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites&&!_portalDlogLoaded)return;
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var incoming=dlogDoc.data().dlog;
       Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});

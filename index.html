@@ -6530,7 +6530,7 @@ function renderHallsInVenueBox(body,v){
   else if(v.name==='Jaipur'){halls=jaipurHalls;hallAsgn=jaipurAsgn;label='📍 JAIPUR HALLS';}
   if(!halls||!halls.length)return;
 
-  var hasHallData=halls.some(function(h){return hallAsgn[h.id]&&Object.keys(hallAsgn[h.id]).length>0;});
+  var hasHallData=Object.keys(hallAsgn).some(function(hid){return hallAsgn[hid]&&Object.keys(hallAsgn[hid]).length>0;});
   if(!hasHallData)return;
 
   // Divider
@@ -6543,7 +6543,15 @@ function renderHallsInVenueBox(body,v){
   lbl.textContent=label;
   body.appendChild(lbl);
 
-  halls.forEach(function(h){
+  // Build complete list: halls from ihcHalls + any extra IDs in hallAsgn
+  var hallsToRender=halls.slice();
+  Object.keys(hallAsgn).forEach(function(hid){
+    if(!hallAsgn[hid]||!Object.keys(hallAsgn[hid]).length)return;
+    if(!halls.some(function(h){return h.id===hid;})){
+      hallsToRender.push({id:hid,name:'Hall ('+hid.slice(-4)+')'});
+    }
+  });
+  hallsToRender.forEach(function(h){
     var ha=hallAsgn[h.id]||{};
     var entries=Object.keys(ha).map(function(eid){var emp=getS(eid);return emp?{emp:emp,duty:ha[eid].duty}:null;}).filter(Boolean);
     // Cross-check: skip staff already assigned to a DIFFERENT venue in main asgn

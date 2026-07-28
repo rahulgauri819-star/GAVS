@@ -1957,6 +1957,49 @@ function makeVenueBox(v,hasPinned,viewData){
   cpyDayBtn.title='Copy staff from previous day';
   cpyDayBtn.addEventListener('click',(function(vid){return function(ev){ev.stopPropagation();showCopyPrevDay(vid);};})(v.id));
   hdr.appendChild(cpyDayBtn);
+  // 🔁 Copy to future dates button
+  var fwdBtn=document.createElement('button');
+  fwdBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 5px;font-size:10px;cursor:pointer;flex-shrink:0;position:relative;';
+  fwdBtn.textContent='🔁';
+  fwdBtn.title='Copy to future dates';
+  fwdBtn.addEventListener('click',(function(vid,vname){return function(ev){
+    ev.stopPropagation();
+    // Remove any existing dropdown
+    var old=document.getElementById('fwd-dd');if(old)old.remove();
+    var dd=document.createElement('div');
+    dd.id='fwd-dd';
+    dd.style.cssText='position:fixed;background:#fff;border:1.5px solid #e3eaff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:9999;min-width:160px;overflow:hidden;';
+    var baseDate=_lastLoadedDate||getD();
+    var hdr2=document.createElement('div');
+    hdr2.style.cssText='padding:8px 12px;background:#1a237e;color:#fff;font-size:11px;font-weight:700;';
+    hdr2.textContent='Copy to future dates';
+    dd.appendChild(hdr2);
+    // Generate next 15 days
+    for(var i=1;i<=15;i++){
+      var p=baseDate.split('-');
+      var dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+i);
+      var ds=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      var label='Till '+dt.getDate()+' '+(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()]);
+      var item=document.createElement('div');
+      item.style.cssText='padding:8px 14px;cursor:pointer;font-size:12px;color:#1a237e;border-bottom:1px solid #f0f4ff;font-weight:600;';
+      item.textContent=label;
+      item.addEventListener('mouseenter',function(){this.style.background='#e8eaf6';});
+      item.addEventListener('mouseleave',function(){this.style.background='';});
+      (function(toDate,lbl){item.addEventListener('click',function(){
+        dd.remove();
+        copyVenueToFutureDates(vid,vname,baseDate,toDate);
+      });})(ds,label);
+      dd.appendChild(item);
+    }
+    // Position dropdown near button
+    var rect=fwdBtn.getBoundingClientRect();
+    dd.style.top=(rect.bottom+4)+'px';
+    dd.style.left=Math.min(rect.left,window.innerWidth-180)+'px';
+    document.body.appendChild(dd);
+    // Close on outside click
+    setTimeout(function(){document.addEventListener('click',function _c(){dd.remove();document.removeEventListener('click',_c);});},10);
+  };})(v.id,v.name));
+  hdr.appendChild(fwdBtn);
   // 💬 Daily comment button
   var cmtBtn=document.createElement('button');
   var _hasCmt=!!(_dateComments[v.id]&&_dateComments[v.id].trim());
@@ -2480,6 +2523,52 @@ function showBulkVendorTime(vid){
 }
 
 
+
+function copyVenueToFutureDates(vid,vname,fromDate,toDate){
+  // Get current staff for this venue on fromDate
+  var fromLog=dlog[fromDate]||{};
+  var fromVenue=fromLog.venues&&fromLog.venues[vid]?fromLog.venues[vid]:{};
+  if(!Object.keys(fromVenue).length){toast('No staff assigned to '+vname+' on this date','w');return;}
+  // Build list of dates from day after fromDate up to toDate
+  var dates=[];
+  var p=fromDate.split('-');
+  var cur=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+1);
+  var p2=toDate.split('-');
+  var end=new Date(parseInt(p2[0]),parseInt(p2[1])-1,parseInt(p2[2]));
+  while(cur<=end){
+    dates.push(cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0'));
+    cur.setDate(cur.getDate()+1);
+  }
+  if(!dates.length){toast('No dates in range','w');return;}
+  var done=0;
+  var total=dates.length;
+  toast('Copying '+vname+' to '+total+' dates...');
+  dates.forEach(function(d){
+    // Fetch the date's daily doc if not in memory
+    function applyToDate(){
+      if(!dlog[d])dlog[d]={};
+      if(!dlog[d].venues)dlog[d].venues={};
+      // Merge — don't overwrite existing staff, just add from fromVenue
+      Object.keys(fromVenue).forEach(function(eid){
+        if(!dlog[d].venues[vid])dlog[d].venues[vid]={};
+        dlog[d].venues[vid][eid]=fromVenue[eid];
+      });
+      // Also add to manualVids if not pinned venue
+      if(!dlog[d].manualVids)dlog[d].manualVids=[];
+      if(dlog[d].manualVids.indexOf(vid)<0)dlog[d].manualVids.push(vid);
+      // Save via FieldPath
+      var fp=new firebase.firestore.FieldPath('dlog',d,'venues');
+      dailyRef(d).update(fp,dlog[d].venues).catch(function(){
+        var sp={dlog:{}};sp.dlog[d]={venues:dlog[d].venues,manualVids:dlog[d].manualVids};
+        dailyRef(d).set(sp,{merge:true});
+      });
+      done++;
+      if(done===total){toast('✅ Copied '+vname+' to '+total+' dates!');}
+    }
+    if(dlog[d]){applyToDate();}
+    else{fetchDlogDate(d,applyToDate);}
+  });
+}
 
 function showCopyPrevDay(vid){
   var v=getV(vid);if(!v)return;

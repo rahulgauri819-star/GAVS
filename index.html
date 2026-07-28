@@ -4069,7 +4069,11 @@ function drawAttendance(){
 g('ATN_DATE')&&g('ATN_DATE').addEventListener('change',function(){
   _atnDate=this.value||todayIST();
   _atnLastAutoDate=''; // reset so auto-mark runs for new date
-  drawAttendance();
+  if(dlog[_atnDate]&&dlog[_atnDate].attendance){
+    drawAttendance();
+  } else {
+    fetchDlogDate(_atnDate,function(){drawAttendance();});
+  }
 });
 // Attendance search
 g('ATN_SRCH')&&g('ATN_SRCH').addEventListener('input',function(){drawAttendance();});

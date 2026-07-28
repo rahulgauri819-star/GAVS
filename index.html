@@ -6235,51 +6235,58 @@ function makeCompanyReportPDF(){
   doc.setTextColor(120,120,120);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text('Days Used',mg+10,y+6);doc.text('Total Qty Supplied',mg+100,y+6);
   doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(21,101,192);doc.text(String(data.rows.length),mg+10,y+13);
   doc.setTextColor(27,94,32);doc.text(String(data.totalQty),mg+100,y+13);y+=22;
-  // Table header - 3 columns: Date | Venue & Service | Qty
-  var col1=32,col2=pw-mg*2-col1-18,col3=18;
-  doc.setFillColor(21,101,192);doc.rect(mg,y,pw-mg*2,7,'F');
-  doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','bold');
-  doc.text('Date',mg+2,y+5);
-  doc.text('Venue & Service',mg+col1+2,y+5);
-  doc.text('Qty',pw-mg-col3+2,y+5);
-  y+=8;
+  // Table rows matching web view style
   data.rows.forEach(function(row){
     var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,row.day).getDay()];
-    // Calculate row height — one line per venue entry
-    var lineCount=row.venues.length;
-    var rh=Math.max(7,lineCount*6+3);
-    cp(rh);
-    var rowBg=data.rows.indexOf(row)%2===0?[248,250,255]:[255,255,255];
-    doc.setFillColor(rowBg[0],rowBg[1],rowBg[2]);doc.rect(mg,y,pw-mg*2,rh,'F');
-    doc.setDrawColor(220,228,255);doc.rect(mg,y,pw-mg*2,rh,'S');
-    // Vertical dividers
-    doc.setDrawColor(220,228,255);
-    doc.line(mg+col1,y,mg+col1,y+rh);
-    doc.line(pw-mg-col3,y,pw-mg-col3,y+rh);
-    // Date cell
-    doc.setTextColor(21,101,192);doc.setFontSize(7);doc.setFont('helvetica','bold');
-    doc.text(dn+' '+String(row.day).padStart(2,'0')+'/'+String(month+1).padStart(2,'0'),mg+2,y+5);
-    // Venue & service rows
-    var vy=y+5;
+    // Calculate total height for this day
+    var dayH=8; // date header
     row.venues.forEach(function(vu){
-      // Venue name
-      var venueLine=vu.venue;
-      var venueLines=doc.splitTextToSize(venueLine,col2-2);
-      doc.setTextColor(30,30,30);doc.setFont('helvetica','bold');doc.setFontSize(7);
-      doc.text(venueLines[0],mg+col1+2,vy);
-      // Service label (Still Photography, Gimbal etc.)
-      if(vu.entry&&vu.entry.serviceLabel){
-        doc.setTextColor(106,27,154);doc.setFont('helvetica','normal');doc.setFontSize(6.5);
-        doc.text('↳ '+vu.entry.serviceLabel,mg+col1+4,vy+4.5);
-        vy+=9;
-      } else {
-        vy+=6;
-      }
-      // Qty on right
-      doc.setTextColor(21,101,192);doc.setFont('helvetica','bold');doc.setFontSize(8);
-      doc.text(String(vu.qty||1),pw-mg-col3+col3/2,vy-3.5,{align:'center'});
+      dayH+=7; // venue name
+      if(vu.entry&&vu.entry.serviceLabel)dayH+=5; // service label
+      dayH+=5; // qty
+      if(vu.entry&&vu.entry.notes)dayH+=5; // notes
+      dayH+=2; // gap
     });
-    y+=rh;
+    dayH+=2;
+    cp(dayH);
+    // Day header
+    doc.setFillColor(240,244,255);doc.rect(mg,y,pw-mg*2,7,'F');
+    doc.setTextColor(21,101,192);doc.setFontSize(8);doc.setFont('helvetica','bold');
+    doc.text(dn+' '+row.day+' '+MONS[month],mg+3,y+5);
+    y+=8;
+    // Each venue entry
+    row.venues.forEach(function(vu){
+      var entryH=7;
+      if(vu.entry&&vu.entry.serviceLabel)entryH+=5;
+      entryH+=5;
+      if(vu.entry&&vu.entry.notes)entryH+=5;
+      entryH+=2;
+      doc.setFillColor(252,253,255);doc.rect(mg+4,y,pw-mg*2-8,entryH,'F');
+      doc.setDrawColor(230,236,255);doc.rect(mg+4,y,pw-mg*2-8,entryH,'S');
+      var ey=y+5;
+      // Venue name
+      doc.setTextColor(30,30,30);doc.setFontSize(8);doc.setFont('helvetica','bold');
+      var vn=doc.splitTextToSize('🏨 '+vu.venue,pw-mg*2-16)[0];
+      doc.text(vn,mg+7,ey);ey+=5;
+      // Service label
+      if(vu.entry&&vu.entry.serviceLabel){
+        doc.setTextColor(106,27,154);doc.setFontSize(7);doc.setFont('helvetica','normal');
+        doc.text('📷 '+vu.entry.serviceLabel,mg+9,ey);ey+=5;
+      }
+      // Qty
+      doc.setTextColor(80,80,80);doc.setFontSize(7);doc.setFont('helvetica','normal');
+      doc.text('📦 Qty: ',mg+9,ey);
+      doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
+      doc.text(String(vu.qty||1),mg+24,ey);ey+=5;
+      // Notes
+      if(vu.entry&&vu.entry.notes){
+        doc.setTextColor(120,120,120);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
+        var noteLines=doc.splitTextToSize('📝 '+vu.entry.notes,pw-mg*2-20);
+        doc.text(noteLines[0],mg+9,ey);ey+=5;
+      }
+      y+=entryH;
+    });
+    y+=3; // gap between days
   });
   var pc=doc.internal.getNumberOfPages();
   for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | '+company+' | '+MONS[month]+' '+year,mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}

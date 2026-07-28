@@ -1224,14 +1224,18 @@ function getPortalAttendance(d){
 function savePortalAttendance(d,attn){
   if(!mainDlog[d])mainDlog[d]={};
   mainDlog[d].attendance=attn;
-  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attn};
-  _savePortalAtnWithRetry(dlogUpdate,0);
+  _savePortalAtnWithRetry(d,attn,0);
 }
-function _savePortalAtnWithRetry(payload,attempt){
-  var _atd=_lastDate||getD();dailyRef(_atd).update(payload).catch(function(){dailyRef(_atd).set(payload,{merge:true}).catch(function(e){
-    console.warn('Portal attendance save error (attempt '+attempt+'):',e.message||e);
-    if(attempt<4)setTimeout(function(){_savePortalAtnWithRetry(payload,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
-  });});
+function _savePortalAtnWithRetry(d,attn,attempt){
+  // Use FieldPath to avoid hyphen-in-date key issue with dot notation
+  var fp=new firebase.firestore.FieldPath('dlog',d,'attendance');
+  dailyRef(d).update(fp,attn).catch(function(){
+    var setPayload={dlog:{}};setPayload.dlog[d]={attendance:attn};
+    dailyRef(d).set(setPayload,{merge:true}).catch(function(e){
+      console.warn('Portal attendance save error (attempt '+attempt+'):',e.message||e);
+      if(attempt<4)setTimeout(function(){_savePortalAtnWithRetry(d,attn,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
+    });
+  });
 }
 function pAtnBuildDutyMaps(d){
   var sv={},st2={},lm={},om={},gm={};

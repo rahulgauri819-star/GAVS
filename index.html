@@ -4400,7 +4400,13 @@ function drawReport(){
 g('btnPDF').addEventListener('click',makePDF);
 // Wire View Report button
 var btnVR=document.getElementById('btnViewReport');
-if(btnVR)btnVR.addEventListener('click',drawReport);
+if(btnVR)btnVR.addEventListener('click',function(){
+  var rpdEl=document.getElementById('RPD');
+  var reportDate=rpdEl?rpdEl.value:getD();
+  if(reportDate===getD()||dlog[reportDate]){drawReport();return;}
+  toast('Loading...');
+  fetchDlogDate(reportDate,function(){drawReport();});
+});
 
 // ── VENUE HISTORY REPORT ───────────────────────────────────────
 function populateVHVenue(){
@@ -4443,7 +4449,21 @@ function populateVHVenue(){
   }
 }
 
-g('btnVHR').addEventListener('click',drawVenueHistory);
+g('btnVHR').addEventListener('click',function(){
+  var fromDate=(g('VHF')||{}).value||'';
+  var toDate=(g('VHT')||{}).value||'';
+  if(!fromDate||!toDate){drawVenueHistory();return;}
+  toast('Loading...');
+  var dates=[];
+  var cur=new Date(fromDate);var end=new Date(toDate);
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    if(!dlog[ds]&&ds!==todayIST())dates.push(ds);
+    cur.setDate(cur.getDate()+1);
+  }
+  var fn=function(i){if(i>=dates.length){drawVenueHistory();return;}fetchDlogDate(dates[i],function(){fn(i+1);});};
+  fn(0);
+});
 g('btnVHPDF').addEventListener('click',makeVHPDF);
 
 function drawVenueHistory(){
@@ -4739,17 +4759,33 @@ function drawSR(){
   var ss=g('SRS'),sb=g('SRB'),btn=g('SRPB');
   if(!eid){if(ss)ss.innerHTML='';if(sb)sb.innerHTML='';if(btn)btn.classList.add('hide');return;}
   var emp=getS(eid);if(!emp)return;
-  var dim=new Date(year,month+1,0).getDate(),dep=0,lvD=0,offD=0,frD=0,rows='';
+  if(sb)sb.innerHTML='<div style="padding:20px;text-align:center;color:#1565c0;font-weight:700;">Loading data...</div>';
+  // Fetch all daily docs for this month before rendering
+  var dim=new Date(year,month+1,0).getDate();
+  var fetches=[];
+  for(var d=1;d<=dim;d++){
+    var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    if(!dlog[ds]){fetches.push(ds);}
+  }
+  var fetchNext=function(i,cb){
+    if(i>=fetches.length){cb();return;}
+    fetchDlogDate(fetches[i],function(){fetchNext(i+1,cb);});
+  };
+  fetchNext(0,function(){_drawSRInner(eid,month,year,emp,ss,sb,btn);});
+}
+function _drawSRInner(eid,month,year,emp,ss,sb,btn){
   var today=todayIST();
+  var dim=new Date(year,month+1,0).getDate(),dep=0,lvD=0,offD=0,frD=0,rows='';
   for(var day=1;day<=dim;day++){
     var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    var log=dlog[ds],status='free',detail='Unassigned',duty='';
+    var log=dlog[ds],status='free',detail='Unassigned',duty='',attnStatus='';
     if(log){
       var inL=null;if(log.leave){for(var j=0;j<log.leave.length;j++){if(log.leave[j].id===eid){inL=log.leave[j];break;}}}
       var inO=null;if(log.office){for(var j=0;j<log.office.length;j++){if(log.office[j].id===eid){inO=log.office[j];break;}}}
       if(inL){status='leave';detail='On Leave';duty=inL.duty;lvD++;}
       else if(inO){status='office';detail='Office Duty';duty=inO.duty;offD++;}
       else{Object.keys(log.venues||{}).forEach(function(vid){if(log.venues[vid]&&log.venues[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=log.venues[vid][eid];status='deployed';dep++;}});if(status==='free')frD++;}
+      if(log.attendance&&log.attendance[eid]){attnStatus=log.attendance[eid].status||'';}
     } else {
       if(ds===today){var ft2=false;Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=asgn[vid][eid].duty;status='deployed';dep++;ft2=true;}});if(!ft2&&lvMap[eid]){status='leave';detail='On Leave';lvD++;}else if(!ft2&&offMap[eid]){status='office';detail='Office Duty';offD++;}else if(!ft2)frD++;}
       else frD++;
@@ -4757,11 +4793,17 @@ function drawSR(){
     var dc=status==='deployed'?'#1565c0':status==='leave'?'#c62828':status==='office'?'#e65100':'#ccc';
     var bg=status==='deployed'?'#f0f4ff':status==='leave'?'#fff5f5':status==='office'?'#fff8f0':'#fff';
     var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,day).getDay()];
+    var atnBadge='';
+    if(attnStatus==='present')atnBadge='<span style="font-size:9px;background:#e8f5e9;color:#2e7d32;border-radius:4px;padding:1px 5px;font-weight:700;flex-shrink:0;">P</span>';
+    else if(attnStatus==='absent')atnBadge='<span style="font-size:9px;background:#ffebee;color:#c62828;border-radius:4px;padding:1px 5px;font-weight:700;flex-shrink:0;">A</span>';
+    else if(attnStatus==='uninformed')atnBadge='<span style="font-size:9px;background:#fff3e0;color:#e65100;border-radius:4px;padding:1px 5px;font-weight:700;flex-shrink:0;">U</span>';
+    else if(ds<=today)atnBadge='<span style="font-size:9px;background:#f5f5f5;color:#999;border-radius:4px;padding:1px 5px;font-weight:700;flex-shrink:0;">—</span>';
     rows+='<div style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;margin-bottom:3px;font-size:12px;background:'+bg+';">'+
       '<div style="font-weight:800;color:#1565c0;width:24px;flex-shrink:0;">'+day+'</div>'+
       '<div style="font-size:10px;color:#888;width:28px;flex-shrink:0;">'+dn+'</div>'+
       '<div style="flex:1;font-weight:600;color:'+dc+';">'+esc(detail)+'</div>'+
       (duty?'<div style="font-size:11px;color:#0d47a1;font-weight:700;flex-shrink:0;">'+esc(duty)+'</div>':'')+
+      atnBadge+
       '</div>';
   }
   var c=cc(emp.role);
@@ -4802,7 +4844,23 @@ function populateMARDrops(){
     ROLES.forEach(function(r){var o3=document.createElement('option');o3.value=r;o3.textContent=r;rs.appendChild(o3);});
   }
 }
-g('btnMAR')&&g('btnMAR').addEventListener('click',makeMonthlyAttnPDF);
+g('btnMAR')&&g('btnMAR').addEventListener('click',function(){
+  if(!window.jspdf){toast('PDF library loading...','w');return;}
+  var month=parseInt((g('MAR_MON')||{}).value||'0');
+  var year=parseInt((g('MAR_YEAR')||{}).value||nowIST().getFullYear());
+  var dim=new Date(year,month+1,0).getDate();
+  toast('Loading attendance data...');
+  var fetches=[];
+  for(var d=1;d<=dim;d++){
+    var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    if(!dlog[ds])fetches.push(ds);
+  }
+  var fetchNext=function(i,cb){
+    if(i>=fetches.length){cb();return;}
+    fetchDlogDate(fetches[i],function(){fetchNext(i+1,cb);});
+  };
+  fetchNext(0,function(){makeMonthlyAttnPDF();});
+});
 
 function makeMonthlyAttnPDF(){
   if(!window.jspdf){toast('PDF library loading...','w');return;}
@@ -5269,7 +5327,21 @@ if(dp2el){dp2el.addEventListener('change',function(){
 
 
 // ── LEAVE & OFFICE HISTORY REPORT ────────────────────────────
-g('btnLOR').addEventListener('click', drawLOHistory);
+g('btnLOR').addEventListener('click',function(){
+  var fromDate=(g('LOF')||{}).value||'';
+  var toDate=(g('LOT')||{}).value||'';
+  if(!fromDate||!toDate){drawLOHistory();return;}
+  toast('Loading...');
+  var dates=[];
+  var cur=new Date(fromDate);var end=new Date(toDate);
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    if(!dlog[ds]&&ds!==todayIST())dates.push(ds);
+    cur.setDate(cur.getDate()+1);
+  }
+  var fn=function(i){if(i>=dates.length){drawLOHistory();return;}fetchDlogDate(dates[i],function(){fn(i+1);});};
+  fn(0);
+});
 g('btnLOPDF').addEventListener('click', makeLOPDF);
 
 function drawLOHistory(){

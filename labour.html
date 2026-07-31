@@ -36,8 +36,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .lpl{flex:1;overflow-y:auto;padding:6px;}
 .rh{font-size:8px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;padding:6px 4px 3px;margin-top:4px;}
 .rp{flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 12px;}
-.vgrid{column-width:300px;column-gap:12px;}
-.vgrid>*{break-inside:avoid;display:inline-block;width:100%;margin-bottom:12px;}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-items:start;}
+.vgrid>*{width:100%;}
 .vbox{background:#fff;border:2px solid #e3eaff;border-radius:14px;}
 .vbox.vip{border-color:#f9a825;}
 .vbh{background:linear-gradient(90deg,#1b5e20,#004d40);color:#fff;padding:8px 10px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}

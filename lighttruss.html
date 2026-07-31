@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4ff;min-height:100vh;}
-.ls{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#6a1b9a,#283593);}
+.ls{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#6a1b9a,#4a148c);}
 .lc{background:#fff;border-radius:20px;padding:40px 32px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
 .lt{font-size:20px;font-weight:800;color:#6a1b9a;text-align:center;margin-bottom:4px;}
 .ls2{font-size:12px;color:#888;text-align:center;margin-bottom:24px;}
@@ -16,7 +16,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .lbtn{width:100%;padding:14px;background:#6a1b9a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;}
 .lerr{color:#c62828;font-size:12px;text-align:center;margin-top:8px;display:none;background:#ffebee;padding:8px;border-radius:8px;}
 .app{display:none;flex-direction:column;height:100vh;}
-.hdr{background:linear-gradient(90deg,#6a1b9a,#283593);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.hdr{background:linear-gradient(90deg,#6a1b9a,#4a148c);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
 .hdr-logo{width:44px;height:44px;object-fit:contain;border-radius:8px;background:#fff;padding:3px;}
 .hdr-info{flex:1;}
 .hdr-t{font-size:14px;font-weight:800;}
@@ -40,7 +40,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .vgrid>*{break-inside:avoid;display:inline-block;width:100%;margin-bottom:12px;}
 .vbox{background:#fff;border:2px solid #e3eaff;border-radius:14px;}
 .vbox.vip{border-color:#f9a825;}
-.vbh{background:linear-gradient(90deg,#6a1b9a,#283593);color:#fff;padding:8px 10px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.vbh{background:linear-gradient(90deg,#6a1b9a,#4a148c);color:#fff;padding:8px 10px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
 .vbn{font-size:11px;font-weight:800;flex:1;white-space:normal;word-break:break-word;line-height:1.25;min-width:0;}
 .vbc{background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;flex-shrink:0;}
 .vbb{padding:8px;}
@@ -64,25 +64,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .vdd-item:hover{background:#f0f4ff;}
 .pink-bar{background:#fce4ec;color:#880e4f;font-size:11px;font-weight:700;padding:5px 8px;border-bottom:2px solid #f48fb1;word-break:break-word;}
 .hdr-right{display:flex;gap:8px;align-items:center;}
-
-  .hdr-logo{width:32px;height:32px;}
-  .hdr-t{font-size:12px;}
-  .hdr-s{font-size:9px;}
-  .hdr-d input{width:90px;font-size:12px;}
-  .hbtn{padding:5px 8px;font-size:10px;}
-  .hdr-right{gap:5px;}
-  .main{flex-direction:column;overflow:auto;}
-  .lp{width:100%;height:auto;max-height:45vh;border-right:none;border-bottom:2px solid #e3eaff;flex-shrink:0;}
-  .rp{flex:1;overflow-y:auto;padding:8px;}
-  .vsrch-wrap{margin-bottom:8px;}
-  .lpl{max-height:calc(45vh - 120px);}
-}
-
-  .lp{max-height:45vh;transition:max-height 0.2s;}
-}
-
-  .hbtn{padding:4px 8px;font-size:10px;}
-}
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>

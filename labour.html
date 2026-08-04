@@ -350,22 +350,51 @@ function saveLog(){
   });
 }
 
+function fetchDlogDate(dateStr,cb){
+  if(dlog[dateStr]){if(cb)cb();return;}
+  dailyRef(dateStr).get().then(function(doc){
+    if(doc.exists&&doc.data()&&doc.data().dlog){
+      var incoming=doc.data().dlog;
+      Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});
+    } else {
+      if(!dlog[dateStr])dlog[dateStr]={};
+    }
+    if(cb)cb();
+  }).catch(function(e){
+    console.warn('fetchDlogDate error:',e);
+    if(!dlog[dateStr])dlog[dateStr]={};
+    if(cb)cb();
+  });
+}
+
+function _doPortalSave(d){
+  var log=dlog[d]||{};
+  var updates={};
+  updates[new firebase.firestore.FieldPath('dlog',d,'venues')]=log.venues||{};
+  updates[new firebase.firestore.FieldPath('dlog',d,'leave')]=log.leave||[];
+  updates[new firebase.firestore.FieldPath('dlog',d,'office')]=log.office||[];
+  updates[new firebase.firestore.FieldPath('dlog',d,'godown')]=log.godown||[];
+  dailyRef(d).update(updates).then(function(){sv('saved');}).catch(function(){
+    var sp={dlog:{}};sp.dlog[d]={venues:log.venues||{},leave:log.leave||[],office:log.office||[],godown:log.godown||[]};
+    dailyRef(d).set(sp,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal save error:',e);sv('error');});
+  });
+  db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
+}
+
 function save(){
   if(!DBL)return;sv('saving');clearTimeout(ST);
   ST=setTimeout(function(){
-    saveLog();
     var d=_lastDate||getD();
-    // Use FieldPath to safely update nested venues without wiping other data
-    // FieldPath avoids hyphen-in-key issue with dot notation
     var _sd=d;
-    var portalVenues=(dlog[d]||{}).venues||{};
-    var fp=new firebase.firestore.FieldPath('dlog',d,'venues');
-    dailyRef(_sd).update(fp,portalVenues).then(function(){sv('saved');}).catch(function(){
-      // Doc doesn't exist yet - create it
-      var setPayload={dlog:{}};setPayload.dlog[d]={venues:portalVenues};
-      dailyRef(_sd).set(setPayload,{merge:true}).then(function(){sv('saved');}).catch(function(e){console.warn('Portal dlog save error:',e);sv('error');});
-    });
-    db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
+    // SAFETY: If dlog[d] not loaded yet, fetch before saving to avoid wiping other portals data
+    if(!_portalDlogLoaded||!dlog[d]){
+      fetchDlogDate(d,function(){saveLog();_doPortalSave(d);});
+      return;
+    }
+    saveLog();
+    var log=dlog[d]||{};
+    // Write venues, leave, office, godown all via FieldPath to avoid wiping other portals data
+    _doPortalSave(d);
   },400);
 }
 

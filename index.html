@@ -5998,7 +5998,7 @@ function makeDailyVendorPDF(){
         doc.text(vendorEntryLabel(entry,vt),mg+4,y+5.5);
         doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);
         doc.text('Qty '+(entry.qty||1)+(entry.time?'  '+entry.time:''),pw-mg-3,y+5.5,{align:'right'});
-        if(entry.notes){doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.text('📝 '+entry.notes.slice(0,60),mg+4,y+7);}
+        if(entry.notes){doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.text('Note: '+entry.notes.slice(0,60),mg+4,y+7);}
         y+=7.5;
       });
     });
@@ -6338,22 +6338,22 @@ function makeCompanyReportPDF(){
       var ey=y+5;
       // Venue name
       doc.setTextColor(30,30,30);doc.setFontSize(8);doc.setFont('helvetica','bold');
-      var vn=doc.splitTextToSize('🏨 '+vu.venue,pw-mg*2-16)[0];
+      var vn=doc.splitTextToSize(vu.venue,pw-mg*2-16)[0];
       doc.text(vn,mg+7,ey);ey+=5;
       // Service label
       if(vu.entry&&vu.entry.serviceLabel){
         doc.setTextColor(106,27,154);doc.setFontSize(7);doc.setFont('helvetica','normal');
-        doc.text('📷 '+vu.entry.serviceLabel,mg+9,ey);ey+=5;
+        doc.text('['+vu.entry.serviceLabel+']',mg+9,ey);ey+=5;
       }
       // Qty
       doc.setTextColor(80,80,80);doc.setFontSize(7);doc.setFont('helvetica','normal');
-      doc.text('📦 Qty: ',mg+9,ey);
+      doc.text('Qty: ',mg+9,ey);
       doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
       doc.text(String(vu.qty||1),mg+24,ey);ey+=5;
       // Notes
       if(vu.entry&&vu.entry.notes){
         doc.setTextColor(120,120,120);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
-        var noteLines=doc.splitTextToSize('📝 '+vu.entry.notes,pw-mg*2-20);
+        var noteLines=doc.splitTextToSize('Note: '+vu.entry.notes,pw-mg*2-20);
         doc.text(noteLines[0],mg+9,ey);ey+=5;
       }
       y+=entryH;

@@ -215,7 +215,6 @@ function subscribePortalDlog(date){
     }
   },function(e){console.warn('Portal dlog listener error:',e);_portalDlogLoaded=true;});
 }
-}
 
 function myS(){return allS.filter(function(e){return myAccess.roles&&myAccess.roles.indexOf(e.role)>=0;});}
 function myVTs(){return VTS.filter(function(vt){return myAccess.vendors&&myAccess.vendors.indexOf(vt.id)>=0;});}

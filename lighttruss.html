@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4ff;min-height:100vh;}
-.ls{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#6a1b9a,#4a148c);}
+.ls{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#6a1b9a,#283593);}
 .lc{background:#fff;border-radius:20px;padding:40px 32px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
 .lt{font-size:20px;font-weight:800;color:#6a1b9a;text-align:center;margin-bottom:4px;}
 .ls2{font-size:12px;color:#888;text-align:center;margin-bottom:24px;}
@@ -16,7 +16,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .lbtn{width:100%;padding:14px;background:#6a1b9a;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;}
 .lerr{color:#c62828;font-size:12px;text-align:center;margin-top:8px;display:none;background:#ffebee;padding:8px;border-radius:8px;}
 .app{display:none;flex-direction:column;height:100vh;}
-.hdr{background:linear-gradient(90deg,#6a1b9a,#4a148c);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.hdr{background:linear-gradient(90deg,#6a1b9a,#283593);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
 .hdr-logo{width:44px;height:44px;object-fit:contain;border-radius:8px;background:#fff;padding:3px;}
 .hdr-info{flex:1;}
 .hdr-t{font-size:14px;font-weight:800;}
@@ -40,7 +40,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .vgrid>*{break-inside:avoid;display:inline-block;width:100%;margin-bottom:12px;}
 .vbox{background:#fff;border:2px solid #e3eaff;border-radius:14px;}
 .vbox.vip{border-color:#f9a825;}
-.vbh{background:linear-gradient(90deg,#6a1b9a,#4a148c);color:#fff;padding:8px 10px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.vbh{background:linear-gradient(90deg,#6a1b9a,#283593);color:#fff;padding:8px 10px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
 .vbn{font-size:11px;font-weight:800;flex:1;white-space:normal;word-break:break-word;line-height:1.25;min-width:0;}
 .vbc{background:rgba(255,255,255,0.25);border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700;flex-shrink:0;}
 .vbb{padding:8px;}
@@ -92,7 +92,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="hbtn" id="BMULTI" style="background:rgba(255,255,255,0.15);">🔀 Multi</button>
       <button class="hbtn" id="BSAVE">☁️ Save</button>
       <button class="hbtn" id="BPDF">📄 PDF</button>
-      <button class="hbtn" id="BLOGOUT" style="background:rgba(255,255,255,0.15);">🚪 Logout</button>
     </div>
   </div>
   <div class="main">
@@ -135,7 +134,7 @@ function g(id){return document.getElementById(id);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function nowIST(){var d=new Date();return new Date(d.getTime()+5.5*3600000);}
 function todayIST(){return nowIST().toISOString().slice(0,10);}
-function nd(d){var p=d.split('-');var dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+1);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}
+function nd(d){var dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()+1);return dt.toISOString().slice(0,10);}
 function getD(){return g('DP').value||todayIST();}
 function fd(d){if(!d)return '';var x=new Date(d+'T00:00:00');return x.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][x.getMonth()]+' '+x.getFullYear();}
 function st(t){return (t||'').replace(':00 ',' ');}
@@ -149,13 +148,6 @@ function sv(state){var l=g('SL');if(!l)return;if(state==='saving')l.textContent=
 g('MO').addEventListener('click',function(ev){if(ev.target===this)cm();});
 g('LBTN').addEventListener('click',doLogin);
 g('LP').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
-g('BLOGOUT')&&g('BLOGOUT').addEventListener('click',function(){
-  try{localStorage.removeItem(_PORTAL_SESSION_KEY);}catch(e){}
-  if(_fbUnsub){try{_fbUnsub();}catch(e){}}_fbUnsub=null;
-  if(_dlogUnsub){try{_dlogUnsub();}catch(e){}}_dlogUnsub=null;
-  g('APP').style.display='none';g('LS').style.display='flex';
-  g('LU').value='';g('LP').value='';
-});
 
 // Pre-load portal credentials from Firebase before login
 var _portalDlogLoaded=false;
@@ -169,60 +161,21 @@ db.collection('gavs_data').doc('main').get().then(function(doc){
   }
 }).catch(function(){});
 
-var _PORTAL_SESSION_KEY='gavs_portal_session_'+PID;
-// Auto-login on refresh if session exists
-(function(){
-  try{
-    var s=localStorage.getItem(_PORTAL_SESSION_KEY);
-    if(!s)return;
-    var sess=JSON.parse(s);
-    if(!sess||!sess.u||!sess.p)return;
-    // Re-fetch credentials from Firebase then verify
-    db.collection('gavs_data').doc('main').get().then(function(doc){
-      if(doc.exists&&doc.data().portalPasswords&&doc.data().portalPasswords[PID]){
-        var _pw=doc.data().portalPasswords[PID];
-        APASS=(typeof _pw==='object'?_pw.password:_pw)||DPASS;
-        AUSER=(typeof _pw==='object'?_pw.username:DUSER)||DUSER;
-      }
-      var ok=(sess.u===DUSER&&sess.p===DPASS)||(AUSER&&sess.u===AUSER&&sess.p===APASS);
-      if(ok){_launchApp();}else{try{localStorage.removeItem(_PORTAL_SESSION_KEY);}catch(e){}}
-    }).catch(function(){
-      // Fallback: verify against defaults only
-      var ok=(sess.u===DUSER&&sess.p===DPASS);
-      if(ok)_launchApp();
-    });
-  }catch(e){}
-})();
-function _launchApp(){
-  g('LS').style.display='none';g('APP').style.display='flex';
-  var tomorrow=nd(todayIST());
-  // Set date AFTER app is visible (browsers may ignore value on hidden date inputs)
-  var dp=g('DP');
-  dp.setAttribute('value',tomorrow);
-  dp.value=tomorrow;
-  _lastDate=tomorrow;
-  setTimeout(function(){
-    dp.value=tomorrow;
-    _lastDate=tomorrow;
-    loadData();
-  },50);
-}
 function doLogin(){
   var u=(g('LU').value||'').trim().toLowerCase(),p=(g('LP').value||'').trim();
   var ok=(u===DUSER&&p===DPASS)||(AUSER&&u===AUSER&&p===APASS);
   if(!ok){g('LERR').style.display='block';g('LP').value='';return;}
-  try{localStorage.setItem(_PORTAL_SESSION_KEY,JSON.stringify({u:u,p:p}));}catch(e){}
-  _launchApp();
+  g('LS').style.display='none';g('APP').style.display='flex';
+  g('DP').value=nd(todayIST());
+  _lastDate=g('DP').value;
+  subscribePortalDlog(_lastDate);
+  loadData();
 }
 
 var _fbUnsub=null;
-var _dlogUnsub=null;
-function dailyDocId(ds){return 'dlog_'+(ds||getD()).replace(/-/g,'_');}
-function dailyRef(ds){return db.collection('gavs_data').doc(dailyDocId(ds));}
 function loadData(){
   sv('saving');
   if(_fbUnsub){try{_fbUnsub();}catch(e){}_fbUnsub=null;}
-  if(_dlogUnsub){try{_dlogUnsub();}catch(e){}_dlogUnsub=null;}
   var firstLoad=true;
   _fbUnsub=db.collection('gavs_data').doc('main').onSnapshot(function(doc){
     if(!firstLoad&&doc.metadata&&doc.metadata.hasPendingWrites)return;
@@ -230,27 +183,17 @@ function loadData(){
     var d=doc.data();
     allS=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM',pgdn:e.pgdn||false};});
     allV=d.venues||[];ROLES=d.roles||[];VTS=d.vendorTypesCustom||[];VCO=d.vendorCompanies||{};
-    // v86: dlog loaded from daily doc only, not from main
+    // v86: dlog loaded from daily docs only, not from main
     if(d.vdlog)vdlog=d.vdlog;
     if(d.annualLeave)annualLeave=d.annualLeave;
     if(d.portalAccess&&d.portalAccess[PID])myAccess=d.portalAccess[PID];
     if(d.portalPasswords&&d.portalPasswords[PID]){var _pw2=d.portalPasswords[PID];APASS=(typeof _pw2==='object'?_pw2.password:_pw2)||DPASS;AUSER=(typeof _pw2==='object'?_pw2.username:DUSER)||DUSER;}
     DBL=true;
-    if(_portalDlogLoaded){loadDateData(_lastDate||getD());}
+    loadDateData(getD());
     if(firstLoad){firstLoad=false;buildTabs();}else{drawSP();drawDZ();drawGrid();updateStats();}
     sv('saved');
   },function(e){console.error(e);sv('error');});
-  // v86: listen to today's daily doc
-  _dlogUnsub=dailyRef(_lastDate||getD()).onSnapshot(function(dlogDoc){
-    // Skip hasPendingWrites entirely - let server-confirmed snapshots drive state
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
-    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      var incoming=dlogDoc.data().dlog;
-      Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});
-      _portalDlogLoaded=true;
-      if(DBL){loadDateData(_lastDate||getD());drawDZ();drawGrid();drawSP();updateStats();}
-    }
-  },function(e){console.warn('Portal dlog listener error:',e);});
+  // v86: old dlog listener removed - data comes from daily docs via _dlogUnsub
 }
 
 function myS(){return allS.filter(function(e){return myAccess.roles&&myAccess.roles.indexOf(e.role)>=0;});}
@@ -315,14 +258,6 @@ function saveLog(){
   // Only update this portal's staff - preserve others
   if(!log.venues)log.venues={};
   if(!log.camTypes)log.camTypes={};
-  // First remove this portal's staff from ALL venues (handles unassignment)
-  Object.keys(log.venues).forEach(function(vid){
-    msids.forEach(function(eid){
-      delete log.venues[vid][eid];
-      if(log.camTypes[vid])delete log.camTypes[vid][eid];
-    });
-  });
-  // Then re-add currently assigned staff
   Object.keys(asgn).forEach(function(vid){
     if(!log.venues[vid])log.venues[vid]={};
     if(!log.camTypes[vid])log.camTypes[vid]={};
@@ -350,21 +285,34 @@ function saveLog(){
   });
 }
 
+
+var _fbUnsub2=null,_dlogUnsub=null;
+function dailyDocId(ds){return 'dlog_'+(ds||getD()).replace(/-/g,'_');}
+function dailyRef(ds){return db.collection('gavs_data').doc(dailyDocId(ds));}
+
 function fetchDlogDate(dateStr,cb){
   if(dlog[dateStr]){if(cb)cb();return;}
   dailyRef(dateStr).get().then(function(doc){
     if(doc.exists&&doc.data()&&doc.data().dlog){
-      var incoming=doc.data().dlog;
-      Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});
-    } else {
-      if(!dlog[dateStr])dlog[dateStr]={};
-    }
+      var inc=doc.data().dlog;
+      Object.keys(inc).forEach(function(dk){dlog[dk]=inc[dk];});
+    } else {if(!dlog[dateStr])dlog[dateStr]={};}
     if(cb)cb();
-  }).catch(function(e){
-    console.warn('fetchDlogDate error:',e);
-    if(!dlog[dateStr])dlog[dateStr]={};
-    if(cb)cb();
-  });
+  }).catch(function(e){if(!dlog[dateStr])dlog[dateStr]={};if(cb)cb();});
+}
+
+function subscribePortalDlog(date){
+  if(_dlogUnsub){try{_dlogUnsub();}catch(e){}}_dlogUnsub=null;
+  _portalDlogLoaded=false;
+  _dlogUnsub=dailyRef(date).onSnapshot(function(dlogDoc){
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
+    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
+      var inc=dlogDoc.data().dlog;
+      Object.keys(inc).forEach(function(dk){dlog[dk]=inc[dk];});
+      _portalDlogLoaded=true;
+      if(DBL){loadDateData(_lastDate||getD());drawDZ();drawGrid();drawSP();updateStats();}
+    } else {_portalDlogLoaded=true;}
+  },function(e){console.warn('Portal dlog error:',e);_portalDlogLoaded=true;});
 }
 
 function _doPortalSave(d){
@@ -385,15 +333,11 @@ function save(){
   if(!DBL)return;sv('saving');clearTimeout(ST);
   ST=setTimeout(function(){
     var d=_lastDate||getD();
-    var _sd=d;
-    // SAFETY: If dlog[d] not loaded yet, fetch before saving to avoid wiping other portals data
     if(!_portalDlogLoaded||!dlog[d]){
       fetchDlogDate(d,function(){saveLog();_doPortalSave(d);});
       return;
     }
     saveLog();
-    var log=dlog[d]||{};
-    // Write venues, leave, office, godown all via FieldPath to avoid wiping other portals data
     _doPortalSave(d);
   },400);
 }
@@ -416,18 +360,8 @@ g('BMULTI')&&g('BMULTI').addEventListener('click',function(){
 g('SRCH').addEventListener('input',function(){if(curTab==='staff')drawSP();else drawVP();});
 g('DP').addEventListener('change',function(){
   _lastDate=getD();
-  // Re-subscribe dlog listener to new date's daily doc
-  if(_dlogUnsub){try{_dlogUnsub();}catch(e){}_dlogUnsub=null;}
-  _portalDlogLoaded=false;
-  _dlogUnsub=dailyRef(_lastDate).onSnapshot(function(dlogDoc){
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
-    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      var incoming=dlogDoc.data().dlog;
-      Object.keys(incoming).forEach(function(dk){dlog[dk]=incoming[dk];});
-      _portalDlogLoaded=true;
-    }
-    loadDateData(_lastDate);drawSP();drawDZ();drawGrid();updateStats();
-  },function(e){console.warn('Portal dlog listener error:',e);loadDateData(_lastDate);drawSP();drawDZ();drawGrid();updateStats();});
+  subscribePortalDlog(_lastDate);
+  loadDateData(getD());drawSP();drawDZ();drawGrid();updateStats();
 });
 
 function drawRolePills(){
@@ -683,52 +617,28 @@ function wireVenueSearch(){
   inp.oninput=function(){
     var q=this.value.toLowerCase();dd.innerHTML='';
     if(!q){dd.style.display='none';return;}
-    var rawQ=inp.value.trim();
     var matches=allV.filter(function(v){return v.name.toLowerCase().indexOf(q)>=0&&activeVids.indexOf(v.id)<0;}).slice(0,10);
+    if(!matches.length){dd.style.display='none';return;}
     matches.forEach(function(v){
       var item=document.createElement('div');item.className='vdd-item';item.textContent=v.name;
       item.addEventListener('mousedown',function(ev){
         ev.preventDefault();
         if(activeVids.indexOf(v.id)<0)activeVids.push(v.id);
         if(!asgn[v.id])asgn[v.id]={};
+        // Persist via manualVids in dlog
         var d2=_lastDate||getD();
         if(!dlog[d2])dlog[d2]={};
         if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
         if(dlog[d2].manualVids.indexOf(v.id)<0)dlog[d2].manualVids.push(v.id);
+        // Write IMMEDIATELY to Firebase (not debounced)
         var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
-        dailyRef(d2).set(imPayload,{merge:true});
+        var _fp=new firebase.firestore.FieldPath('dlog',d2,'venues');dailyRef(d2).update(_fp,(dlog[d2]||{}).venues||{}).catch(function(){dailyRef(d2).set(imPayload,{merge:true});});
         inp.value='';dd.style.display='none';
         drawGrid();save();
       });
       dd.appendChild(item);
     });
-    // Show "+ Create 'X'" option if typed name doesn't exactly exist
-    var exactMatch=allV.some(function(v){return v.name.toLowerCase()===q;});
-    if(rawQ&&!exactMatch){
-      var createItem=document.createElement('div');
-      createItem.className='vdd-item';
-      createItem.style.cssText='color:#c62828;font-weight:700;border-top:'+(matches.length?'1px solid #fce4ec':'none')+';';
-      createItem.textContent='+ Create "'+rawQ+'"';
-      createItem.addEventListener('mousedown',function(ev){
-        ev.preventDefault();
-        var newId='v_'+Date.now();
-        var newV={id:newId,name:rawQ,address:'',locUrl:''};
-        allV.push(newV);
-        db.collection('gavs_data').doc('main').update({venues:allV}).catch(function(){});
-        if(activeVids.indexOf(newId)<0)activeVids.push(newId);
-        if(!asgn[newId])asgn[newId]={};
-        var d2=_lastDate||getD();
-        if(!dlog[d2])dlog[d2]={};
-        if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
-        if(dlog[d2].manualVids.indexOf(newId)<0)dlog[d2].manualVids.push(newId);
-        var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
-        dailyRef(d2).set(imPayload,{merge:true});
-        inp.value='';dd.style.display='none';
-        drawGrid();save();
-      });
-      dd.appendChild(createItem);
-    }
-    if(matches.length||rawQ){dd.style.display='block';}else{dd.style.display='none';}
+    dd.style.display='block';
   };
   inp.onblur=function(){setTimeout(function(){dd.style.display='none';},150);};
 }
@@ -774,28 +684,7 @@ function drawGrid(){
   addTile.innerHTML='<div style="font-size:28px;margin-bottom:8px;">+</div><div style="font-size:12px;font-weight:700;">Add New Venue</div><div style="font-size:10px;margin-top:4px;opacity:0.7;">Click to search</div>';
   addTile.addEventListener('mouseenter',function(){this.style.borderColor='#5c6bc0';this.style.color='#5c6bc0';this.style.background='#e8eaf6';});
   addTile.addEventListener('mouseleave',function(){this.style.borderColor='#c5cae9';this.style.color='#9fa8da';this.style.background='';});
-  addTile.addEventListener('click',function(){
-    sm('<div class="mtt">🏨 Add New Venue</div><input id="nv-inp" class="inp" placeholder="Type venue name..." style="margin-bottom:14px;"/><button class="mbtn p" id="nv-ok">Create</button><button class="mbtn c" id="nv-no">Cancel</button>');
-    var ni=document.getElementById('nv-inp');if(ni)ni.focus();
-    g('nv-ok').onclick=function(){
-      var nm=(document.getElementById('nv-inp').value||'').trim();
-      if(!nm)return;
-      var newId='v_'+Date.now();
-      var newV={id:newId,name:nm,address:'',locUrl:''};
-      allV.push(newV);
-      db.collection('gavs_data').doc('main').update({venues:allV}).catch(function(){});
-      if(activeVids.indexOf(newId)<0)activeVids.push(newId);
-      if(!asgn[newId])asgn[newId]={};
-      var d2=_lastDate||getD();
-      if(!dlog[d2])dlog[d2]={};
-      if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
-      if(dlog[d2].manualVids.indexOf(newId)<0)dlog[d2].manualVids.push(newId);
-      var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
-      dailyRef(d2).set(imPayload,{merge:true});
-      cm();drawGrid();save();
-    };
-    g('nv-no').onclick=cm;
-  });
+  addTile.addEventListener('click',function(){var s=g('VSRCH');if(s){s.focus();s.scrollIntoView({behavior:'smooth',block:'center'});}});
   el.appendChild(addTile);
 }
 
@@ -1026,10 +915,10 @@ g('BPDF').addEventListener('click',function(){
       var lh=20,lw=Math.round(lh*(img.naturalWidth/img.naturalHeight));
       if(lw>32){lw=32;lh=Math.round(lw*(img.naturalHeight/img.naturalWidth));}
       var scale=lw/img.naturalWidth;
-      cv.width=Math.round(img.naturalWidth*scale*4);
-      cv.height=Math.round(img.naturalHeight*scale*4);
+      cv.width=Math.round(img.naturalWidth*scale*2);
+      cv.height=Math.round(img.naturalHeight*scale*2);
       var ctx=cv.getContext('2d');
-      ctx.clearRect(0,0,cv.width,cv.height);
+      ctx.clearRect(0,0,cv.width,cv.height); // preserve transparency
       ctx.drawImage(img,0,0,cv.width,cv.height);
       doc.addImage(cv.toDataURL('image/png'),'PNG',mg,2+Math.round((20-lh)/2),lw,lh);
     }
@@ -1100,7 +989,7 @@ g('BPDF').addEventListener('click',function(){
   });
 
   // Sections: Office Duty, Godown, Leave
-  function renderSection(title,list,hdrR,hdrG,hdrB,acR,acG,acB,hideTime){
+  function renderSection(title,list,hdrR,hdrG,hdrB,acR,acG,acB){
     if(!list.length)return;
     var srH=rowH;var hdrHs=9;
     if(colY[curCol]+hdrHs+srH>pageH)nextCol();
@@ -1123,7 +1012,7 @@ g('BPDF').addEventListener('click',function(){
       doc.setFillColor(acR,acG,acB);doc.rect(x3,y3,2,srH,'F');
       var nmw2=Math.floor((colW-14)/1.65);var sn2=a.emp.name.length>nmw2?a.emp.name.slice(0,nmw2-1)+'...':a.emp.name;
       doc.setTextColor(20,20,20);doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.text(sn2,x3+4,y3+srH-2);
-      if(!hideTime){doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(st(a.duty||'6:00 AM'),x3+colW-1,y3+srH-2,{align:'right'});}
+      doc.setTextColor(acR,acG,acB);doc.setFontSize(7.5);doc.setFont('helvetica','bold');doc.text(st(a.duty||'6:00 AM'),x3+colW-1,y3+srH-2,{align:'right'});
       colY[curCol]+=srH;
     });
     colY[curCol]+=2;
@@ -1132,9 +1021,9 @@ g('BPDF').addEventListener('click',function(){
   var offList=Object.values(offMap).filter(function(a){return msids2.has(a.emp.id);}).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
   var gdnList=Object.values(gdnMap).filter(function(a){return msids2.has(a.emp.id);}).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
   var lvList=Object.values(lvMap).filter(function(a){return msids2.has(a.emp.id);}).sort(function(a,b){return a.emp.name.localeCompare(b.emp.name);});
-  if(offList.length)renderSection('OFFICE DUTY',offList,180,80,20,230,100,20,false);
-  if(gdnList.length)renderSection('GODOWN TEAM',gdnList,180,140,0,220,170,0,false);
-  if(lvList.length)renderSection('ON LEAVE',lvList,160,30,30,200,50,50,true);
+  if(offList.length)renderSection('OFFICE DUTY',offList,180,80,20,230,100,20);
+  if(gdnList.length)renderSection('GODOWN TEAM',gdnList,180,140,0,220,170,0);
+  if(lvList.length)renderSection('ON LEAVE',lvList,160,30,30,200,50,50);
 
   // Footer
   var pc=doc.internal.getNumberOfPages();
@@ -1230,11 +1119,10 @@ function savePortalAttendance(d,attn){
   _savePortalAtnWithRetry(d,attn,0);
 }
 function _savePortalAtnWithRetry(d,attn,attempt){
-  // Use FieldPath to avoid hyphen-in-date key issue with dot notation
   var fp=new firebase.firestore.FieldPath('dlog',d,'attendance');
   dailyRef(d).update(fp,attn).catch(function(){
-    var setPayload={dlog:{}};setPayload.dlog[d]={attendance:attn};
-    dailyRef(d).set(setPayload,{merge:true}).catch(function(e){
+    var sp={dlog:{}};sp.dlog[d]={attendance:attn};
+    dailyRef(d).set(sp,{merge:true}).catch(function(e){
       console.warn('Portal attendance save error (attempt '+attempt+'):',e.message||e);
       if(attempt<4)setTimeout(function(){_savePortalAtnWithRetry(d,attn,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
     });

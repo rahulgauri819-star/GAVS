@@ -120,7 +120,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="hdr-btn" id="btnAddHall">+ Add Hall</button>
       <button class="hdr-btn save" id="btnSave">☁️ Save</button>
       <button class="hdr-btn" id="btnPDF">📄 PDF</button>
-      <button class="hdr-btn" id="BLOGOUT" style="background:rgba(255,255,255,0.15);">🚪 Logout</button>
       <button class="hdr-btn" id="btnAtn" style="background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.4);">📊 Attendance</button>
     </div>
   </div>
@@ -175,9 +174,6 @@ var lvMap={};       // shared with admin - eid -> {emp, duty} for On Leave
 var lvCollapsed=false;
 var myAccess={roles:[],vendors:[]};
 var _hallVip={},_hallComments={};
-var ownVenuePool={};
-var outDeployed={};
-var _autoRemoving=false;
 var TIMES=['5:00 AM','5:30 AM','6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM','9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM','6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM','9:00 PM','9:30 PM','10:00 PM','10:30 PM','11:00 PM','11:30 PM'];
 var CLRS=['#0d47a1','#7b1fa2','#1b5e20','#c62828','#e65100','#283593','#ad1457','#00695c','#827717','#4e342e','#37474f','#6a1b9a','#bf360c','#1565c0','#2e7d32'];
 var ROLES_LIST=[];
@@ -192,7 +188,7 @@ var _atnView=false,_ihcAtnDate='',_ihcAtnCollapsed={};
 function g(id){return document.getElementById(id);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function getD(){return g('DP').value||todayIST();}
-function nd(d){var p=d.split('-');var dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+1);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}
+function nd(d){var x=new Date(d);x.setDate(x.getDate()+1);return x.toISOString().slice(0,10);}
 function fd(d){if(!d)return '';var x=new Date(d+'T00:00:00');return x.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][x.getMonth()]+' '+x.getFullYear();}
 function mkId(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function shortTime(t){return (t||'').replace(':00 ',' ');}
@@ -267,41 +263,17 @@ db.collection('gavs_data').doc('main').get().then(function(doc){
   if(_key&&d.portalPasswords[_key]){var _pw2=d.portalPasswords[_key];var _np=(typeof _pw2==='object'?_pw2.password:_pw2);if(_np)PORTAL_CREDS=[{u:PORTAL_CREDS[0].u,p:_np}];}
 }).catch(function(){});
 
-var _IHC_SESSION_KEY='gavs_ihc_session_'+VENUE_NAME.replace(/ /g,'_');
-function _launchIHC(){
-  g('login-screen').style.display='none';
-  g('app').style.display='flex';
-  setTimeout(function(){
-    g('DP').value=nd(todayIST());
-    subscribeIHCDlog();
-    loadFromCloud();
-  },50);
-}
-// Auto-login on refresh
-(function(){
-  try{
-    var s=localStorage.getItem(_IHC_SESSION_KEY);
-    if(!s)return;
-    var sess=JSON.parse(s);
-    if(!sess||!sess.u||!sess.p)return;
-    var ok=PORTAL_CREDS.some(function(c){return c.u===sess.u&&c.p===sess.p;});
-    if(ok){_launchIHC();}else{try{localStorage.removeItem(_IHC_SESSION_KEY);}catch(e){}}
-  }catch(e){}
-})();
 g('L_BTN').addEventListener('click',doLogin);
 g('L_P').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
-g('BLOGOUT')&&g('BLOGOUT').addEventListener('click',function(){
-  try{localStorage.removeItem(_IHC_SESSION_KEY);}catch(e){}
-  g('app').style.display='none';g('login-screen').style.display='flex';
-  g('L_U').value='';g('L_P').value='';
-});
 function doLogin(){
   var u=(g('L_U').value||'').trim().toLowerCase();
   var p=(g('L_P').value||'').trim();
   var ok=PORTAL_CREDS.some(function(c){return c.u===u&&c.p===p;});
   if(!ok){g('L_ERR').style.display='block';g('L_P').value='';return;}
-  try{localStorage.setItem(_IHC_SESSION_KEY,JSON.stringify({u:u,p:p}));}catch(e){}
-  _launchIHC();
+  g('login-screen').style.display='none';
+  g('app').style.display='flex';
+  g('DP').value=nd(todayIST());
+  loadFromCloud();
 }
 
 
@@ -319,7 +291,7 @@ function loadFromCloud(){
     if(doc.exists){
       var d=doc.data();
       allStaff=(d.staff||[]).map(function(e){return{id:e.id,name:e.name,role:e.role,phone:e.phone||'',pv:e.pv||'',fixedDuty:e.fixedDuty||'6:00 AM'};});
-      venues=d.venues||[];window._allV=venues;
+      venues=d.venues||[];
       ROLES_LIST=d.roles||[];
       if(d.annualLeave)annualLeave=d.annualLeave;
       if(d.portalAccess&&d.portalAccess['ihcfab'])myAccess=d.portalAccess['ihcfab'];
@@ -328,16 +300,22 @@ function loadFromCloud(){
       // Find IHC venue
       var v=venues.find(function(v){return v.name===VENUE_NAME;});
       ihcVenueId=v?v.id:'';
-      // Staff = only pinned to this venue (incoming staff handled by ownVenuePool from daily doc)
+      // Staff = pinned to IHC + any staff Admin temporarily deployed to IHC venue today
+      var adminDeployedToIHCFab={};
+      var adminAsgn=d.asgn||{};
+      if(ihcVenueId&&adminAsgn[ihcVenueId]){
+        Object.keys(adminAsgn[ihcVenueId]).forEach(function(eid){adminDeployedToIHCFab[eid]=true;});
+      }
       staff=allStaff.filter(function(e){
-        if(e.pv!==ihcVenueId)return false;
+        var atVenue=e.pv===ihcVenueId||adminDeployedToIHCFab[e.id];
+        if(!atVenue)return false;
         if(myAccess.roles&&myAccess.roles.length>0)return myAccess.roles.indexOf(e.role)>=0;
         return true;
       });
       // Load halls
       halls=(d[HALLS_KEY]||[]);
-      // Load assignments — skip reload if auto-remove is in progress
-      if(!_autoRemoving){asgn=d[ASGN_KEY]||{};}
+      // Load assignments
+      asgn=d[ASGN_KEY]||{};
       // Load log
       dlog=d[LOG_KEY]||{};
       // Load dlog_main for leave data
@@ -361,8 +339,6 @@ function loadFromCloud(){
       drawStaffPanel();
       drawHalls();
       drawLeaveZone();
-      buildPoolMaps();
-      // After daily doc loads, auto-remove will clean up any stale non-pinned staff
     }
     showSaveInd('saved');
   },function(e){console.error(e);showSaveInd('error');});
@@ -517,45 +493,8 @@ function drawStaffPanel(){
     });
   }
 
-  // Incoming pool staff — shown FIRST at top of panel
-  var poolStaff=Object.values(ownVenuePool).map(function(a){return a.emp;});
-  if(poolStaff.length){
-    var sec=document.createElement('div');
-    sec.style.cssText='margin:0 0 5px;padding:5px 6px;background:#1976d2;color:#fff;font-size:11px;font-weight:800;letter-spacing:0.05em;border-radius:6px;';
-    sec.textContent='INCOMING STAFF';
-    el.appendChild(sec);
-    var pGroups={};
-    var staffIds=new Set(staff.map(function(e){return e.id;}));
-    poolStaff.forEach(function(e){
-      if(staffIds.has(e.id))return; // skip if already in regular staff list
-      if(q&&e.name.toLowerCase().indexOf(q)<0)return;
-      if(!pGroups[e.role])pGroups[e.role]=[];
-      pGroups[e.role].push(e);
-    });
-    Object.keys(pGroups).forEach(function(r){
-      var c=cc(r);
-      var rhdr=document.createElement('div');
-      rhdr.className='role-hdr';rhdr.style.color=c;rhdr.textContent=r;
-      el.appendChild(rhdr);
-      pGroups[r].forEach(function(e){
-        var isDeployed=!!deps[e.id];
-        var card=document.createElement('div');
-        card.className='staff-card';
-        card.setAttribute('data-eid',e.id);
-        card.style.cssText='background:'+c+'12;border-left:3px solid '+c+';border-bottom:1px solid '+c+'22;padding:3px 5px 3px 6px;display:flex;align-items:center;gap:4px;cursor:grab;margin-bottom:2px;opacity:'+(isDeployed?'0.6':'1')+';';
-        card.draggable=true;
-        var nm=document.createElement('div');nm.className='sc-name';nm.textContent=e.name;
-        card.appendChild(nm);
-        if(isDeployed){var tag=document.createElement('span');tag.textContent='●';tag.style.color=c;card.appendChild(tag);}
-        card.addEventListener('dragstart',function(ev){ev.dataTransfer.setData('text/plain',e.id);ev.dataTransfer.setData('text/duty',(ownVenuePool[e.id]&&ownVenuePool[e.id].duty)||'6:00 AM');ev.dataTransfer.effectAllowed='move';});
-        el.appendChild(card);
-      });
-    });
-  }
-  // All own staff shown below incoming — skip anyone already in pool
-  var poolIds=new Set(Object.keys(ownVenuePool));
-  var regularStaff=staff.filter(function(e){return !poolIds.has(e.id);});
-  renderGroup(regularStaff,null);
+  // All IHC staff shown together — no sub-hall pinning
+  renderGroup(staff,null);
 
   if(!el.children.length){
     el.innerHTML='<div style="text-align:center;color:#bbb;padding:30px;font-size:12px;">No staff found</div>';
@@ -597,21 +536,7 @@ function makeHallBox(h){
     if(!slen){showModal('<div class="modal-title">No staff</div><button class="mbtn cancel" id="m-no">Close</button>');g('m-no').onclick=closeModal;return;}
     var opts=TIMES.map(function(t){return '<option value="'+t+'">'+shortTime(t)+'</option>';}).join('');
     showModal('<div class="modal-title">⏰ Set Same Time</div><div style="font-size:12px;color:#555;text-align:center;margin-bottom:12px;">Apply to all <strong>'+slen+'</strong> staff in <strong>'+esc(hname)+'</strong></div><select id="BULK_T" class="minp" style="padding:8px;">'+opts+'</select><button class="mbtn blue" id="MY">Apply to All</button><button class="mbtn cancel" id="MN">Cancel</button>');
-    g('MY').onclick=function(){var val=g('BULK_T').value;
-      Object.keys(asgn[hid]||{}).forEach(function(eid){
-        if(asgn[hid][eid]){
-          asgn[hid][eid].duty=val;
-          // Update daily doc for pool staff
-          if(ownVenuePool[eid]&&ihcVenueId){
-            ownVenuePool[eid].duty=val;
-            var d=getD();
-            var fp=new firebase.firestore.FieldPath('dlog',d,'venues',ihcVenueId,eid);
-            dailyRef(d).update(fp,val).catch(function(){});
-          }
-        }
-      });
-      closeModal();drawHalls();saveCloud();
-    };
+    g('MY').onclick=function(){var val=g('BULK_T').value;Object.keys(asgn[hid]||{}).forEach(function(eid){if(asgn[hid][eid])asgn[hid][eid].duty=val;});closeModal();drawHalls();saveCloud();};
     g('MN').onclick=closeModal;
   };})(h.id,h.name,staffInHall.length));
   var del=document.createElement('button');del.className='hall-close';del.textContent='✕';del.title='Delete hall';
@@ -657,9 +582,7 @@ function makeHallBox(h){
     if(!q3){qaD.style.display='none';return;}
     var depEids=new Set(Object.keys(getDeployedEids()));
     var onLeaveEids=new Set(Object.keys(lvMap));
-    var poolList=Object.values(ownVenuePool).map(function(a){return a.emp;});
-    var allSearchable=staff.concat(poolList.filter(function(e){return !staff.some(function(s){return s.id===e.id;});}));
-    var matches=allSearchable.filter(function(e){return !depEids.has(e.id)&&!onLeaveEids.has(e.id)&&e.name.toLowerCase().indexOf(q3)>=0;}).slice(0,8);
+    var matches=staff.filter(function(e){return !depEids.has(e.id)&&!onLeaveEids.has(e.id)&&e.name.toLowerCase().indexOf(q3)>=0;}).slice(0,8);
     if(!matches.length){qaD.style.display='none';return;}
     matches.forEach(function(e){
       var itm=document.createElement('div');itm.style.cssText='padding:6px 10px;cursor:pointer;font-size:11px;border-bottom:1px solid #f0f4ff;display:flex;align-items:center;gap:6px;';
@@ -672,8 +595,7 @@ function makeHallBox(h){
         // Remove from other halls first
         Object.keys(asgn).forEach(function(h2){if(asgn[h2])delete asgn[h2][e.id];});
         if(!asgn[hid])asgn[hid]={};
-        var poolEntry=ownVenuePool[e.id];
-        asgn[hid][e.id]={duty:poolEntry?poolEntry.duty:(e.fixedDuty||'6:00 AM'),isFixed:false};
+        asgn[hid][e.id]={duty:e.fixedDuty||'6:00 AM',isFixed:false};
         qaI.value='';qaD.style.display='none';
         drawHalls();drawStaffPanel();saveCloud();
       });
@@ -707,19 +629,7 @@ function makeHallBox(h){
         row.appendChild(nm2);
         var sel=document.createElement('select');sel.className='hr-time';
         TIMES.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=shortTime(t);if(t===a.duty)o.selected=true;sel.appendChild(o);});
-        sel.addEventListener('change',(function(hid,eid){return function(){
-          if(asgn[hid]&&asgn[hid][eid]){
-            asgn[hid][eid].duty=this.value;
-            saveCloud();
-            // If this is a pool staff member, also update daily doc so LED/main see new time
-            if(ownVenuePool[eid]&&ihcVenueId){
-              ownVenuePool[eid].duty=this.value;
-              var d=getD();
-              var fp=new firebase.firestore.FieldPath('dlog',d,'venues',ihcVenueId,eid);
-              dailyRef(d).update(fp,this.value).catch(function(){});
-            }
-          }
-        };})(h.id,a.emp.id));
+        sel.addEventListener('change',(function(hid,eid){return function(){if(asgn[hid]&&asgn[hid][eid]){asgn[hid][eid].duty=this.value;saveCloud();}};})(h.id,a.emp.id));
         row.appendChild(sel);
         var rm=document.createElement('button');rm.className='hr-rm';rm.textContent='✕';
         rm.addEventListener('click',(function(hid,eid,ename){return function(){
@@ -744,13 +654,11 @@ function makeHallBox(h){
     ev.preventDefault();box.classList.remove('drag-over');
     var eid=ev.dataTransfer.getData('text/plain');
     if(!eid)return;
-    var duty=ev.dataTransfer.getData('text/duty')||'';
-    var emp=getS(eid)||(ownVenuePool[eid]&&ownVenuePool[eid].emp)||(allStaff&&allStaff.find(function(e){return e.id===eid;}));
-    if(!emp)return;
-    if(!duty)duty=emp.fixedDuty||'6:00 AM';
+    var emp=getS(eid);if(!emp)return;
+    // Remove from any other hall first
     Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
     if(!asgn[h.id])asgn[h.id]={};
-    asgn[h.id][eid]={duty:duty,isFixed:false};
+    asgn[h.id][eid]={duty:emp.fixedDuty||'6:00 AM',isFixed:false}; // never pin to sub-halls
     if(navigator.vibrate)navigator.vibrate([20,10,20]);
     drawHalls();drawStaffPanel();saveCloud();
   });
@@ -1072,104 +980,17 @@ document.addEventListener('touchend',function(ev){
 
 // Date change
 g('DP').addEventListener('change',function(){
-  subscribeIHCDlog();
   loadDateData(getD());
   var _lde2=dlog[getD()]||{};_hallVip=_lde2.hallVip||{};_hallComments=_lde2.hallComments||{};
   drawHalls();drawStaffPanel();drawLeaveZone();
 });
 
-// v86: helpers for daily docs
-function dailyDocId(ds){return 'dlog_'+(ds||getD()).replace(/-/g,'_');}
-function dailyRef(ds){return db.collection('gavs_data').doc(dailyDocId(ds));}
-// Listen to today's daily doc for attendance data
-var _ihcDlogUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
+// Listen to gavs_data/dlog for attendance data
+db.collection('gavs_data').doc('dlog').onSnapshot(function(dlogDoc){
   if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-    var incoming=dlogDoc.data().dlog;
-    Object.keys(incoming).forEach(function(dk){mainDlog[dk]=incoming[dk];});
-    if(DB_LOADED){
-      buildPoolMaps();
-      // Sync hall duties for pool staff with their assigned duty times
-      var poolChanged=false;
-      Object.keys(asgn).forEach(function(hid){
-        Object.keys(asgn[hid]||{}).forEach(function(eid){
-          if(ownVenuePool[eid]){
-            asgn[hid][eid].duty=ownVenuePool[eid].duty;
-            poolChanged=true;
-          }
-        });
-      });
-      drawStaffPanel();
-      if(poolChanged)drawHalls();
-    }
+    mainDlog=dlogDoc.data().dlog;
   }
 },function(e){console.warn('IHC dlog listener error:',e);});
-
-function buildPoolMaps(){
-  ownVenuePool={};outDeployed={};
-  if(!ihcVenueId)return;
-  var today=getD();
-  var log=mainDlog[today]||{};
-  var portalVenuesLog=log.portalVenues||{};
-  var mainVenuesLog=log.venues||{};
-  function addToPool(eid,duty){
-    if(ownVenuePool[eid])return;
-    var emp=allStaff.find(function(e){return e.id===eid;});
-    if(emp&&emp.pv!==ihcVenueId){ownVenuePool[eid]={emp:emp,duty:duty||'6:00 AM'};}
-  }
-  if(portalVenuesLog[ihcVenueId]){
-    Object.keys(portalVenuesLog[ihcVenueId]).forEach(function(eid){
-      addToPool(eid,portalVenuesLog[ihcVenueId][eid]);
-    });
-  }
-  if(mainVenuesLog[ihcVenueId]){
-    Object.keys(mainVenuesLog[ihcVenueId]).forEach(function(eid){
-      addToPool(eid,mainVenuesLog[ihcVenueId][eid]);
-    });
-  }
-  // Auto-remove from halls if LED took back the staff member
-  var asgnChanged=false;
-  // Out: own pinned staff deployed elsewhere — check main app venues
-  var venuesLog=log.venues||{};
-  Object.keys(venuesLog).forEach(function(vid){
-    if(vid===ihcVenueId)return;
-    var vObj=(window._allV||[]).find(function(v){return v.id===vid;});
-    var vName=vObj?vObj.name:vid;
-    Object.keys(venuesLog[vid]||{}).forEach(function(eid){
-      var emp=allStaff.find(function(e){return e.id===eid;});
-      if(emp&&emp.pv===ihcVenueId){outDeployed[eid]=vName;}
-    });
-  });
-  // Auto-remove from halls if LED took back the staff member
-  Object.keys(asgn).forEach(function(hid){
-    Object.keys(asgn[hid]||{}).forEach(function(eid){
-      var emp=allStaff.find(function(e){return e.id===eid;});
-      // Remove from hall only if staff is non-pinned AND absent from ALL incoming sources
-      var stillAssigned=venuesLog[ihcVenueId]&&venuesLog[ihcVenueId][eid];
-      if(emp&&emp.pv!==ihcVenueId&&!stillAssigned){
-        delete asgn[hid][eid];asgnChanged=true;
-      }
-    });
-  });
-  if(asgnChanged){
-    var asgnData={};
-    Object.keys(asgn).forEach(function(hid){
-      asgnData[hid]={};
-      Object.keys(asgn[hid]||{}).forEach(function(eid){
-        var a=asgn[hid][eid];asgnData[hid][eid]={duty:a.duty||'6:00 AM',isFixed:a.isFixed||false};
-      });
-    });
-    var immediatePayload={};immediatePayload[ASGN_KEY]=asgnData;
-    _autoRemoving=true;
-    db.collection('gavs_data').doc('main').update(immediatePayload).then(function(){
-      setTimeout(function(){_autoRemoving=false;},2000);
-    }).catch(function(e){
-      _autoRemoving=false;
-      console.warn('Auto-remove save error:',e);
-    });
-    drawHalls();
-  }
-}
-
 
 // ── IHC ATTENDANCE ────────────────────────────────────────────
 function getIHCAttendance(d){
@@ -1186,13 +1007,9 @@ function saveIHCAttendance(d,attn){
   _saveIHCAtnWithRetry(dlogUpdate,0);
 }
 function _saveIHCAtnWithRetry(payload,attempt){
-  var d=Object.keys(payload.dlog||{})[0]||getD();
-  var flat={};flat['dlog.'+d+'.attendance']=(payload.dlog&&payload.dlog[d]&&payload.dlog[d].attendance)||{};
-  dailyRef(d).update(flat).catch(function(){
-    dailyRef(d).set(flat,{merge:true}).catch(function(e){
-      console.warn('IHC attendance save error (attempt '+attempt+'):',e.message||e);
-      if(attempt<4)setTimeout(function(){_saveIHCAtnWithRetry(payload,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
-    });
+  db.collection('gavs_data').doc('dlog').set(payload,{merge:true}).catch(function(e){
+    console.warn('IHC attendance save error (attempt '+attempt+'):',e.message||e);
+    if(attempt<4)setTimeout(function(){_saveIHCAtnWithRetry(payload,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
   });
 }
 function ihcAtnBuildMaps(d){

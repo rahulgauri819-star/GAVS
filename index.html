@@ -1217,18 +1217,6 @@ function switchToDate(newDate){
     actuallySaveCloud();
   }
   _lastLoadedDate=newDate;
-  // Re-subscribe daily doc listener to the new date's doc for real-time updates
-  if(_dlogSnapshotUnsub){try{_dlogSnapshotUnsub();}catch(e){}_dlogSnapshotUnsub=null;}
-  _dlogSnapshotUnsub=dailyRef(newDate).onSnapshot(function(dlogDoc){
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites&&!_dlogReady)return;
-    if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
-      var incoming=dlogDoc.data().dlog;
-      Object.keys(incoming).forEach(function(d){dlog[d]=incoming[d];});
-      if(DB_LOADED&&_lastLoadedDate){
-        if(incoming[_lastLoadedDate]!==undefined){loadLiveFromDlog(_lastLoadedDate);drawVenueGrid();drawStaffPanel();drawStats();}
-      }
-    }
-  },function(e){console.warn('Dlog listener error (date switch):',e);});
   // 2. Reset contracted venues to ALL hidden on every date switch.
   contractedHiddenVids=new Set();
   contractedHiddenVids._initialized=true;
@@ -1957,49 +1945,6 @@ function makeVenueBox(v,hasPinned,viewData){
   cpyDayBtn.title='Copy staff from previous day';
   cpyDayBtn.addEventListener('click',(function(vid){return function(ev){ev.stopPropagation();showCopyPrevDay(vid);};})(v.id));
   hdr.appendChild(cpyDayBtn);
-  // 🔁 Copy to future dates button
-  var fwdBtn=document.createElement('button');
-  fwdBtn.style.cssText='background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:2px 5px;font-size:10px;cursor:pointer;flex-shrink:0;position:relative;';
-  fwdBtn.textContent='🔁';
-  fwdBtn.title='Copy to future dates';
-  fwdBtn.addEventListener('click',(function(vid,vname){return function(ev){
-    ev.stopPropagation();
-    // Remove any existing dropdown
-    var old=document.getElementById('fwd-dd');if(old)old.remove();
-    var dd=document.createElement('div');
-    dd.id='fwd-dd';
-    dd.style.cssText='position:fixed;background:#fff;border:1.5px solid #e3eaff;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.15);z-index:9999;min-width:160px;overflow:hidden;';
-    var baseDate=_lastLoadedDate||getD();
-    var hdr2=document.createElement('div');
-    hdr2.style.cssText='padding:8px 12px;background:#1a237e;color:#fff;font-size:11px;font-weight:700;';
-    hdr2.textContent='Copy to future dates';
-    dd.appendChild(hdr2);
-    // Generate next 15 days
-    for(var i=1;i<=15;i++){
-      var p=baseDate.split('-');
-      var dt=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+i);
-      var ds=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
-      var label='Till '+dt.getDate()+' '+(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()]);
-      var item=document.createElement('div');
-      item.style.cssText='padding:8px 14px;cursor:pointer;font-size:12px;color:#1a237e;border-bottom:1px solid #f0f4ff;font-weight:600;';
-      item.textContent=label;
-      item.addEventListener('mouseenter',function(){this.style.background='#e8eaf6';});
-      item.addEventListener('mouseleave',function(){this.style.background='';});
-      (function(toDate,lbl){item.addEventListener('click',function(){
-        dd.remove();
-        copyVenueToFutureDates(vid,vname,baseDate,toDate);
-      });})(ds,label);
-      dd.appendChild(item);
-    }
-    // Position dropdown near button
-    var rect=fwdBtn.getBoundingClientRect();
-    dd.style.top=(rect.bottom+4)+'px';
-    dd.style.left=Math.min(rect.left,window.innerWidth-180)+'px';
-    document.body.appendChild(dd);
-    // Close on outside click
-    setTimeout(function(){document.addEventListener('click',function _c(){dd.remove();document.removeEventListener('click',_c);});},10);
-  };})(v.id,v.name));
-  hdr.appendChild(fwdBtn);
   // 💬 Daily comment button
   var cmtBtn=document.createElement('button');
   var _hasCmt=!!(_dateComments[v.id]&&_dateComments[v.id].trim());
@@ -2394,13 +2339,6 @@ function makeV3Card(a,vid,c){
     if(asgn[capturedVid]&&asgn[capturedVid][capturedEid]){
       asgn[capturedVid][capturedEid].duty=this.value;
       asgn[capturedVid][capturedEid].isFixed=false;
-      // If this staff is in an IHC/Jaipur hall, sync duty time there too
-      var _newDuty=this.value;
-      [ihcAsgn,jaipurAsgn].forEach(function(hAsgn){
-        Object.keys(hAsgn||{}).forEach(function(hid){
-          if(hAsgn[hid]&&hAsgn[hid][capturedEid]){hAsgn[hid][capturedEid].duty=_newDuty;}
-        });
-      });
       saveCloud();
     }
   });
@@ -2523,52 +2461,6 @@ function showBulkVendorTime(vid){
 }
 
 
-
-function copyVenueToFutureDates(vid,vname,fromDate,toDate){
-  // Get current staff for this venue on fromDate
-  var fromLog=dlog[fromDate]||{};
-  var fromVenue=fromLog.venues&&fromLog.venues[vid]?fromLog.venues[vid]:{};
-  if(!Object.keys(fromVenue).length){toast('No staff assigned to '+vname+' on this date','w');return;}
-  // Build list of dates from day after fromDate up to toDate
-  var dates=[];
-  var p=fromDate.split('-');
-  var cur=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+1);
-  var p2=toDate.split('-');
-  var end=new Date(parseInt(p2[0]),parseInt(p2[1])-1,parseInt(p2[2]));
-  while(cur<=end){
-    dates.push(cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0'));
-    cur.setDate(cur.getDate()+1);
-  }
-  if(!dates.length){toast('No dates in range','w');return;}
-  var done=0;
-  var total=dates.length;
-  toast('Copying '+vname+' to '+total+' dates...');
-  dates.forEach(function(d){
-    // Fetch the date's daily doc if not in memory
-    function applyToDate(){
-      if(!dlog[d])dlog[d]={};
-      if(!dlog[d].venues)dlog[d].venues={};
-      // Merge — don't overwrite existing staff, just add from fromVenue
-      Object.keys(fromVenue).forEach(function(eid){
-        if(!dlog[d].venues[vid])dlog[d].venues[vid]={};
-        dlog[d].venues[vid][eid]=fromVenue[eid];
-      });
-      // Also add to manualVids if not pinned venue
-      if(!dlog[d].manualVids)dlog[d].manualVids=[];
-      if(dlog[d].manualVids.indexOf(vid)<0)dlog[d].manualVids.push(vid);
-      // Save via FieldPath
-      var fp=new firebase.firestore.FieldPath('dlog',d,'venues');
-      dailyRef(d).update(fp,dlog[d].venues).catch(function(){
-        var sp={dlog:{}};sp.dlog[d]={venues:dlog[d].venues,manualVids:dlog[d].manualVids};
-        dailyRef(d).set(sp,{merge:true});
-      });
-      done++;
-      if(done===total){toast('✅ Copied '+vname+' to '+total+' dates!');}
-    }
-    if(dlog[d]){applyToDate();}
-    else{fetchDlogDate(d,applyToDate);}
-  });
-}
 
 function showCopyPrevDay(vid){
   var v=getV(vid);if(!v)return;
@@ -4005,19 +3897,17 @@ function saveAttendance(){
 }
 
 function _saveAttendanceWithRetry(d,attnPayload,attempt){
-  var dlogUpdate={};dlogUpdate['dlog.'+d+'.attendance']=attnPayload;
-  dailyRef(d).update(dlogUpdate).then(function(){
+  var dlogUpdate={dlog:{}};dlogUpdate.dlog[d]={attendance:attnPayload};
+  db.collection('gavs_data').doc('dlog').set(dlogUpdate,{merge:true}).then(function(){
     _atnOfflineQueue=null;
-  }).catch(function(){
-    var sp={};sp['dlog.'+d+'.attendance']=attnPayload;
-    dailyRef(d).set(sp,{merge:true}).then(function(){_atnOfflineQueue=null;}).catch(function(e){
+  }).catch(function(e){
     console.warn('Attendance save error (attempt '+attempt+'):',e.message||e);
     _atnOfflineQueue={d:d,attn:attnPayload};
     if(attempt<5){
       var delay=Math.min(1500*Math.pow(2,attempt),30000);
       _atnRetryTimer=setTimeout(function(){_saveAttendanceWithRetry(d,attnPayload,attempt+1);},delay);
     }
-  });});
+  });
 }
 
 var _atnRole='Manager'; // kept for PDF compat
@@ -4158,11 +4048,7 @@ function drawAttendance(){
 g('ATN_DATE')&&g('ATN_DATE').addEventListener('change',function(){
   _atnDate=this.value||todayIST();
   _atnLastAutoDate=''; // reset so auto-mark runs for new date
-  if(dlog[_atnDate]&&dlog[_atnDate].attendance){
-    drawAttendance();
-  } else {
-    fetchDlogDate(_atnDate,function(){drawAttendance();});
-  }
+  drawAttendance();
 });
 // Attendance search
 g('ATN_SRCH')&&g('ATN_SRCH').addEventListener('input',function(){drawAttendance();});
@@ -4400,13 +4286,7 @@ function drawReport(){
 g('btnPDF').addEventListener('click',makePDF);
 // Wire View Report button
 var btnVR=document.getElementById('btnViewReport');
-if(btnVR)btnVR.addEventListener('click',function(){
-  var rpdEl=document.getElementById('RPD');
-  var reportDate=rpdEl?rpdEl.value:getD();
-  if(reportDate===getD()||dlog[reportDate]){drawReport();return;}
-  toast('Loading...');
-  fetchDlogDate(reportDate,function(){drawReport();});
-});
+if(btnVR)btnVR.addEventListener('click',drawReport);
 
 // ── VENUE HISTORY REPORT ───────────────────────────────────────
 function populateVHVenue(){
@@ -4449,21 +4329,7 @@ function populateVHVenue(){
   }
 }
 
-g('btnVHR').addEventListener('click',function(){
-  var fromDate=(g('VHF')||{}).value||'';
-  var toDate=(g('VHT')||{}).value||'';
-  if(!fromDate||!toDate){drawVenueHistory();return;}
-  toast('Loading...');
-  var dates=[];
-  var cur=new Date(fromDate);var end=new Date(toDate);
-  while(cur<=end){
-    var ds=cur.toISOString().slice(0,10);
-    if(!dlog[ds]&&ds!==todayIST())dates.push(ds);
-    cur.setDate(cur.getDate()+1);
-  }
-  var fn=function(i){if(i>=dates.length){drawVenueHistory();return;}fetchDlogDate(dates[i],function(){fn(i+1);});};
-  fn(0);
-});
+g('btnVHR').addEventListener('click',drawVenueHistory);
 g('btnVHPDF').addEventListener('click',makeVHPDF);
 
 function drawVenueHistory(){
@@ -4759,33 +4625,17 @@ function drawSR(){
   var ss=g('SRS'),sb=g('SRB'),btn=g('SRPB');
   if(!eid){if(ss)ss.innerHTML='';if(sb)sb.innerHTML='';if(btn)btn.classList.add('hide');return;}
   var emp=getS(eid);if(!emp)return;
-  if(sb)sb.innerHTML='<div style="padding:20px;text-align:center;color:#1565c0;font-weight:700;">Loading data...</div>';
-  // Fetch all daily docs for this month before rendering
-  var dim=new Date(year,month+1,0).getDate();
-  var fetches=[];
-  for(var d=1;d<=dim;d++){
-    var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    if(!dlog[ds]){fetches.push(ds);}
-  }
-  var fetchNext=function(i,cb){
-    if(i>=fetches.length){cb();return;}
-    fetchDlogDate(fetches[i],function(){fetchNext(i+1,cb);});
-  };
-  fetchNext(0,function(){_drawSRInner(eid,month,year,emp,ss,sb,btn);});
-}
-function _drawSRInner(eid,month,year,emp,ss,sb,btn){
-  var today=todayIST();
   var dim=new Date(year,month+1,0).getDate(),dep=0,lvD=0,offD=0,frD=0,rows='';
+  var today=todayIST();
   for(var day=1;day<=dim;day++){
     var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    var log=dlog[ds],status='free',detail='Unassigned',duty='',attnStatus='';
+    var log=dlog[ds],status='free',detail='Unassigned',duty='';
     if(log){
       var inL=null;if(log.leave){for(var j=0;j<log.leave.length;j++){if(log.leave[j].id===eid){inL=log.leave[j];break;}}}
       var inO=null;if(log.office){for(var j=0;j<log.office.length;j++){if(log.office[j].id===eid){inO=log.office[j];break;}}}
       if(inL){status='leave';detail='On Leave';duty=inL.duty;lvD++;}
       else if(inO){status='office';detail='Office Duty';duty=inO.duty;offD++;}
       else{Object.keys(log.venues||{}).forEach(function(vid){if(log.venues[vid]&&log.venues[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=log.venues[vid][eid];status='deployed';dep++;}});if(status==='free')frD++;}
-      if(log.attendance&&log.attendance[eid]){attnStatus=log.attendance[eid].status||'';}
     } else {
       if(ds===today){var ft2=false;Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid]){var v=getV(vid);detail=v?v.name:'Venue';duty=asgn[vid][eid].duty;status='deployed';dep++;ft2=true;}});if(!ft2&&lvMap[eid]){status='leave';detail='On Leave';lvD++;}else if(!ft2&&offMap[eid]){status='office';detail='Office Duty';offD++;}else if(!ft2)frD++;}
       else frD++;
@@ -4793,17 +4643,11 @@ function _drawSRInner(eid,month,year,emp,ss,sb,btn){
     var dc=status==='deployed'?'#1565c0':status==='leave'?'#c62828':status==='office'?'#e65100':'#ccc';
     var bg=status==='deployed'?'#f0f4ff':status==='leave'?'#fff5f5':status==='office'?'#fff8f0':'#fff';
     var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,day).getDay()];
-    var atnBadge='';
-    if(attnStatus==='present')atnBadge='<span style="font-size:9px;background:#e8f5e9;color:#2e7d32;border-radius:4px;padding:1px 5px;font-weight:700;flex-shrink:0;">P</span>';
-    else if(attnStatus==='absent')atnBadge='<span style="font-size:9px;background:#ffebee;color:#c62828;border-radius:4px;padding:1px 5px;font-weight:700;flex-shrink:0;">A</span>';
-    else if(attnStatus==='uninformed')atnBadge='<span style="font-size:9px;background:#fff3e0;color:#e65100;border-radius:4px;padding:1px 5px;font-weight:700;flex-shrink:0;">U</span>';
-    else if(ds<=today)atnBadge='<span style="font-size:9px;background:#f5f5f5;color:#999;border-radius:4px;padding:1px 5px;font-weight:700;flex-shrink:0;">—</span>';
     rows+='<div style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;margin-bottom:3px;font-size:12px;background:'+bg+';">'+
       '<div style="font-weight:800;color:#1565c0;width:24px;flex-shrink:0;">'+day+'</div>'+
       '<div style="font-size:10px;color:#888;width:28px;flex-shrink:0;">'+dn+'</div>'+
       '<div style="flex:1;font-weight:600;color:'+dc+';">'+esc(detail)+'</div>'+
       (duty?'<div style="font-size:11px;color:#0d47a1;font-weight:700;flex-shrink:0;">'+esc(duty)+'</div>':'')+
-      atnBadge+
       '</div>';
   }
   var c=cc(emp.role);
@@ -4844,23 +4688,7 @@ function populateMARDrops(){
     ROLES.forEach(function(r){var o3=document.createElement('option');o3.value=r;o3.textContent=r;rs.appendChild(o3);});
   }
 }
-g('btnMAR')&&g('btnMAR').addEventListener('click',function(){
-  if(!window.jspdf){toast('PDF library loading...','w');return;}
-  var month=parseInt((g('MAR_MON')||{}).value||'0');
-  var year=parseInt((g('MAR_YEAR')||{}).value||nowIST().getFullYear());
-  var dim=new Date(year,month+1,0).getDate();
-  toast('Loading attendance data...');
-  var fetches=[];
-  for(var d=1;d<=dim;d++){
-    var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    if(!dlog[ds])fetches.push(ds);
-  }
-  var fetchNext=function(i,cb){
-    if(i>=fetches.length){cb();return;}
-    fetchDlogDate(fetches[i],function(){fetchNext(i+1,cb);});
-  };
-  fetchNext(0,function(){makeMonthlyAttnPDF();});
-});
+g('btnMAR')&&g('btnMAR').addEventListener('click',makeMonthlyAttnPDF);
 
 function makeMonthlyAttnPDF(){
   if(!window.jspdf){toast('PDF library loading...','w');return;}
@@ -5261,14 +5089,24 @@ g('btnChgPass').addEventListener('click',function(){
 g('btnLogout').addEventListener('click',doLogout);
 g('btnDownloadBackup')&&g('btnDownloadBackup').addEventListener('click',function(){
   try{
-    // v86: dlog is already in memory from daily docs — no need to read old deleted doc
-    var backup={exportDate:new Date().toISOString(),version:'gavs-v86',staff:staff,venues:venues,roles:ROLES,annualLeave:annualLeave,portalAccess:portalAccess,dlog:dlog,vdlog:vdlog};
-    var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');a.href=url;a.download='GAVS_Backup_'+todayIST()+'.json';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(function(){URL.revokeObjectURL(url);},3000);
-    toast('✅ Full backup downloaded!');
+    db.collection('gavs_data').doc('dlog').get().then(function(dlogDoc){
+      var fullDlog=dlogDoc.exists&&dlogDoc.data()?dlogDoc.data().dlog||dlog:dlog;
+      var backup={exportDate:new Date().toISOString(),version:'gavs-v84',staff:staff,venues:venues,roles:ROLES,annualLeave:annualLeave,portalAccess:portalAccess,dlog:fullDlog,vdlog:vdlog};
+      var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');a.href=url;a.download='GAVS_Backup_'+todayIST()+'.json';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(function(){URL.revokeObjectURL(url);},3000);
+      toast('✅ Full backup downloaded!');
+    }).catch(function(){
+      var backup={exportDate:new Date().toISOString(),version:'gavs-v84',staff:staff,venues:venues,roles:ROLES,annualLeave:annualLeave,portalAccess:portalAccess,dlog:dlog,vdlog:vdlog};
+      var blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');a.href=url;a.download='GAVS_Backup_'+todayIST()+'.json';
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(function(){URL.revokeObjectURL(url);},3000);
+      toast('Backup downloaded!');
+    });
   }catch(err){toast('Backup error: '+err.message,'e');}
 });
 
@@ -5327,21 +5165,7 @@ if(dp2el){dp2el.addEventListener('change',function(){
 
 
 // ── LEAVE & OFFICE HISTORY REPORT ────────────────────────────
-g('btnLOR').addEventListener('click',function(){
-  var fromDate=(g('LOF')||{}).value||'';
-  var toDate=(g('LOT')||{}).value||'';
-  if(!fromDate||!toDate){drawLOHistory();return;}
-  toast('Loading...');
-  var dates=[];
-  var cur=new Date(fromDate);var end=new Date(toDate);
-  while(cur<=end){
-    var ds=cur.toISOString().slice(0,10);
-    if(!dlog[ds]&&ds!==todayIST())dates.push(ds);
-    cur.setDate(cur.getDate()+1);
-  }
-  var fn=function(i){if(i>=dates.length){drawLOHistory();return;}fetchDlogDate(dates[i],function(){fn(i+1);});};
-  fn(0);
-});
+g('btnLOR').addEventListener('click', drawLOHistory);
 g('btnLOPDF').addEventListener('click', makeLOPDF);
 
 function drawLOHistory(){
@@ -5998,7 +5822,7 @@ function makeDailyVendorPDF(){
         doc.text(vendorEntryLabel(entry,vt),mg+4,y+5.5);
         doc.setTextColor(13,71,161);doc.setFont('helvetica','bold');doc.setFontSize(7);
         doc.text('Qty '+(entry.qty||1)+(entry.time?'  '+entry.time:''),pw-mg-3,y+5.5,{align:'right'});
-        if(entry.notes){doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.text('Note: '+entry.notes.slice(0,60),mg+4,y+7);}
+        if(entry.notes){doc.setTextColor(100,100,100);doc.setFont('helvetica','normal');doc.setFontSize(6);doc.text('📝 '+entry.notes.slice(0,60),mg+4,y+7);}
         y+=7.5;
       });
     });
@@ -6307,58 +6131,19 @@ function makeCompanyReportPDF(){
   doc.setTextColor(120,120,120);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.text('Days Used',mg+10,y+6);doc.text('Total Qty Supplied',mg+100,y+6);
   doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(21,101,192);doc.text(String(data.rows.length),mg+10,y+13);
   doc.setTextColor(27,94,32);doc.text(String(data.totalQty),mg+100,y+13);y+=22;
-  // Table rows matching web view style
+  doc.setFillColor(21,101,192);doc.rect(mg,y,pw-mg*2,7,'F');doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont('helvetica','bold');
+  doc.text('Date',mg+2,y+5);doc.text('Venue(s)',mg+35,y+5);y+=8;
   data.rows.forEach(function(row){
     var dn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(year,month,row.day).getDay()];
-    // Calculate total height for this day
-    var dayH=8; // date header
-    row.venues.forEach(function(vu){
-      dayH+=7; // venue name
-      if(vu.entry&&vu.entry.serviceLabel)dayH+=5; // service label
-      dayH+=5; // qty
-      if(vu.entry&&vu.entry.notes)dayH+=5; // notes
-      dayH+=2; // gap
-    });
-    dayH+=2;
-    cp(dayH);
-    // Day header
-    doc.setFillColor(240,244,255);doc.rect(mg,y,pw-mg*2,7,'F');
-    doc.setTextColor(21,101,192);doc.setFontSize(8);doc.setFont('helvetica','bold');
-    doc.text(dn+' '+row.day+' '+MONS[month],mg+3,y+5);
-    y+=8;
-    // Each venue entry
-    row.venues.forEach(function(vu){
-      var entryH=7;
-      if(vu.entry&&vu.entry.serviceLabel)entryH+=5;
-      entryH+=5;
-      if(vu.entry&&vu.entry.notes)entryH+=5;
-      entryH+=2;
-      doc.setFillColor(252,253,255);doc.rect(mg+4,y,pw-mg*2-8,entryH,'F');
-      doc.setDrawColor(230,236,255);doc.rect(mg+4,y,pw-mg*2-8,entryH,'S');
-      var ey=y+5;
-      // Venue name
-      doc.setTextColor(30,30,30);doc.setFontSize(8);doc.setFont('helvetica','bold');
-      var vn=doc.splitTextToSize(vu.venue,pw-mg*2-16)[0];
-      doc.text(vn,mg+7,ey);ey+=5;
-      // Service label
-      if(vu.entry&&vu.entry.serviceLabel){
-        doc.setTextColor(106,27,154);doc.setFontSize(7);doc.setFont('helvetica','normal');
-        doc.text('['+vu.entry.serviceLabel+']',mg+9,ey);ey+=5;
-      }
-      // Qty
-      doc.setTextColor(80,80,80);doc.setFontSize(7);doc.setFont('helvetica','normal');
-      doc.text('Qty: ',mg+9,ey);
-      doc.setFont('helvetica','bold');doc.setTextColor(30,30,30);
-      doc.text(String(vu.qty||1),mg+24,ey);ey+=5;
-      // Notes
-      if(vu.entry&&vu.entry.notes){
-        doc.setTextColor(120,120,120);doc.setFontSize(6.5);doc.setFont('helvetica','normal');
-        var noteLines=doc.splitTextToSize('Note: '+vu.entry.notes,pw-mg*2-20);
-        doc.text(noteLines[0],mg+9,ey);ey+=5;
-      }
-      y+=entryH;
-    });
-    y+=3; // gap between days
+    var str=row.venues.map(function(vu){return vu.venue+' (Qty '+vu.qty+')';}).join(', ');
+    var lines=doc.splitTextToSize(str,pw-mg*2-37);
+    var rh=Math.max(6.5,lines.length*5+2);
+    cp(rh);
+    doc.setFillColor(248,250,255);doc.rect(mg,y,pw-mg*2,rh,'F');doc.setDrawColor(220,220,220);doc.rect(mg,y,pw-mg*2,rh,'S');
+    doc.setTextColor(80,80,80);doc.setFontSize(7);doc.setFont('helvetica','bold');
+    doc.text(dn+' '+String(row.day).padStart(2,'0')+'/'+String(month+1).padStart(2,'0'),mg+2,y+4.5);
+    doc.setTextColor(30,30,30);doc.setFont('helvetica','normal');doc.text(lines,mg+35,y+4.5);
+    y+=rh;
   });
   var pc=doc.internal.getNumberOfPages();
   for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFillColor(230,236,255);doc.rect(0,287,pw,10,'F');doc.setFontSize(7);doc.setTextColor(120,120,120);doc.setFont('helvetica','normal');doc.text('Grover Audio Visual Services | '+company+' | '+MONS[month]+' '+year,mg,293);doc.text('Page '+p+' of '+pc,pw-mg,293,{align:'right'});}
@@ -6602,7 +6387,7 @@ function renderHallsInVenueBox(body,v){
   else if(v.name==='Jaipur'){halls=jaipurHalls;hallAsgn=jaipurAsgn;label='📍 JAIPUR HALLS';}
   if(!halls||!halls.length)return;
 
-  var hasHallData=Object.keys(hallAsgn).some(function(hid){return hallAsgn[hid]&&Object.keys(hallAsgn[hid]).length>0;});
+  var hasHallData=halls.some(function(h){return hallAsgn[h.id]&&Object.keys(hallAsgn[h.id]).length>0;});
   if(!hasHallData)return;
 
   // Divider
@@ -6615,15 +6400,7 @@ function renderHallsInVenueBox(body,v){
   lbl.textContent=label;
   body.appendChild(lbl);
 
-  // Build complete list: halls from ihcHalls + any extra IDs in hallAsgn
-  var hallsToRender=halls.slice();
-  Object.keys(hallAsgn).forEach(function(hid){
-    if(!hallAsgn[hid]||!Object.keys(hallAsgn[hid]).length)return;
-    if(!halls.some(function(h){return h.id===hid;})){
-      hallsToRender.push({id:hid,name:'Hall ('+hid.slice(-4)+')'});
-    }
-  });
-  hallsToRender.forEach(function(h){
+  halls.forEach(function(h){
     var ha=hallAsgn[h.id]||{};
     var entries=Object.keys(ha).map(function(eid){var emp=getS(eid);return emp?{emp:emp,duty:ha[eid].duty}:null;}).filter(Boolean);
     // Cross-check: skip staff already assigned to a DIFFERENT venue in main asgn
@@ -7066,8 +6843,7 @@ function loadFromCloud(callback){
   _dlogReady=false;_mainReady=false;
   // Set up listener for TODAY's daily doc
   _dlogSnapshotUnsub=dailyRef(getD()).onSnapshot(function(dlogDoc){
-    // Only skip hasPendingWrites on initial load — real-time updates from other portals must always process
-    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites&&!_dlogReady)return;
+    if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
     var today=getD();
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var incoming=dlogDoc.data().dlog;
@@ -7097,15 +6873,6 @@ function loadFromCloud(callback){
     // Ignore snapshots that come from our own pending write (hasPendingWrites = local)
     if(doc.metadata&&doc.metadata.hasPendingWrites){
       if(initialLoad){initialLoad=false;applyPinned();DB_LOADED=true;showLoad(false);if(callback){callback();callback=null;}}
-      else if(DB_LOADED&&doc.exists){
-        // Still update portal hall assignments even during our own pending writes
-        var _pd=doc.data();
-        if(_pd.ihcAsgn)ihcAsgn=_pd.ihcAsgn;
-        if(_pd.jaipurAsgn)jaipurAsgn=_pd.jaipurAsgn;
-        if(_pd.ihcHalls)ihcHalls=_pd.ihcHalls;
-        if(_pd.jaipurHalls)jaipurHalls=_pd.jaipurHalls;
-        drawVenueGrid();
-      }
       return;
     }
     if(doc.exists){

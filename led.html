@@ -200,8 +200,17 @@ var _fbUnsub2=null,_dlogUnsub=null;
 function dailyDocId(ds){return 'dlog_'+(ds||getD()).replace(/-/g,'_');}
 function dailyRef(ds){return db.collection('gavs_data').doc(dailyDocId(ds));}
 
-function subscribePortalDlog(date){
-  if(_dlogUnsub){try{_dlogUnsub();}catch(e){}}_dlogUnsub=null;
+function _doPortalSave(d){
+  var log=dlog[d]||{};
+  var sp={dlog:{}};
+  sp.dlog[d]={venues:log.venues||{},leave:log.leave||[],office:log.office||[],godown:log.godown||[]};
+  dailyRef(d).set(sp,{merge:true}).then(function(){sv('saved');}).catch(function(e){
+    console.warn('Portal save error:',e);sv('error');
+  });
+  db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
+}
+
+function subscribePortalDlog(date){  if(_dlogUnsub){try{_dlogUnsub();}catch(e){}}_dlogUnsub=null;
   _portalDlogLoaded=false;
   _dlogUnsub=dailyRef(date).onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
@@ -608,7 +617,7 @@ function wireVenueSearch(){
         if(dlog[d2].manualVids.indexOf(v.id)<0)dlog[d2].manualVids.push(v.id);
         // Write IMMEDIATELY to Firebase (not debounced)
         var imPayload={dlog:{}};imPayload.dlog[d2]=dlog[d2];
-        var _fp=new firebase.firestore.FieldPath('dlog',d2,'venues');dailyRef(d2).update(_fp,(dlog[d2]||{}).venues||{}).catch(function(){dailyRef(d2).set(imPayload,{merge:true});});
+        dailyRef(d2).set(imPayload,{merge:true});
         inp.value='';dd.style.display='none';
         drawGrid();save();
       });
@@ -1095,13 +1104,10 @@ function savePortalAttendance(d,attn){
   _savePortalAtnWithRetry(d,attn,0);
 }
 function _savePortalAtnWithRetry(d,attn,attempt){
-  var fp=new firebase.firestore.FieldPath('dlog',d,'attendance');
-  dailyRef(d).update(fp,attn).catch(function(){
-    var sp={dlog:{}};sp.dlog[d]={attendance:attn};
-    dailyRef(d).set(sp,{merge:true}).catch(function(e){
-      console.warn('Portal attendance save error (attempt '+attempt+'):',e.message||e);
-      if(attempt<4)setTimeout(function(){_savePortalAtnWithRetry(d,attn,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
-    });
+  var sp={dlog:{}};sp.dlog[d]={attendance:attn};
+  dailyRef(d).set(sp,{merge:true}).catch(function(e){
+    console.warn('Portal attendance save error (attempt '+attempt+'):',e.message||e);
+    if(attempt<4)setTimeout(function(){_savePortalAtnWithRetry(d,attn,attempt+1);},Math.min(2000*Math.pow(2,attempt),15000));
   });
 }
 function pAtnBuildDutyMaps(d){

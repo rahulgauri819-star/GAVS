@@ -146,6 +146,21 @@ function sm(html){g('MB').innerHTML=html;g('MO').style.display='flex';}
 function cm(){g('MO').style.display='none';}
 function sv(state){var l=g('SL');if(!l)return;if(state==='saving')l.textContent='☁️ Saving...';else if(state==='saved'){l.textContent='✅ Saved';setTimeout(function(){if(l)l.textContent='';},2000);}else if(state==='error')l.textContent='⚠️ Failed';}
 g('MO').addEventListener('click',function(ev){if(ev.target===this)cm();});
+var _PORTAL_SESSION_KEY='gavs_session_fab';
+(function(){
+  try{
+    var s=localStorage.getItem(_PORTAL_SESSION_KEY);
+    if(!s)return;
+    var sess=JSON.parse(s);
+    if(!sess||!sess.u||!sess.p)return;
+    var ok=(sess.u===DUSER&&sess.p===DPASS)||(AUSER&&sess.u===AUSER&&sess.p===APASS);
+    if(ok){
+      g('LS').style.display='none';g('APP').style.display='flex';
+      g('DP').value=nd(todayIST());_lastDate=g('DP').value;
+      subscribePortalDlog(_lastDate);loadData();
+    } else {localStorage.removeItem(_PORTAL_SESSION_KEY);}
+  }catch(e){}
+})();
 g('LBTN').addEventListener('click',doLogin);
 g('LP').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 
@@ -166,6 +181,7 @@ function doLogin(){
   var ok=(u===DUSER&&p===DPASS)||(AUSER&&u===AUSER&&p===APASS);
   if(!ok){g('LERR').style.display='block';g('LP').value='';return;}
   g('LS').style.display='none';g('APP').style.display='flex';
+  try{localStorage.setItem(_PORTAL_SESSION_KEY,JSON.stringify({u:u,p:p}));}catch(e){}
   g('DP').value=nd(todayIST());
   _lastDate=g('DP').value;
   subscribePortalDlog(_lastDate);
@@ -548,17 +564,25 @@ function drawDZ(){
           }
           var rm=document.createElement('button');rm.textContent='✕';
           rm.style.cssText='background:none;border:none;color:'+col+';font-size:10px;cursor:pointer;padding:0;flex-shrink:0;';
-          rm.addEventListener('click',(function(eid){return function(){
-            delete map[eid];
-            var hasAL=annualLeave.find(function(x){return x.id===eid;});
-            if(hasAL&&map===lvMap){
-              var excDate=_lastDate||getD();
-              if(!dlog[excDate])dlog[excDate]={};
-              if(!dlog[excDate].leaveExclude)dlog[excDate].leaveExclude={};
-              dlog[excDate].leaveExclude[eid]=true;
-            }
-            drawDZ();drawSP();drawGrid();updateStats();save();
-          };})(a.emp.id));
+          rm.addEventListener('click',(function(eid,ename,m){
+            return function(){
+              sm('<div class="mtt" style="color:#c62828;">Remove Staff?</div>'
+                +'<p style="text-align:center;margin-bottom:14px;">Remove <strong>'+esc(ename)+'</strong>?</p>'
+                +'<button class="mbtn p" id="MY">Yes, Remove</button><button class="mbtn c" id="MN">Cancel</button>');
+              g('MY').onclick=function(){
+                delete m[eid];
+                var hasAL=annualLeave.find(function(x){return x.id===eid;});
+                if(hasAL&&m===lvMap){
+                  var excDate=_lastDate||getD();
+                  if(!dlog[excDate])dlog[excDate]={};
+                  if(!dlog[excDate].leaveExclude)dlog[excDate].leaveExclude={};
+                  dlog[excDate].leaveExclude[eid]=true;
+                }
+                cm();drawDZ();drawSP();drawGrid();updateStats();save();
+              };
+              g('MN').onclick=cm;
+            };
+          })(a.emp.id,a.emp.name,map));
           cell.appendChild(rm);grpGrid.appendChild(cell);
         });
         body.appendChild(grpGrid);
@@ -686,7 +710,50 @@ function drawGrid(){
   addTile.innerHTML='<div style="font-size:28px;margin-bottom:8px;">+</div><div style="font-size:12px;font-weight:700;">Add New Venue</div><div style="font-size:10px;margin-top:4px;opacity:0.7;">Click to search</div>';
   addTile.addEventListener('mouseenter',function(){this.style.borderColor='#5c6bc0';this.style.color='#5c6bc0';this.style.background='#e8eaf6';});
   addTile.addEventListener('mouseleave',function(){this.style.borderColor='#c5cae9';this.style.color='#9fa8da';this.style.background='';});
-  addTile.addEventListener('click',function(){var s=g('VSRCH');if(s){s.focus();s.scrollIntoView({behavior:'smooth',block:'center'});}});
+  addTile.addEventListener('click',function(){
+    sm('<div class="mtt">🏨 Add Venue</div>'
+      +'<p style="font-size:12px;color:#555;text-align:center;margin-bottom:10px;">Search or create venue</p>'
+      +'<input id="av-srch" class="inp" placeholder="Type venue name..." style="margin-bottom:8px;"/>'
+      +'<div id="av-list" style="max-height:200px;overflow-y:auto;margin-bottom:10px;"></div>'
+      +'<button class="mbtn p" id="av-new" style="display:none;">+ Add as New Venue</button>'
+      +'<button class="mbtn c" id="MN">Cancel</button>');
+    g('MN').onclick=cm;
+    var avInp=g('av-srch'),avList=g('av-list'),avNew=g('av-new');
+    function addVenueToGrid(vid){
+      if(activeVids.indexOf(vid)<0)activeVids.push(vid);
+      if(!asgn[vid])asgn[vid]={};
+      var d2=_lastDate||getD();
+      if(!dlog[d2])dlog[d2]={};
+      if(!dlog[d2].manualVids)dlog[d2].manualVids=[];
+      if(dlog[d2].manualVids.indexOf(vid)<0)dlog[d2].manualVids.push(vid);
+      cm();drawGrid();save();
+    }
+    avInp.addEventListener('input',function(){
+      var q=this.value.trim(),ql=q.toLowerCase();
+      avList.innerHTML='';
+      if(!q){avNew.style.display='none';return;}
+      var matches=allV.filter(function(v){return v.name.toLowerCase().indexOf(ql)>=0&&activeVids.indexOf(v.id)<0;}).slice(0,8);
+      matches.forEach(function(v){
+        var it=document.createElement('div');
+        it.style.cssText='padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f0f0f0;border-radius:6px;';
+        it.textContent=v.name;
+        it.addEventListener('mouseenter',function(){this.style.background='#e8eaf6';});
+        it.addEventListener('mouseleave',function(){this.style.background='';});
+        it.addEventListener('click',function(){addVenueToGrid(v.id);});
+        avList.appendChild(it);
+      });
+      var exact=allV.some(function(v){return v.name.toLowerCase()===ql;});
+      avNew.style.display=(!exact)?'block':'none';
+      avNew.textContent='+ Add "'+q+'" as New Venue';
+      avNew.onclick=function(){
+        var newId='v_'+Date.now();
+        allV.push({id:newId,name:q,address:'',locUrl:''});
+        db.collection('gavs_data').doc('main').update({venues:allV}).catch(function(){});
+        addVenueToGrid(newId);
+      };
+    });
+    setTimeout(function(){if(avInp)avInp.focus();},100);
+  });
   el.appendChild(addTile);
 }
 

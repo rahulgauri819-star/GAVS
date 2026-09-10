@@ -319,10 +319,21 @@ function subscribePortalDlog(date){
 
 function _doPortalSave(d){
   var log=dlog[d]||{};
-  var sp={dlog:{}};
-  sp.dlog[d]={venues:log.venues||{},leave:log.leave||[],office:log.office||[],godown:log.godown||[]};
-  dailyRef(d).set(sp,{merge:true}).then(function(){sv('saved');}).catch(function(e){
-    console.warn('Portal save error:',e);sv('error');
+  var docId=dailyDocId(d);
+  // Use update() to replace the full venues/leave/office/godown maps
+  // This correctly removes deleted entries (merge:true would not delete)
+  var updateData={};
+  updateData['dlog.'+d+'.venues']=log.venues||{};
+  updateData['dlog.'+d+'.leave']=log.leave||[];
+  updateData['dlog.'+d+'.office']=log.office||[];
+  updateData['dlog.'+d+'.godown']=log.godown||[];
+  dailyRef(d).update(updateData).then(function(){sv('saved');}).catch(function(){
+    // Doc doesn't exist yet - create it
+    var sp={dlog:{}};
+    sp.dlog[d]={venues:log.venues||{},leave:log.leave||[],office:log.office||[],godown:log.godown||[]};
+    dailyRef(d).set(sp,{merge:true}).then(function(){sv('saved');}).catch(function(e){
+      console.warn('Portal save error:',e);sv('error');
+    });
   });
   db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
 }

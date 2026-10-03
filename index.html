@@ -2495,9 +2495,14 @@ function showBulkVendorTime(vid){
 
 
 function copyVenueToFutureDates(vid,vname,fromDate,toDate){
+  // ── Snapshot the source data ONCE at call time (Bug 5 fix: capture now,
+  //    not inside async callbacks where _lastLoadedDate might have shifted)
   var fromLog=dlog[fromDate]||{};
   var fromVenue=(fromLog.venues&&fromLog.venues[vid])||{};
+  var fromCamTypes=(fromLog.camTypes&&fromLog.camTypes[vid])||{}; // Bug 4 fix: copy camTypes too
   if(!Object.keys(fromVenue).length){toast('No staff assigned to '+vname+' on this date','w');return;}
+
+  // Build date list: fromDate+1 .. toDate inclusive
   var dates=[];
   var p=fromDate.split('-');
   var cur=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+1);
@@ -2508,24 +2513,81 @@ function copyVenueToFutureDates(vid,vname,fromDate,toDate){
     cur.setDate(cur.getDate()+1);
   }
   if(!dates.length){toast('No dates in range','w');return;}
-  var done=0,total=dates.length;
-  toast('Copying '+vname+' to '+total+' dates...');
-  dates.forEach(function(d){
-    function apply(){
-      if(!dlog[d])dlog[d]={};
-      if(!dlog[d].venues)dlog[d].venues={};
-      if(!dlog[d].manualVids)dlog[d].manualVids=[];
-      Object.keys(fromVenue).forEach(function(eid){
-        if(!dlog[d].venues[vid])dlog[d].venues[vid]={};
-        dlog[d].venues[vid][eid]=fromVenue[eid];
-      });
-      if(dlog[d].manualVids.indexOf(vid)<0)dlog[d].manualVids.push(vid);
-      var sp={dlog:{}};sp.dlog[d]={venues:dlog[d].venues,manualVids:dlog[d].manualVids};
-      dailyRef(d).set(sp,{merge:true});
-      done++;if(done===total)toast('✅ Copied '+vname+' to '+total+' dates!');
+
+  toast('Copying '+vname+' to '+dates.length+' dates...');
+
+  // ── Process dates SEQUENTIALLY (Bug 1 fix: no parallel writes)
+  // Each date is fully fetched-then-written before the next starts.
+  var idx=0;
+  var successCount=0;
+  function processNext(){
+    if(idx>=dates.length){
+      toast('✅ Copied '+vname+' to '+successCount+' date'+(successCount===1?'':'s')+'!');
+      return;
     }
-    if(dlog[d]){apply();}else{fetchDlogDate(d,apply);}
-  });
+    var d=dates[idx++];
+    // Bug 3 fix: always force-fetch from Firebase so we never overwrite
+    // existing data that was loaded as dlog[d]={} in memory.
+    fetchDlogDate(d,function(){
+      applyThenSave(d);
+    },true /*forceRefresh*/);
+  }
+
+  function applyThenSave(d){
+    // Bug 2 fix: preserve ALL existing fields on the target date.
+    // Only touch venues[vid] and manualVids — leave everything else intact.
+    if(!dlog[d])dlog[d]={};
+    if(!dlog[d].venues)dlog[d].venues={};
+    if(!dlog[d].camTypes)dlog[d].camTypes={};
+    if(!dlog[d].manualVids)dlog[d].manualVids=[];
+
+    // Merge this venue's staff into target date (existing other-venue staff kept)
+    if(!dlog[d].venues[vid])dlog[d].venues[vid]={};
+    Object.keys(fromVenue).forEach(function(eid){
+      dlog[d].venues[vid][eid]=fromVenue[eid];
+    });
+
+    // Bug 4 fix: copy camTypes for this venue
+    if(Object.keys(fromCamTypes).length){
+      if(!dlog[d].camTypes[vid])dlog[d].camTypes[vid]={};
+      Object.keys(fromCamTypes).forEach(function(eid){
+        dlog[d].camTypes[vid][eid]=fromCamTypes[eid];
+      });
+    }
+
+    // Add to manualVids so venue stays visible on target date
+    if(dlog[d].manualVids.indexOf(vid)<0)dlog[d].manualVids.push(vid);
+
+    // Build a COMPLETE payload for this date — all fields preserved (Bug 2 fix)
+    // Use update() with dot-notation keys so only venues[vid] and camTypes[vid]
+    // are touched in Firebase; all other fields (leave, office, godown, etc.) untouched.
+    var updatePayload={};
+    updatePayload['dlog.'+d+'.venues.'+vid]=dlog[d].venues[vid];
+    if(Object.keys(fromCamTypes).length){
+      updatePayload['dlog.'+d+'.camTypes.'+vid]=dlog[d].camTypes[vid];
+    }
+    updatePayload['dlog.'+d+'.manualVids']=dlog[d].manualVids;
+
+    dailyRef(d).update(updatePayload).then(function(){
+      successCount++;
+      processNext(); // next date only after this one is written
+    }).catch(function(){
+      // Doc doesn't exist yet — create it with set+merge, but still only write what we need
+      var sp={dlog:{}};
+      sp.dlog[d]={venues:{},camTypes:{},manualVids:dlog[d].manualVids};
+      sp.dlog[d].venues[vid]=dlog[d].venues[vid];
+      if(Object.keys(fromCamTypes).length)sp.dlog[d].camTypes[vid]=dlog[d].camTypes[vid];
+      dailyRef(d).set(sp,{merge:true}).then(function(){
+        successCount++;
+        processNext();
+      }).catch(function(e){
+        console.warn('Copy failed for date '+d+':',e);
+        processNext(); // skip and continue with remaining dates
+      });
+    });
+  }
+
+  processNext(); // kick off the sequential chain
 }
 
 function showCopyPrevDay(vid){
@@ -6866,12 +6928,14 @@ function doSaveWithRetry(payload,attempt){
 
 function dailyDocId(dateStr){return 'dlog_'+(dateStr||getD()).replace(/-/g,'_');}
 function dailyRef(dateStr){return db.collection('gavs_data').doc(dailyDocId(dateStr));}
-function fetchDlogDate(dateStr,cb){
-  if(dlog[dateStr]!==undefined){if(cb)cb();return;}
+function fetchDlogDate(dateStr,cb,forceRefresh){
+  // forceRefresh=true bypasses memory cache — used by copy operations
+  // to avoid stale dlog[d]={} overwriting real Firebase data (Bug 3 fix)
+  if(!forceRefresh&&dlog[dateStr]!==undefined){if(cb)cb();return;}
   dailyRef(dateStr).get().then(function(doc){
     dlog[dateStr]=(doc.exists&&doc.data()&&doc.data().dlog&&doc.data().dlog[dateStr])?doc.data().dlog[dateStr]:{};
     if(cb)cb();
-  }).catch(function(e){console.warn('fetchDlogDate error:',e.message||e);dlog[dateStr]={};if(cb)cb();});
+  }).catch(function(e){console.warn('fetchDlogDate error:',e.message||e);if(dlog[dateStr]===undefined)dlog[dateStr]={};if(cb)cb();});
 }
 function saveDlogSeparate(attempt){
   if(attempt>5)return;

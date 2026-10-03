@@ -873,6 +873,50 @@ function makeBox(v,msids,mvtids){
   return wrap;
 }
 
+
+// ── CROSS-PORTAL DUPLICATE CHECK ──────────────────────────────
+// Returns venue name if employee is assigned to a different venue
+// by ANY portal (reads full dlog[date].venues across all entries)
+function getCrossPortalConflict(eid, date) {
+  var log = dlog[date];
+  if (!log || !log.venues) return null;
+  var myVids = new Set(Object.keys(asgn)); // venues this portal manages
+  var myEids = new Set(myS().map(function(e) { return e.id; }));
+  if (!myEids.has(eid)) return null; // not our staff, skip
+  // Scan ALL venue entries in the daily doc
+  var found = null;
+  Object.keys(log.venues).forEach(function(vid) {
+    if (log.venues[vid] && log.venues[vid][eid] !== undefined) {
+      var vObj = allV.find(function(v) { return v.id === vid; });
+      if (vObj) found = vObj.name;
+    }
+  });
+  return found; // null = no conflict, string = name of conflicting venue
+}
+
+function assignWithConflictCheck(eid, targetVid, onConfirm) {
+  var d = _lastDate || getD();
+  var conflict = getCrossPortalConflict(eid, d);
+  var emp = gS(eid);
+  var targetVname = (allV.find(function(v){return v.id===targetVid;})||{}).name || '';
+  // If already in asgn (same portal), no warning needed — it's just a move
+  var alreadyHere = false;
+  Object.keys(asgn).forEach(function(vid){ if(asgn[vid] && asgn[vid][eid]) alreadyHere = true; });
+  if (conflict && !alreadyHere) {
+    sm('<div class="mtt" style="color:#c62828;">⚠️ Duplicate Deployment</div>' +
+      '<div style="font-size:13px;font-weight:700;text-align:center;margin:10px 0 4px;">' + esc(emp ? emp.name : eid) + '</div>' +
+      '<div style="font-size:12px;color:#555;text-align:center;margin-bottom:14px;">' +
+      'Already assigned to <b>' + esc(conflict) + '</b> today.<br>Move to <b>' + esc(targetVname) + '</b> anyway?' +
+      '</div>' +
+      '<button class="mbtn p" id="MY" style="background:#c62828;border-color:#c62828;">Move Anyway</button>' +
+      '<button class="mbtn c" id="MN">Cancel</button>');
+    document.getElementById('MY').onclick = function() { cm(); onConfirm(); };
+    document.getElementById('MN').onclick = cm;
+  } else {
+    onConfirm();
+  }
+}
+
 function setupDrop(box,v,msids,mvtids){
   box.addEventListener('dragover',function(ev){ev.preventDefault();box.classList.add('drag-over');});
   box.addEventListener('dragleave',function(){box.classList.remove('drag-over');});
@@ -883,13 +927,15 @@ function setupDrop(box,v,msids,mvtids){
     var eid=ev.dataTransfer.getData('text/plain');
     if(eid&&msids.has(eid)){
       var emp=gS(eid);if(!emp)return;
-      Object.keys(asgn).forEach(function(vid2){if(asgn[vid2])delete asgn[vid2][eid];});
-      delete lvMap[eid];delete offMap[eid];delete gdnMap[eid];
-      if(!asgn[v.id])asgn[v.id]={};
-      if(activeVids.indexOf(v.id)<0)activeVids.push(v.id);
-      asgn[v.id][eid]={emp:emp,duty:emp.fixedDuty||'6:00 AM'};
-      if(navigator.vibrate)navigator.vibrate([20,10,20]);
-      drawGrid();drawSP();drawDZ();updateStats();save();
+      assignWithConflictCheck(eid,v.id,function(){
+        Object.keys(asgn).forEach(function(vid2){if(asgn[vid2])delete asgn[vid2][eid];});
+        delete lvMap[eid];delete offMap[eid];delete gdnMap[eid];
+        if(!asgn[v.id])asgn[v.id]={};
+        if(activeVids.indexOf(v.id)<0)activeVids.push(v.id);
+        asgn[v.id][eid]={emp:emp,duty:emp.fixedDuty||'6:00 AM'};
+        if(navigator.vibrate)navigator.vibrate([20,10,20]);
+        drawGrid();drawSP();drawDZ();updateStats();save();
+      });
     }
   });
 }
@@ -1097,11 +1143,13 @@ document.addEventListener('touchend',function(ev){
         var vid=null;var vname=vb.querySelector('.vbn');
         if(vname)allV.forEach(function(v){if(v.name===vname.textContent)vid=v.id;});
         if(vid){
-          Object.keys(asgn).forEach(function(vid2){if(asgn[vid2])delete asgn[vid2][tEid];});
-          delete lvMap[tEid];delete offMap[tEid];delete gdnMap[tEid];
-          if(!asgn[vid])asgn[vid]={};if(activeVids.indexOf(vid)<0)activeVids.push(vid);
-          asgn[vid][tEid]={emp:emp,duty:emp.fixedDuty||'6:00 AM'};
-          drawGrid();drawSP();drawDZ();updateStats();save();if(navigator.vibrate)navigator.vibrate([20,10,20]);
+          assignWithConflictCheck(tEid,vid,function(){
+            Object.keys(asgn).forEach(function(vid2){if(asgn[vid2])delete asgn[vid2][tEid];});
+            delete lvMap[tEid];delete offMap[tEid];delete gdnMap[tEid];
+            if(!asgn[vid])asgn[vid]={};if(activeVids.indexOf(vid)<0)activeVids.push(vid);
+            asgn[vid][tEid]={emp:emp,duty:emp.fixedDuty||'6:00 AM'};
+            drawGrid();drawSP();drawDZ();updateStats();save();if(navigator.vibrate)navigator.vibrate([20,10,20]);
+          });
         }
       }
     }

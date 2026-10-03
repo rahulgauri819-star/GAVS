@@ -655,15 +655,59 @@ function makeHallBox(h){
     var eid=ev.dataTransfer.getData('text/plain');
     if(!eid)return;
     var emp=getS(eid);if(!emp)return;
-    // Remove from any other hall first
-    Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
-    if(!asgn[h.id])asgn[h.id]={};
-    asgn[h.id][eid]={duty:emp.fixedDuty||'6:00 AM',isFixed:false}; // never pin to sub-halls
-    if(navigator.vibrate)navigator.vibrate([20,10,20]);
-    drawHalls();drawStaffPanel();saveCloud();
+    assignWithConflictCheck(eid,h.id,h.name,function(){
+      Object.keys(asgn).forEach(function(hid){if(asgn[hid]&&asgn[hid][eid])delete asgn[hid][eid];});
+      if(!asgn[h.id])asgn[h.id]={};
+      asgn[h.id][eid]={duty:emp.fixedDuty||'6:00 AM',isFixed:false};
+      if(navigator.vibrate)navigator.vibrate([20,10,20]);
+      drawHalls();drawStaffPanel();saveCloud();
+    });
   });
 
   return box;
+}
+
+
+// ── CROSS-PORTAL DUPLICATE CHECK (IHC) ───────────────────────
+// Checks if employee is in any venue in the shared dlog (from main app/other portals)
+function getCrossPortalConflict(eid) {
+  var date = getD();
+  var mainLog = (window.dlog_main || {})[date] || {};
+  if (!mainLog.venues) return null;
+  var found = null;
+  Object.keys(mainLog.venues).forEach(function(vid) {
+    if (mainLog.venues[vid] && mainLog.venues[vid][eid] !== undefined) {
+      var vObj = venues.find(function(v) { return v.id === vid; });
+      if (vObj) found = vObj.name;
+    }
+  });
+  return found;
+}
+
+function assignWithConflictCheck(eid, targetHallId, targetHallName, onConfirm) {
+  var conflict = getCrossPortalConflict(eid);
+  var emp = getS(eid);
+  // If already in a hall here, it's just a move within IHC — no cross-portal warning needed
+  var alreadyHere = false;
+  Object.keys(asgn).forEach(function(hid){ if(asgn[hid] && asgn[hid][eid]) alreadyHere = true; });
+  if (conflict && !alreadyHere) {
+    var modal = document.getElementById('modal');
+    var box = document.getElementById('modal-box');
+    if (!modal || !box) { onConfirm(); return; }
+    box.innerHTML =
+      '<div style="font-size:16px;font-weight:800;text-align:center;color:#c62828;margin-bottom:8px;">⚠️ Duplicate Deployment</div>' +
+      '<div style="font-size:13px;font-weight:700;text-align:center;margin:10px 0 4px;">' + esc(emp ? emp.name : eid) + '</div>' +
+      '<div style="font-size:12px;color:#555;text-align:center;margin-bottom:14px;">' +
+      'Already assigned to <b>' + esc(conflict) + '</b> today.<br>Move to <b>' + esc(targetHallName) + '</b> anyway?' +
+      '</div>' +
+      '<button id="m-conf" style="width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;background:#c62828;color:#fff;border:none;margin-bottom:6px;">Move Anyway</button>' +
+      '<button id="m-cancel" style="width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;background:#f5f5f5;color:#555;border:1px solid #e3eaff;">Cancel</button>';
+    modal.style.display = 'flex';
+    document.getElementById('m-conf').onclick = function() { modal.style.display='none'; onConfirm(); };
+    document.getElementById('m-cancel').onclick = function() { modal.style.display='none'; };
+  } else {
+    onConfirm();
+  }
 }
 
 // ── ON LEAVE ZONE ────────────────────────────────────────────

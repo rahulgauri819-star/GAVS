@@ -180,6 +180,8 @@ var ROLES_LIST=[];
 var DB_LOADED=false;
 var SAVE_TIMER=null;
 var SAVE_PENDING=0;
+// ── DIRTY / IN-FLIGHT FLAGS (fix: assignments disappearing) ──
+var _localDirty=false,_saveInFlight=false;
 var annualLeave=[];
 var _roleFilter='';
 var _atnView=false,_ihcAtnDate='',_ihcAtnCollapsed={};

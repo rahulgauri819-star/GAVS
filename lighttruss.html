@@ -129,6 +129,12 @@ var asgn={},vAsgn={},lvMap={},offMap={},gdnMap={};
 var dlog={},vdlog={},annualLeave=[];
 var activeVids=[],_dateComments={},_dateVip={};
 var _collapsed={},_lastDate='',_roleFilter='',_multiView=false;
+// ── DIRTY / IN-FLIGHT FLAGS (fix: assignments disappearing) ──────────────
+// _localDirty: user has made changes not yet confirmed by Firebase
+// _saveInFlight: a write is currently in progress
+// While either is true, incoming snapshots NEVER call loadDateData()
+// so Firebase remote updates can never overwrite unsaved local work.
+var _localDirty=false,_saveInFlight=false;
 
 function g(id){return document.getElementById(id);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -192,7 +198,9 @@ function loadData(){
     if(d.portalAccess&&d.portalAccess[PID])myAccess=d.portalAccess[PID];
     if(d.portalPasswords&&d.portalPasswords[PID]){var _pw2=d.portalPasswords[PID];APASS=(typeof _pw2==='object'?_pw2.password:_pw2)||DPASS;AUSER=(typeof _pw2==='object'?_pw2.username:DUSER)||DUSER;}
     DBL=true;
-    if(_portalDlogLoaded){loadDateData(_lastDate||getD());}
+    // ── DIRTY GUARD: if user has unsaved changes, only refresh master lists
+    // (staff/venues/roles) but never call loadDateData which resets asgn ──
+    if(_portalDlogLoaded&&!_localDirty&&!_saveInFlight){loadDateData(_lastDate||getD());}
     if(firstLoad){firstLoad=false;buildTabs();}else{drawSP();drawDZ();drawGrid();updateStats();}
     sv('saved');
   },function(e){console.error(e);sv('error');});
@@ -308,38 +316,61 @@ function subscribePortalDlog(date){
   _portalDlogLoaded=false;
   _dlogUnsub=dailyRef(date).onSnapshot(function(dlogDoc){
     if(dlogDoc.metadata&&dlogDoc.metadata.hasPendingWrites)return;
+    // ── DIRTY GUARD: never overwrite local unsaved/in-flight changes ──────
+    // Merge Firebase data into dlog cache, but skip loadDateData entirely
+    // if the user has made changes we haven't confirmed yet.
     if(dlogDoc.exists&&dlogDoc.data()&&dlogDoc.data().dlog){
       var inc=dlogDoc.data().dlog;
-      Object.keys(inc).forEach(function(dk){dlog[dk]=inc[dk];});
+      Object.keys(inc).forEach(function(dk){
+        // Only update dates OTHER than the current one when dirty,
+        // so we never stomp unsaved asgn/lvMap/offMap/gdnMap in memory.
+        if((_localDirty||_saveInFlight)&&dk===(_lastDate||getD()))return;
+        dlog[dk]=inc[dk];
+      });
     }
     _portalDlogLoaded=true;
-    if(DBL){loadDateData(_lastDate||getD());drawDZ();drawGrid();drawSP();updateStats();}
+    // Only re-render if no local dirty state — otherwise keep showing user's work
+    if(DBL&&!_localDirty&&!_saveInFlight){
+      loadDateData(_lastDate||getD());drawDZ();drawGrid();drawSP();updateStats();
+    }
   },function(e){console.warn('Portal dlog error:',e);_portalDlogLoaded=true;});
 }
 
 function _doPortalSave(d){
   var log=dlog[d]||{};
-  var docId=dailyDocId(d);
-  // Use update() to replace the full venues/leave/office/godown maps
-  // This correctly removes deleted entries (merge:true would not delete)
+  _saveInFlight=true; // block snapshots from overwriting while write in flight
   var updateData={};
   updateData['dlog.'+d+'.venues']=log.venues||{};
   updateData['dlog.'+d+'.leave']=log.leave||[];
   updateData['dlog.'+d+'.office']=log.office||[];
   updateData['dlog.'+d+'.godown']=log.godown||[];
-  dailyRef(d).update(updateData).then(function(){sv('saved');}).catch(function(){
-    // Doc doesn't exist yet - create it
+  function onSaveOK(){
+    sv('saved');
+    _localDirty=false;   // confirmed by Firebase — safe to accept snapshots again
+    _saveInFlight=false;
+  }
+  function onSaveFail(e){
+    console.warn('Portal save error:',e);
+    sv('error');
+    _saveInFlight=false;
+    // Keep _localDirty=true so snapshots still can't wipe unsaved work
+    // Retry once after 2s
+    setTimeout(function(){
+      if(_localDirty){sv('saving');saveLog();_doPortalSave(d);}
+    },2000);
+  }
+  dailyRef(d).update(updateData).then(onSaveOK).catch(function(){
     var sp={dlog:{}};
     sp.dlog[d]={venues:log.venues||{},leave:log.leave||[],office:log.office||[],godown:log.godown||[]};
-    dailyRef(d).set(sp,{merge:true}).then(function(){sv('saved');}).catch(function(e){
-      console.warn('Portal save error:',e);sv('error');
-    });
+    dailyRef(d).set(sp,{merge:true}).then(onSaveOK).catch(onSaveFail);
   });
   db.collection('gavs_data').doc('main').update({vdlog:vdlog}).catch(function(){});
 }
 
 function save(){
-  if(!DBL)return;sv('saving');clearTimeout(ST);
+  if(!DBL)return;
+  _localDirty=true; // mark immediately — blocks snapshots from wiping asgn
+  sv('saving');clearTimeout(ST);
   ST=setTimeout(function(){
     var d=_lastDate||getD();
     if(!_portalDlogLoaded||!dlog[d]){
@@ -368,6 +399,8 @@ g('BMULTI')&&g('BMULTI').addEventListener('click',function(){
 });
 g('SRCH').addEventListener('input',function(){if(curTab==='staff')drawSP();else drawVP();});
 g('DP').addEventListener('change',function(){
+  // Reset dirty flags when user intentionally navigates to a different date
+  _localDirty=false;_saveInFlight=false;
   _lastDate=getD();
   subscribePortalDlog(_lastDate);
   loadDateData(getD());drawSP();drawDZ();drawGrid();updateStats();

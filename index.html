@@ -1122,6 +1122,9 @@ var _lastLoadedDate=''; // tracks the date whose data is currently in asgn/lvMap
 // Hydrate the live working set (asgn/lvMap/offMap/vendorAsgn) from a date's dlog entry.
 // This is the SINGLE source of truth for loading a date. Always clears first.
 function loadLiveFromDlog(date){
+  // When called for a new date (navigation), reset dirty flags so
+  // the new date always loads fresh from Firebase
+  if(date!==_lastLoadedDate&&_lastLoadedDate!==''){_mainDirty=false;_mainSaveInFlight=false;}
   asgn={};lvMap={};offMap={};gdnMap={};vendorAsgn={};
   activeVids=[];
   var log=dlog[date];
@@ -6837,6 +6840,7 @@ window.addEventListener('online',function(){
 
 function saveCloud(){
   if(!DB_LOADED)return;
+  _mainDirty=true; // mark immediately — blocks dlog snapshot from reloading asgn
   SAVE_PENDING++;
   showSaveIndicator('saving');
   clearTimeout(SAVE_DEBOUNCE_TIMER);
@@ -6895,19 +6899,25 @@ function doSaveWithRetry(payload,attempt){
   SAVE_PENDING++;
   showSaveIndicator('saving');
   _backupLocal(payload);
+  _mainSaveInFlight=true; // block dlog snapshot from reloading during write
   db.collection('gavs_data').doc('main').set(payload).then(function(){
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
     LAST_SAVE_FAILED=false;
     _offlineQueue=null;
     _firstFailTime=null; // reset on success
     _clearBackupLocal();
-    showSaveIndicator('saved');
     // Write dlog to separate document after main save succeeds
     saveDlogSeparate(0);
+    // Only clear dirty flags AFTER dlog is also written — saveDlogSeparate
+    // is async so we clear after a short delay to cover its round-trip.
+    // The dlog snapshot will then be safe to reload from.
+    setTimeout(function(){_mainDirty=false;_mainSaveInFlight=false;},1500);
+    showSaveIndicator('saved');
   }).catch(function(e){
     console.warn('Save error (attempt '+attempt+'):',e.message||e);
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
     LAST_SAVE_FAILED=true;
+    _mainSaveInFlight=false; // not in flight anymore but keep _mainDirty=true
     _offlineQueue=payload;
     // Track when the first failure in this streak happened
     if(!_firstFailTime)_firstFailTime=Date.now();
@@ -6961,6 +6971,12 @@ var _dlogMigrated=true; // always true — using daily docs
 var _mainDlogCache=null;
 var _dlogReady=false;
 var _mainReady=false;
+// ── DIRTY / IN-FLIGHT FLAGS (fix: assignments disappearing in main app) ──
+// _mainDirty: user has made changes not yet confirmed by Firebase
+// _mainSaveInFlight: a write is currently in progress
+// While either flag is true, dlog snapshots NEVER call loadLiveFromDlog()
+// preventing Firebase's own confirm snapshot from wiping unsaved assignments.
+var _mainDirty=false,_mainSaveInFlight=false;
 function _tryInitialRender(){
   if(!_dlogReady||!_mainReady)return;
   var d=_lastLoadedDate||getD();
@@ -6985,7 +7001,12 @@ function loadFromCloud(callback){
         _dlogReady=true;_tryInitialRender();
       } else if(DB_LOADED){
         var _cd=_lastLoadedDate||today;
-        if(incoming[_cd]!==undefined){loadLiveFromDlog(_cd);drawVenueGrid();drawStaffPanel();drawStats();}
+        // ── DIRTY GUARD: this snapshot fires after every save (including our own).
+        // If we have unsaved/in-flight changes, never reload from dlog —
+        // the snapshot may be slightly behind our live asgn state.
+        if(incoming[_cd]!==undefined&&!_mainDirty&&!_mainSaveInFlight){
+          loadLiveFromDlog(_cd);drawVenueGrid();drawStaffPanel();drawStats();
+        }
       }
     } else {
       if(!_dlogReady){_dlogReady=true;_tryInitialRender();}

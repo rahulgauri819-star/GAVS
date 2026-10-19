@@ -209,9 +209,9 @@ input,select,button{font-family:inherit;}
 .vbox{background:#fff;border:2px solid #e3eaff;border-radius:14px;overflow:visible;box-shadow:0 2px 8px rgba(21,101,192,0.05);transition:border-color 0.2s,box-shadow 0.2s;}
 .vbox.vip{border-color:#f9a825;}
 .vbox.drag-over{border-color:#1565c0!important;background:#f0f4ff;box-shadow:0 0 0 3px rgba(21,101,192,0.2);}
-.vbox-hdr{background:#1565c0;color:#fff;padding:8px 10px;display:flex;align-items:flex-start;gap:4px;border-radius:12px 12px 0 0;overflow:hidden;}
+.vbox-hdr{background:#1565c0;color:#fff;padding:8px 10px;display:flex;align-items:center;gap:4px;border-radius:12px 12px 0 0;overflow:hidden;}
 .vbox.vip .vbox-hdr{background:linear-gradient(135deg,#c07c00,#f9a825);border-radius:12px 12px 0 0;}
-.vbox-name{font-size:12px;font-weight:700;flex:1;line-height:1.3;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word;white-space:normal;}
+.vbox-name{font-size:12px;font-weight:700;flex:1;line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .vbox-cnt{background:rgba(255,255,255,0.25);border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;flex-shrink:0;}
 .vbox-close{background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .vbox-close:hover{background:rgba(255,0,0,0.3);}
@@ -1122,15 +1122,13 @@ var _lastLoadedDate=''; // tracks the date whose data is currently in asgn/lvMap
 // Hydrate the live working set (asgn/lvMap/offMap/vendorAsgn) from a date's dlog entry.
 // This is the SINGLE source of truth for loading a date. Always clears first.
 function loadLiveFromDlog(date){
-  // When called for a new date (navigation), reset dirty flags so
-  // the new date always loads fresh from Firebase
-  if(date!==_lastLoadedDate&&_lastLoadedDate!==''){_mainDirty=false;_mainSaveInFlight=false;}
   asgn={};lvMap={};offMap={};gdnMap={};vendorAsgn={};
   activeVids=[];
   var log=dlog[date];
   var vlog=vdlog[date];
   if(log){
     Object.keys(log.venues||{}).forEach(function(vid){
+      if(!getV(vid))return; // skip stale venue IDs no longer in venues list
       asgn[vid]={};
       Object.keys(log.venues[vid]||{}).forEach(function(eid){
         var emp=getS(eid);
@@ -1358,7 +1356,7 @@ function drawStaffPanel(){
       var isO=oids.indexOf(e.id)>=0;
       var grey=isD||isL||isO;
       var where='';
-      if(isD){Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][e.id]){var v=getV(vid);if(v)where='('+v.name+')';}} );}
+      if(isD){Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][e.id]){var v=getV(vid);where='('+(v?v.name:'Venue')+')';}} );}
       else if(isL)where='(On Leave)';
       else if(isO)where='(Office Duty)';
       else if(gdnMap[e.id])where='(Godown Team)';
@@ -1442,7 +1440,7 @@ function onGreyStaffClick(eid){
     g('m-no').onclick=closeModal;
   } else if(aids.indexOf(eid)>=0){
     var depVid='',depVname='';
-    Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid]){depVid=vid;var v=getV(vid);if(v)depVname=v.name;}});
+    Object.keys(asgn).forEach(function(vid){if(asgn[vid]&&asgn[vid][eid]){depVid=vid;var v=getV(vid);depVname=v?v.name:'Venue';}});
     showModal(
       '<div class="mt" style="color:#1565c0;">Undeploy Staff?</div>'+
       '<div style="text-align:center;font-size:15px;color:#333;margin-bottom:18px;">Undeploy <strong>'+esc(e.name)+'</strong> from<br><strong>'+esc(depVname)+'</strong>?</div>'+
@@ -2498,14 +2496,9 @@ function showBulkVendorTime(vid){
 
 
 function copyVenueToFutureDates(vid,vname,fromDate,toDate){
-  // ── Snapshot the source data ONCE at call time (Bug 5 fix: capture now,
-  //    not inside async callbacks where _lastLoadedDate might have shifted)
   var fromLog=dlog[fromDate]||{};
   var fromVenue=(fromLog.venues&&fromLog.venues[vid])||{};
-  var fromCamTypes=(fromLog.camTypes&&fromLog.camTypes[vid])||{}; // Bug 4 fix: copy camTypes too
   if(!Object.keys(fromVenue).length){toast('No staff assigned to '+vname+' on this date','w');return;}
-
-  // Build date list: fromDate+1 .. toDate inclusive
   var dates=[];
   var p=fromDate.split('-');
   var cur=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2])+1);
@@ -2516,81 +2509,24 @@ function copyVenueToFutureDates(vid,vname,fromDate,toDate){
     cur.setDate(cur.getDate()+1);
   }
   if(!dates.length){toast('No dates in range','w');return;}
-
-  toast('Copying '+vname+' to '+dates.length+' dates...');
-
-  // ── Process dates SEQUENTIALLY (Bug 1 fix: no parallel writes)
-  // Each date is fully fetched-then-written before the next starts.
-  var idx=0;
-  var successCount=0;
-  function processNext(){
-    if(idx>=dates.length){
-      toast('✅ Copied '+vname+' to '+successCount+' date'+(successCount===1?'':'s')+'!');
-      return;
-    }
-    var d=dates[idx++];
-    // Bug 3 fix: always force-fetch from Firebase so we never overwrite
-    // existing data that was loaded as dlog[d]={} in memory.
-    fetchDlogDate(d,function(){
-      applyThenSave(d);
-    },true /*forceRefresh*/);
-  }
-
-  function applyThenSave(d){
-    // Bug 2 fix: preserve ALL existing fields on the target date.
-    // Only touch venues[vid] and manualVids — leave everything else intact.
-    if(!dlog[d])dlog[d]={};
-    if(!dlog[d].venues)dlog[d].venues={};
-    if(!dlog[d].camTypes)dlog[d].camTypes={};
-    if(!dlog[d].manualVids)dlog[d].manualVids=[];
-
-    // Merge this venue's staff into target date (existing other-venue staff kept)
-    if(!dlog[d].venues[vid])dlog[d].venues[vid]={};
-    Object.keys(fromVenue).forEach(function(eid){
-      dlog[d].venues[vid][eid]=fromVenue[eid];
-    });
-
-    // Bug 4 fix: copy camTypes for this venue
-    if(Object.keys(fromCamTypes).length){
-      if(!dlog[d].camTypes[vid])dlog[d].camTypes[vid]={};
-      Object.keys(fromCamTypes).forEach(function(eid){
-        dlog[d].camTypes[vid][eid]=fromCamTypes[eid];
+  var done=0,total=dates.length;
+  toast('Copying '+vname+' to '+total+' dates...');
+  dates.forEach(function(d){
+    function apply(){
+      if(!dlog[d])dlog[d]={};
+      if(!dlog[d].venues)dlog[d].venues={};
+      if(!dlog[d].manualVids)dlog[d].manualVids=[];
+      Object.keys(fromVenue).forEach(function(eid){
+        if(!dlog[d].venues[vid])dlog[d].venues[vid]={};
+        dlog[d].venues[vid][eid]=fromVenue[eid];
       });
+      if(dlog[d].manualVids.indexOf(vid)<0)dlog[d].manualVids.push(vid);
+      var sp={dlog:{}};sp.dlog[d]={venues:dlog[d].venues,manualVids:dlog[d].manualVids};
+      dailyRef(d).set(sp,{merge:true});
+      done++;if(done===total)toast('✅ Copied '+vname+' to '+total+' dates!');
     }
-
-    // Add to manualVids so venue stays visible on target date
-    if(dlog[d].manualVids.indexOf(vid)<0)dlog[d].manualVids.push(vid);
-
-    // Build a COMPLETE payload for this date — all fields preserved (Bug 2 fix)
-    // Use update() with dot-notation keys so only venues[vid] and camTypes[vid]
-    // are touched in Firebase; all other fields (leave, office, godown, etc.) untouched.
-    var updatePayload={};
-    updatePayload['dlog.'+d+'.venues.'+vid]=dlog[d].venues[vid];
-    if(Object.keys(fromCamTypes).length){
-      updatePayload['dlog.'+d+'.camTypes.'+vid]=dlog[d].camTypes[vid];
-    }
-    updatePayload['dlog.'+d+'.manualVids']=dlog[d].manualVids;
-
-    dailyRef(d).update(updatePayload).then(function(){
-      successCount++;
-      processNext(); // next date only after this one is written
-    }).catch(function(){
-      // Doc doesn't exist yet — create it with set+merge, but still only write what we need
-      var sp={dlog:{}};
-      sp.dlog[d]={venues:{},camTypes:{},manualVids:dlog[d].manualVids};
-      sp.dlog[d].venues[vid]=dlog[d].venues[vid];
-      if(Object.keys(fromCamTypes).length)sp.dlog[d].camTypes[vid]=dlog[d].camTypes[vid];
-      dailyRef(d).set(sp,{merge:true}).then(function(){
-        successCount++;
-        processNext();
-      }).catch(function(e){
-        console.warn('Copy failed for date '+d+':',e);
-        processNext(); // skip and continue with remaining dates
-      });
-    });
-  }
-
-  processNext(); // kick off the sequential chain
+    if(dlog[d]){apply();}else{fetchDlogDate(d,apply);}
+  });
 }
 
 function showCopyPrevDay(vid){
@@ -6840,7 +6776,6 @@ window.addEventListener('online',function(){
 
 function saveCloud(){
   if(!DB_LOADED)return;
-  _mainDirty=true; // mark immediately — blocks dlog snapshot from reloading asgn
   SAVE_PENDING++;
   showSaveIndicator('saving');
   clearTimeout(SAVE_DEBOUNCE_TIMER);
@@ -6899,25 +6834,19 @@ function doSaveWithRetry(payload,attempt){
   SAVE_PENDING++;
   showSaveIndicator('saving');
   _backupLocal(payload);
-  _mainSaveInFlight=true; // block dlog snapshot from reloading during write
   db.collection('gavs_data').doc('main').set(payload).then(function(){
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
     LAST_SAVE_FAILED=false;
     _offlineQueue=null;
     _firstFailTime=null; // reset on success
     _clearBackupLocal();
+    showSaveIndicator('saved');
     // Write dlog to separate document after main save succeeds
     saveDlogSeparate(0);
-    // Only clear dirty flags AFTER dlog is also written — saveDlogSeparate
-    // is async so we clear after a short delay to cover its round-trip.
-    // The dlog snapshot will then be safe to reload from.
-    setTimeout(function(){_mainDirty=false;_mainSaveInFlight=false;},1500);
-    showSaveIndicator('saved');
   }).catch(function(e){
     console.warn('Save error (attempt '+attempt+'):',e.message||e);
     SAVE_PENDING=Math.max(0,SAVE_PENDING-1);
     LAST_SAVE_FAILED=true;
-    _mainSaveInFlight=false; // not in flight anymore but keep _mainDirty=true
     _offlineQueue=payload;
     // Track when the first failure in this streak happened
     if(!_firstFailTime)_firstFailTime=Date.now();
@@ -6938,14 +6867,12 @@ function doSaveWithRetry(payload,attempt){
 
 function dailyDocId(dateStr){return 'dlog_'+(dateStr||getD()).replace(/-/g,'_');}
 function dailyRef(dateStr){return db.collection('gavs_data').doc(dailyDocId(dateStr));}
-function fetchDlogDate(dateStr,cb,forceRefresh){
-  // forceRefresh=true bypasses memory cache — used by copy operations
-  // to avoid stale dlog[d]={} overwriting real Firebase data (Bug 3 fix)
-  if(!forceRefresh&&dlog[dateStr]!==undefined){if(cb)cb();return;}
+function fetchDlogDate(dateStr,cb){
+  if(dlog[dateStr]!==undefined){if(cb)cb();return;}
   dailyRef(dateStr).get().then(function(doc){
     dlog[dateStr]=(doc.exists&&doc.data()&&doc.data().dlog&&doc.data().dlog[dateStr])?doc.data().dlog[dateStr]:{};
     if(cb)cb();
-  }).catch(function(e){console.warn('fetchDlogDate error:',e.message||e);if(dlog[dateStr]===undefined)dlog[dateStr]={};if(cb)cb();});
+  }).catch(function(e){console.warn('fetchDlogDate error:',e.message||e);dlog[dateStr]={};if(cb)cb();});
 }
 function saveDlogSeparate(attempt){
   if(attempt>5)return;
@@ -6971,12 +6898,6 @@ var _dlogMigrated=true; // always true — using daily docs
 var _mainDlogCache=null;
 var _dlogReady=false;
 var _mainReady=false;
-// ── DIRTY / IN-FLIGHT FLAGS (fix: assignments disappearing in main app) ──
-// _mainDirty: user has made changes not yet confirmed by Firebase
-// _mainSaveInFlight: a write is currently in progress
-// While either flag is true, dlog snapshots NEVER call loadLiveFromDlog()
-// preventing Firebase's own confirm snapshot from wiping unsaved assignments.
-var _mainDirty=false,_mainSaveInFlight=false;
 function _tryInitialRender(){
   if(!_dlogReady||!_mainReady)return;
   var d=_lastLoadedDate||getD();
@@ -7001,12 +6922,7 @@ function loadFromCloud(callback){
         _dlogReady=true;_tryInitialRender();
       } else if(DB_LOADED){
         var _cd=_lastLoadedDate||today;
-        // ── DIRTY GUARD: this snapshot fires after every save (including our own).
-        // If we have unsaved/in-flight changes, never reload from dlog —
-        // the snapshot may be slightly behind our live asgn state.
-        if(incoming[_cd]!==undefined&&!_mainDirty&&!_mainSaveInFlight){
-          loadLiveFromDlog(_cd);drawVenueGrid();drawStaffPanel();drawStats();
-        }
+        if(incoming[_cd]!==undefined){loadLiveFromDlog(_cd);drawVenueGrid();drawStaffPanel();drawStats();}
       }
     } else {
       if(!_dlogReady){_dlogReady=true;_tryInitialRender();}

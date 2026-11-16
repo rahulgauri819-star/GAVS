@@ -8048,7 +8048,7 @@ function loadBackupList(){
       var nicTime = ist.getDate()+' '+months[ist.getMonth()]+' '+ist.getFullYear()+
         ' — '+String(ist.getHours()).padStart(2,'0')+':'+String(ist.getMinutes()).padStart(2,'0')+' IST';
       html2 += '<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid #f0f0f0;cursor:pointer;font-size:13px;" '+
-        'onclick="selectBackup(''+e.publicUrl+'',''+e.filename+'',this)" '+
+        'onclick="selectBackup(\''+e.publicUrl+'\',\''+e.filename+'\',this)" '+
         'data-url="'+e.publicUrl+'" data-fname="'+e.filename+'">'+
         '<span style="font-size:16px;">📦</span>'+
         '<span style="flex:1;"><b>'+nicTime+'</b><br><span style="color:#aaa;font-size:11px;">'+e.filename+' &nbsp;•&nbsp; '+e.sizeMB+' MB</span></span>'+

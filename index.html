@@ -802,6 +802,39 @@ input,select,button{font-family:inherit;}
       <button class="bigbtn" id="btnDownloadBackup">⬇ Download Full Backup</button>
     </div>
     <div style="background:#fff;border-radius:14px;border:1.5px solid #e3eaff;padding:20px;margin-bottom:16px;">
+      <div style="font-size:14px;font-weight:800;color:#1565c0;margin-bottom:8px;">📥 Restore from Backup</div>
+      <div style="font-size:12px;color:#888;margin-bottom:14px;">Your hourly backups are saved automatically. Pick any backup to browse and restore specific dates.</div>
+      <div id="backupAuthWrap">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+          <input type="password" id="restorePassInput" class="inp" placeholder="Enter password to access backups" style="margin:0;flex:1;" onkeydown="if(event.key==='Enter')checkRestorePass()"/>
+          <button class="bigbtn" onclick="checkRestorePass()" style="margin:0;padding:11px 18px;white-space:nowrap;">Unlock 🔓</button>
+        </div>
+        <div id="restorePassMsg" style="font-size:12px;color:#c62828;margin-top:4px;display:none;"></div>
+      </div>
+      <div id="backupListWrap" style="display:none;margin-top:14px;">
+        <button class="bigbtn" id="btnLoadBackupList" onclick="loadBackupList()" style="margin-bottom:0;">🔄 Load Backup History</button>
+        <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:8px;">Select a backup to restore from:</div>
+        <div id="backupList" style="max-height:200px;overflow-y:auto;border:1px solid #e3eaff;border-radius:8px;margin-bottom:12px;"></div>
+        <div id="restoreDateList" style="display:none;margin-top:12px;">
+          <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:6px;" id="restoreDateListTitle">Dates in this backup:</div>
+          <div id="restoreDates" style="max-height:220px;overflow-y:auto;border:1px solid #e3eaff;border-radius:8px;padding:8px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <button onclick="restoreSelectAll()" style="flex:1;padding:7px;background:#e8eaf6;border:none;border-radius:7px;font-size:12px;font-weight:700;color:#3949ab;cursor:pointer;">Select All</button>
+            <button onclick="restoreSelectNone()" style="flex:1;padding:7px;background:#f5f5f5;border:none;border-radius:7px;font-size:12px;font-weight:700;color:#757575;cursor:pointer;">Clear</button>
+          </div>
+          <button class="bigbtn" id="btnDoRestore" onclick="doRestoreFromBackup()">📥 Restore Selected Dates</button>
+        </div>
+        <div id="restoreStatus" style="margin-top:12px;font-size:13px;display:none;padding:12px;border-radius:8px;"></div>
+      </div>
+      <div style="margin-top:10px;border-top:1px solid #f0f0f0;padding-top:10px;">
+        <div style="font-size:12px;color:#aaa;margin-bottom:8px;">Or restore from a local backup file:</div>
+        <label style="display:block;border:2px dashed #e0e0e0;border-radius:10px;padding:12px;text-align:center;cursor:pointer;color:#9e9e9e;font-size:12px;font-weight:600;" id="restoreDropLabel">
+          📂 Upload backup JSON file
+          <input type="file" id="restoreFileInput" accept=".json" style="display:none;">
+        </label>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:14px;border:1.5px solid #e3eaff;padding:20px;margin-bottom:16px;">
       <div style="font-size:14px;color:#888;">Grover Audio Visual Services — Staff Deployment System v84</div>
     </div>
     <button id="btnLogout" style="display:block;width:100%;max-width:600px;background:#ffebee;border:1.5px solid #ffcdd2;color:#c62828;border-radius:11px;padding:13px 0;font-size:15px;font-weight:700;cursor:pointer;">🚪 Logout</button>
@@ -7973,6 +8006,221 @@ function makeDailySummaryPDF(){
   if(gdnListDS.length)renderSecDS('GODOWN TEAM',gdnListDS,233,30,140,240,98,146,80,0,60,true);
   if(lvListDS.length)renderSecDS('ON LEAVE',lvListDS,160,30,30,200,50,50,80,0,0,false);
   doc.save('GAVS_DailySummary_'+d+'.pdf');toast('Daily Summary downloaded!');
+}
+
+
+// ── RESTORE FROM BACKUP ──────────────────────────────────────
+var _restoreBackupData = null;
+var _restoreBackupUrl  = null;
+
+function checkRestorePass(){
+  var val = (g('restorePassInput')||{}).value||'';
+  var msg = g('restorePassMsg');
+  if(val === 'gavs2024'){
+    g('backupAuthWrap').style.display = 'none';
+    g('backupListWrap').style.display = 'block';
+    if(msg) msg.style.display = 'none';
+  } else {
+    if(msg){ msg.textContent = '❌ Incorrect password'; msg.style.display = 'block'; }
+    if(g('restorePassInput')) g('restorePassInput').value = '';
+  }
+}
+
+// ── Auto backup list from Firestore index
+function loadBackupList(){
+  var btn = g('btnLoadBackupList');
+  var wrap = g('backupListWrap');
+  btn.textContent = '⏳ Loading...';
+  btn.disabled = true;
+  db.collection('gavs_data').doc('backups_index').get().then(function(doc){
+    btn.disabled = false;
+    btn.textContent = '🔄 Refresh Backup History';
+    if(!doc.exists || !doc.data().entries || !doc.data().entries.length){
+      g('backupList').innerHTML = '<div style="padding:12px;color:#999;font-size:13px;">No automatic backups found yet. They appear after the Cloud Function runs.</div>';
+      wrap.style.display = 'block';
+      return;
+    }
+    var entries = doc.data().entries.slice().reverse(); // newest first
+    var html2 = '';
+    entries.forEach(function(e, i){
+      var ist = new Date(e.time_ist);
+      var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var nicTime = ist.getDate()+' '+months[ist.getMonth()]+' '+ist.getFullYear()+
+        ' — '+String(ist.getHours()).padStart(2,'0')+':'+String(ist.getMinutes()).padStart(2,'0')+' IST';
+      html2 += '<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid #f0f0f0;cursor:pointer;font-size:13px;" '+
+        'onclick="selectBackup(''+e.publicUrl+'',''+e.filename+'',this)" '+
+        'data-url="'+e.publicUrl+'" data-fname="'+e.filename+'">'+
+        '<span style="font-size:16px;">📦</span>'+
+        '<span style="flex:1;"><b>'+nicTime+'</b><br><span style="color:#aaa;font-size:11px;">'+e.filename+' &nbsp;•&nbsp; '+e.sizeMB+' MB</span></span>'+
+        '<span style="color:#1565c0;font-size:12px;font-weight:700;">Select →</span>'+
+        '</div>';
+    });
+    g('backupList').innerHTML = html2;
+    wrap.style.display = 'block';
+  }).catch(function(e){
+    btn.disabled = false;
+    btn.textContent = '🔄 Load Backup History';
+    toast('Could not load backup list: '+e.message,'e');
+  });
+}
+
+function selectBackup(url, fname, row){
+  // Highlight selected row
+  Array.from(g('backupList').children).forEach(function(r){r.style.background='';});
+  row.style.background = '#e8f0fe';
+
+  _restoreBackupUrl = url;
+  var statusEl = g('restoreStatus');
+  var dateListEl = g('restoreDateList');
+  statusEl.style.display = 'block';
+  statusEl.style.background = '#fff8e1';
+  statusEl.style.color = '#e65100';
+  statusEl.textContent = '⏳ Loading backup: '+fname+'...';
+  dateListEl.style.display = 'none';
+
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      _restoreBackupData = data;
+      statusEl.style.display = 'none';
+      g('restoreDateListTitle').textContent = 'Dates in: '+fname;
+      renderRestoreDates(data);
+    })
+    .catch(function(e){
+      statusEl.style.background = '#ffebee';
+      statusEl.style.color = '#c62828';
+      statusEl.textContent = '❌ Could not load backup: '+e.message;
+    });
+}
+
+// ── File upload fallback
+(function(){
+  var inp = g('restoreFileInput');
+  var lbl = g('restoreDropLabel');
+  if(!inp || !lbl) return;
+  inp.addEventListener('change', function(){
+    var file = this.files[0];
+    if(!file) return;
+    lbl.innerHTML = '📄 '+file.name+' <input type="file" id="restoreFileInput" accept=".json" style="display:none;">';
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        _restoreBackupData = JSON.parse(e.target.result);
+        g('backupListWrap').style.display = 'block';
+        g('restoreDateListTitle').textContent = 'Dates in: '+file.name;
+        renderRestoreDates(_restoreBackupData);
+      } catch(err){ toast('❌ Invalid JSON file','e'); }
+    };
+    reader.readAsText(file);
+  });
+  lbl.addEventListener('click', function(){ g('restoreFileInput').click(); });
+})();
+
+function renderRestoreDates(data){
+  var dates = [];
+  var telegramDocs = data && data.documents && data.documents.daily_docs;
+  var manualDlog   = data && data.dlog;
+
+  if(telegramDocs){
+    Object.keys(telegramDocs).forEach(function(docId){
+      if(!docId.startsWith('dlog_')) return;
+      var dateStr = docId.replace('dlog_','').replace(/_/g,'-');
+      var entry = telegramDocs[docId] && telegramDocs[docId].dlog && telegramDocs[docId].dlog[dateStr];
+      if(!entry) return;
+      var vCount=Object.keys(entry.venues||{}).length, sCount=0;
+      Object.values(entry.venues||{}).forEach(function(v){sCount+=Object.keys(v||{}).length;});
+      dates.push({dateStr:dateStr,docId:docId,vCount:vCount,sCount:sCount,entry:entry});
+    });
+  } else if(manualDlog){
+    Object.keys(manualDlog).forEach(function(dateStr){
+      var entry=manualDlog[dateStr];
+      if(!entry||typeof entry!=='object') return;
+      var vCount=Object.keys(entry.venues||{}).length, sCount=0;
+      Object.values(entry.venues||{}).forEach(function(v){sCount+=Object.keys(v||{}).length;});
+      dates.push({dateStr:dateStr,docId:'dlog_'+dateStr.replace(/-/g,'_'),vCount:vCount,sCount:sCount,entry:entry});
+    });
+  }
+
+  if(!dates.length){ toast('No daily duty data found in this backup','w'); return; }
+  dates.sort(function(a,b){return b.dateStr.localeCompare(a.dateStr);});
+
+  var container=g('restoreDates');
+  container.innerHTML='';
+  var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  dates.forEach(function(d){
+    var row=document.createElement('label');
+    row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid #f0f0f0;cursor:pointer;font-size:13px;';
+    var chk=document.createElement('input');
+    chk.type='checkbox'; chk.value=d.dateStr;
+    chk.setAttribute('data-docid',d.docId);
+    chk.style.cssText='width:16px;height:16px;cursor:pointer;accent-color:#1565c0;';
+    if(d.sCount>0) chk.checked=true;
+    var parts=d.dateStr.split('-');
+    var nicDate=parseInt(parts[2])+' '+months[parseInt(parts[1])-1]+' '+parts[0];
+    var lbl2=document.createElement('span');
+    lbl2.innerHTML='<b>'+nicDate+'</b> &nbsp;<span style="color:#888;">— '+d.vCount+' venues, '+d.sCount+' staff'+(d.vCount===0?' <i>(empty)</i>':'')+' </span>';
+    row.appendChild(chk); row.appendChild(lbl2);
+    container.appendChild(row);
+  });
+
+  g('restoreDateList').style.display='block';
+  g('restoreStatus').style.display='none';
+}
+
+function restoreSelectAll(){
+  g('restoreDates').querySelectorAll('input[type=checkbox]').forEach(function(c){c.checked=true;});
+}
+function restoreSelectNone(){
+  g('restoreDates').querySelectorAll('input[type=checkbox]').forEach(function(c){c.checked=false;});
+}
+
+function doRestoreFromBackup(){
+  if(!_restoreBackupData){ toast('No backup loaded','w'); return; }
+  var checked=Array.from(g('restoreDates').querySelectorAll('input[type=checkbox]:checked'));
+  if(!checked.length){ toast('Select at least one date to restore','w'); return; }
+
+  var telegramDocs = _restoreBackupData.documents && _restoreBackupData.documents.daily_docs;
+  var manualDlog   = _restoreBackupData.dlog;
+
+  var btn=g('btnDoRestore'), statusEl=g('restoreStatus');
+  btn.disabled=true; btn.textContent='⏳ Restoring...';
+  statusEl.style.display='block';
+  statusEl.style.background='#fff8e1'; statusEl.style.color='#e65100';
+  statusEl.textContent='Writing '+checked.length+' date(s) to Firestore...';
+
+  var promises=checked.map(function(chk){
+    var dateStr=chk.value, docId=chk.getAttribute('data-docid'), entry;
+    if(telegramDocs && telegramDocs[docId]){
+      entry=telegramDocs[docId].dlog && telegramDocs[docId].dlog[dateStr];
+    } else if(manualDlog){
+      entry=manualDlog[dateStr];
+    }
+    if(!entry) return Promise.resolve({dateStr:dateStr,ok:false,msg:'No data'});
+
+    var payload={updatedAt:new Date().toISOString(), dlog:{}};
+    payload.dlog[dateStr]=entry;
+    payload['dlog.'+dateStr]=entry;
+
+    return db.collection('gavs_data').doc(docId).set(payload)
+      .then(function(){return {dateStr:dateStr,ok:true};})
+      .catch(function(e){return {dateStr:dateStr,ok:false,msg:e.message};});
+  });
+
+  Promise.all(promises).then(function(results){
+    btn.disabled=false; btn.textContent='📥 Restore Selected Dates';
+    var ok=results.filter(function(r){return r.ok;});
+    var fail=results.filter(function(r){return !r.ok;});
+    if(!fail.length){
+      statusEl.style.background='#e8f5e9'; statusEl.style.color='#1b5e20';
+      statusEl.innerHTML='✅ <b>'+ok.length+' date(s) restored!</b><br><small>Go to Assign screen and navigate to that date.</small>';
+      toast('✅ '+ok.length+' date(s) restored!');
+      ok.forEach(function(r){delete dlog[r.dateStr];});
+    } else {
+      statusEl.style.background='#ffebee'; statusEl.style.color='#b71c1c';
+      statusEl.innerHTML='⚠️ <b>'+ok.length+' ok, '+fail.length+' failed.</b><br>'+
+        fail.map(function(r){return r.dateStr+': '+r.msg;}).join('<br>');
+    }
+  });
 }
 
 </script>
